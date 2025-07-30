@@ -1,11 +1,12 @@
 package com.reuben.pastcare_spring.mapper;
 
-import com.reuben.pastcare_spring.Dtos.UserDto;
+import com.reuben.pastcare_spring.dtos.UserDto;
 import com.reuben.pastcare_spring.models.User;
 
 public class UserMapper {
     public static UserDto toDto(User user) {
         return new UserDto(
+            user.getId(),
             user.getName(),
             user.getEmail(),
             user.getPhoneNumber(),
