@@ -11,15 +11,11 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 @Data
 @Entity
-public class Chapel extends BaseEntity {
+public class Bacenta extends BaseEntity {
 
   @Column(nullable = false)
-  private String name;
+  String name;
 
-  @OneToMany(mappedBy = "chapel")
-  private List<User> users;
-
-  @OneToMany(mappedBy = "chapel")
-  private List<Member> members;
-
+  @OneToMany(mappedBy = "bacenta")
+  List <Member> members;
 }
