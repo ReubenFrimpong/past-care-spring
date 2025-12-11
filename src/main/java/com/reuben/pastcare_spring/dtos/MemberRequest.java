@@ -1,13 +1,17 @@
-package com.reuben.pastcare_spring.requests;
+package com.reuben.pastcare_spring.dtos;
 
 import java.time.LocalDate;
+import java.util.List;
+
+import com.reuben.pastcare_spring.annotations.Unique;
+import com.reuben.pastcare_spring.models.Fellowship;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 public record MemberRequest(
   
-  Integer id,
+  Long id,
   
   @NotBlank(message = "Firstname is required")
   String firstName,
@@ -21,13 +25,16 @@ public record MemberRequest(
   
   @NotBlank(message = "Sex is required")
   String sex,
+
+  Long churchId,
   
-  @NotNull(message = "Chapel is required")
-  Integer chapelId,
+  List<Long> fellowshipIds,
   
   LocalDate dob,
   
   @NotBlank(message = "Phone number is required")
+  @Unique(table = "member", column = "phone_number", message = "Phone number already taken")
+
   String phoneNumber,
 
   String whatsappNumber,
@@ -37,9 +44,6 @@ public record MemberRequest(
   String areaOfResidence,
 
   String gpsAddress,
-
-  @NotNull(message = "Bacenta is required")
-  Integer bacentaId,
 
   String profileImageUrl,
 

@@ -1,12 +1,14 @@
 package com.reuben.pastcare_spring.models;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToOne;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -29,11 +31,20 @@ public class Member extends BaseEntity {
   private String sex;
 
   @ManyToOne
-  @JoinColumn(name = "chapel_id", nullable = false)
-  Chapel chapel;
+  @JoinColumn(name = "church_id", nullable = false)
+  private Church church;
+
+  @ManyToMany
+  @JoinTable(
+    name = "member_fellowships",
+    joinColumns = @JoinColumn(name = "member_id"),
+    inverseJoinColumns = @JoinColumn(name = "fellowship_id")
+  )
+  List<Fellowship> fellowships;
 
   private LocalDate dob;
 
+  @Column(unique = true, nullable = false)
   private String phoneNumber;
 
   private String whatsappNumber;
@@ -43,10 +54,6 @@ public class Member extends BaseEntity {
   private String areaOfResidence;
 
   private String gpsAddress;
-
-  @ManyToOne
-  @JoinColumn(name = "bacenta_id")
-  private Bacenta bacenta;
 
   private String profileImageUrl;
 

@@ -1,9 +1,17 @@
 package com.reuben.pastcare_spring.models;
 
 
+import java.util.List;
+
+import com.reuben.pastcare_spring.enums.Role;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -28,14 +36,24 @@ public class User extends BaseEntity{
   private String title;
 
   @ManyToOne
-  @JoinColumn(name = "chapel_id", nullable = false)
-  private Chapel chapel;
+  @JoinColumn(name = "church_id", nullable = true)
+  private Church church;
+
+  @ManyToMany
+  @JoinTable(
+    name = "user_fellowships",
+    joinColumns = @JoinColumn(name = "user_id"),
+    inverseJoinColumns = @JoinColumn(name = "fellowship_id")
+  )
+  List<Fellowship> fellowships;
 
   @Column(nullable = false)
   private String password;
 
   private String primaryService;
 
-  private String designation;
+  @Enumerated(EnumType.STRING)
+  @Column(length = 20)
+  private Role role;
 
 }

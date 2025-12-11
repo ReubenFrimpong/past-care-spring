@@ -1,13 +1,15 @@
 package com.reuben.pastcare_spring.models;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
+
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
 import lombok.Data;
 
 @Data
@@ -16,21 +18,13 @@ public class BaseEntity {
 
   @Id
   @GeneratedValue
-  private Integer id;
+  private Long id;
 
-  @Column(updatable = false)
-  private LocalDateTime createdAt;
+  @CreationTimestamp
+  @Column(nullable = false, updatable = false)
+  private Instant createdAt;
 
-  @Column(insertable = false)
-  private LocalDateTime updatedAt;
-
-  @PrePersist
-  protected void onCreate() {
-      createdAt = LocalDateTime.now();
-  }
-
-  @PreUpdate
-  protected void onUpdate() {
-      updatedAt = LocalDateTime.now();
-  }
+  @UpdateTimestamp
+  @Column(nullable = false)
+  private Instant updatedAt;
 }

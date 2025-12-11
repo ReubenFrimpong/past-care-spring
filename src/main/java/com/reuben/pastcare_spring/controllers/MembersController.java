@@ -3,15 +3,14 @@ package com.reuben.pastcare_spring.controllers;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.reuben.pastcare_spring.dtos.MemberDto;
-import com.reuben.pastcare_spring.requests.MemberRequest;
+import com.reuben.pastcare_spring.dtos.MemberResponse;
+import com.reuben.pastcare_spring.dtos.MemberRequest;
 import com.reuben.pastcare_spring.services.MemberService;
 
 import jakarta.validation.Valid;
 
 import java.util.List;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -35,26 +34,23 @@ public class MembersController {
   }
 
   @GetMapping
-  public ResponseEntity<List<MemberDto>> getAllMembers() {
-      var members = memberService.getAllMembers();
-      return ResponseEntity.status(HttpStatus.OK).body(members);
+  public ResponseEntity<List<MemberResponse>> getAllMembers() {
+      return ResponseEntity.ok(memberService.getAllMembers());
   }
   
 
   @PostMapping
-  public ResponseEntity<MemberDto> createMember(@Valid @RequestBody MemberRequest memberRequest) {
-      MemberDto createdeMember = memberService.createMember(memberRequest);
-      return ResponseEntity.status(HttpStatus.CREATED).body(createdeMember);
+  public ResponseEntity<MemberResponse> createMember(@Valid @RequestBody MemberRequest memberRequest) {
+      return ResponseEntity.ok(memberService.createMember(memberRequest));
   }
 
   @PutMapping("/{id}")
-  public ResponseEntity<MemberDto> updateMember(@PathVariable Integer id, @RequestBody MemberRequest memberRequest) {
-      var updatedMember = memberService.updateMember(id, memberRequest);
-      return ResponseEntity.status(HttpStatus.OK).body(updatedMember);
+  public ResponseEntity<MemberResponse> updateMember(@PathVariable Long id, @RequestBody MemberRequest memberRequest) {
+      return ResponseEntity.ok(memberService.updateMember(id, memberRequest));
   }
   
   @DeleteMapping("/{id}")
-  public ResponseEntity<?> deleteMember(@PathVariable Integer id){
+  public ResponseEntity<?> deleteMember(@PathVariable Long id){
     memberService.deleteMember(id);
     return ResponseEntity.noContent().build();
   }

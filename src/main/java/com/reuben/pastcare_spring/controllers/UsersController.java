@@ -12,9 +12,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.reuben.pastcare_spring.dtos.UserDto;
-import com.reuben.pastcare_spring.requests.UserCreateRequest;
-import com.reuben.pastcare_spring.requests.UserUpdateRequest;
+import com.reuben.pastcare_spring.dtos.UserCreateRequest;
+import com.reuben.pastcare_spring.dtos.UserResponse;
+import com.reuben.pastcare_spring.dtos.UserUpdateRequest;
 import com.reuben.pastcare_spring.services.UserService;
 
 import jakarta.validation.Valid;
@@ -34,32 +34,28 @@ public class UsersController {
     this.userService = userService;
   }
   @GetMapping
-  public List<UserDto> getAllUsers() {
+  public List<UserResponse> getAllUsers() {
       return userService.getAllUsers();
   }
 
   @GetMapping("/{id}")
-  public ResponseEntity<UserDto> getUserById(@PathVariable Integer id) {
-      var userDto = userService.getUserById(id);
-      return ResponseEntity.status(HttpStatus.OK).body(userDto);
+  public ResponseEntity<UserResponse> getUserById(@PathVariable Long id) {
+      return ResponseEntity.ok(userService.getUserById(id));
   }
   
 
   @PostMapping
-  public ResponseEntity<UserDto> createUser(@Valid @RequestBody UserCreateRequest userRequest) {
-      UserDto createdUser = userService.createUser(userRequest);
-      return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
+  public ResponseEntity<UserResponse> createUser(@Valid @RequestBody UserCreateRequest userRequest) {
+      return ResponseEntity.ok(userService.createUser(userRequest));
   }
 
   @PutMapping("/{id}")
-  public ResponseEntity<UserDto> updateUser(@PathVariable Integer id, @Valid @RequestBody UserUpdateRequest userRequest) {
-      UserDto updatedUser = userService.updateUser(id, userRequest);
-      
-      return ResponseEntity.status(HttpStatus.OK).body(updatedUser);
+  public ResponseEntity<UserResponse> updateUser(@PathVariable Long id, @Valid @RequestBody UserUpdateRequest userRequest) {      
+      return ResponseEntity.ok(userService.updateUser(id, userRequest));
   }
 
   @DeleteMapping("/{id}")
-  public ResponseEntity<String> deleteUser(@PathVariable Integer id) {
+  public ResponseEntity<String> deleteUser(@PathVariable Long id) {
     userService.deleteUser(id);
     return ResponseEntity.noContent().build();
   }

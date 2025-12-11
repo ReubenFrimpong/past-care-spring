@@ -1,8 +1,9 @@
-package com.reuben.pastcare_spring.requests;
+package com.reuben.pastcare_spring.dtos;
 
+import java.util.List;
+import com.reuben.pastcare_spring.enums.Role;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 
 public record UserUpdateRequest(
   
@@ -14,13 +15,16 @@ public record UserUpdateRequest(
   String email,
 
   String phoneNumber,
+
   String title,
 
-  @NotNull(message = "Chapel is required")
-  Integer chapelId,
+  Long churchId,
+
+  List<Long> fellowshipIds,
 
   String primaryService,
-  String designation
+
+  Role role
   ) {
 
 }

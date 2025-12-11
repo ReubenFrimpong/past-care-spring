@@ -1,27 +1,27 @@
 package com.reuben.pastcare_spring.mapper;
 
-import com.reuben.pastcare_spring.dtos.MemberDto;
+import com.reuben.pastcare_spring.dtos.MemberResponse;
 import com.reuben.pastcare_spring.models.Member;
 
 public class MemberMapper {
 
 
-  public static MemberDto toDto(Member member){
-    return new MemberDto(
+  public static MemberResponse toMemberResponse(Member member){
+    return new MemberResponse(
       member.getId(),
       member.getFirstName(),
       member.getOtherName(),
       member.getLastName(),
       member.getTitle(),
       member.getSex(),
-      member.getChapel() != null ? member.getChapel().getId() : null,
+      member.getChurch(),
+      member.getFellowships(),
       member.getDob(),
       member.getPhoneNumber(),
       member.getWhatsappNumber(),
       member.getOtherPhoneNumber(),
       member.getAreaOfResidence(),
       member.getGpsAddress(),
-      member.getBacenta() != null ? member.getBacenta().getId() : null,
       member.getProfileImageUrl(),
       member.getMaritalStatus(),
       member.getSpouseName(),

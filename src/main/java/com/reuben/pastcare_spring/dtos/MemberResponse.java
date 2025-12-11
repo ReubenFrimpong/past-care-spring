@@ -1,9 +1,13 @@
 package com.reuben.pastcare_spring.dtos;
 
 import java.time.LocalDate;
+import java.util.List;
 
-public record MemberDto(
-  Integer id,
+import com.reuben.pastcare_spring.models.Church;
+import com.reuben.pastcare_spring.models.Fellowship;
+
+public record MemberResponse(
+  Long id,
 
   String firstName,
 
@@ -15,7 +19,9 @@ public record MemberDto(
 
   String sex,
 
-  Integer chapelId,
+  Church church,
+
+  List<Fellowship> fellowships,
 
   LocalDate dob,
 
@@ -28,8 +34,6 @@ public record MemberDto(
   String areaOfResidence,
 
   String gpsAddress,
-
-  Integer bacentaId,
 
   String profileImageUrl,
 
