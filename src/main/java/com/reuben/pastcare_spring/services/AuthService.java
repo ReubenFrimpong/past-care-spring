@@ -13,10 +13,16 @@ import org.springframework.stereotype.Service;
 import com.reuben.pastcare_spring.dtos.AuthLoginRequest;
 import com.reuben.pastcare_spring.dtos.AuthRegistrationRequest;
 import com.reuben.pastcare_spring.dtos.AuthTokenData;
+import com.reuben.pastcare_spring.dtos.UserChurchRegistrationRequest;
 import com.reuben.pastcare_spring.dtos.UserResponse;
+import com.reuben.pastcare_spring.enums.Role;
 import com.reuben.pastcare_spring.exceptions.AccountLockedException;
+import com.reuben.pastcare_spring.exceptions.DuplicateChurchException;
+import com.reuben.pastcare_spring.exceptions.DuplicateUserException;
 import com.reuben.pastcare_spring.exceptions.TooManyRequestsException;
+import com.reuben.pastcare_spring.models.Church;
 import com.reuben.pastcare_spring.models.User;
+import com.reuben.pastcare_spring.repositories.ChurchRepository;
 import com.reuben.pastcare_spring.repositories.UserRepository;
 import com.reuben.pastcare_spring.security.JwtUtil;
 
@@ -26,6 +32,9 @@ import com.reuben.pastcare_spring.security.JwtUtil;
 public class AuthService {
   @Autowired
   UserRepository userRepository;
+
+  @Autowired
+  ChurchRepository churchRepository;
 
   @Autowired
   private AuthenticationManager authenticationManager;
@@ -41,6 +50,9 @@ public class AuthService {
 
   @Autowired
   private RefreshTokenService refreshTokenService;
+
+  @Autowired
+  private BCryptPasswordEncoder passwordEncoder;
 
 
   public AuthTokenData login(AuthLoginRequest request, HttpServletRequest httpRequest) {
@@ -73,21 +85,20 @@ public class AuthService {
       User user = userRepository.findByEmail(email).orElseThrow(() ->
           new RuntimeException("User not found after successful authentication"));
 
-      // Validate user has a church (tenant)
-      if (user.getChurch() == null) {
-        throw new RuntimeException("User must be associated with a church");
-      }
+      // Validate church association (except for SUPERADMIN)
+      user.validateChurchAssociation();
 
-      // Generate JWT with tenant claims
+      // Generate JWT with tenant claims (churchId can be null for SUPERADMIN)
+      Long churchId = user.getChurch() != null ? user.getChurch().getId() : null;
       String accessToken = jwtUtil.generateToken(
           userDetails,
           user.getId(),
-          user.getChurch().getId(),
+          churchId,
           user.getRole().name(),
           request.rememberMe()
       );
 
-      // Create refresh token
+      // Create refresh token (church can be null for SUPERADMIN)
       com.reuben.pastcare_spring.models.RefreshToken refreshToken = refreshTokenService.createRefreshToken(
           user,
           user.getChurch(),
@@ -130,8 +141,90 @@ public class AuthService {
     user.setPassword(authRequest.password());
     user.setRole(authRequest.role());
     user.setPhoneNumber(authRequest.phoneNumber());
-    user.setPassword(new BCryptPasswordEncoder().encode(authRequest.password()));
+    user.setPassword(passwordEncoder.encode(authRequest.password()));
     return userRepository.save(user);
+  }
+
+  /**
+   * Register a new church along with the first admin user.
+   * This is a transactional operation - both church and user are created together.
+   *
+   * @param request Contains both church and user registration data
+   * @return AuthTokenData with access token, refresh token, and user info
+   * @throws DuplicateChurchException if a church with the same name exists
+   * @throws DuplicateUserException if a user with the same email exists
+   */
+  @org.springframework.transaction.annotation.Transactional
+  public AuthTokenData registerNewChurch(UserChurchRegistrationRequest request, HttpServletRequest httpRequest) {
+    String churchName = request.church().name();
+    String userEmail = request.user().email();
+
+    // Check for duplicate church name
+    if (churchRepository.existsByNameIgnoreCase(churchName)) {
+      throw new DuplicateChurchException(
+          "A church with the name '" + churchName + "' already exists. Please choose a different name.");
+    }
+
+    // Check for duplicate user email
+    if (userRepository.findByEmail(userEmail).isPresent()) {
+      throw new DuplicateUserException(
+          "An account with the email '" + userEmail + "' already exists. Please use a different email or login.");
+    }
+
+    // Create the church
+    Church church = new Church();
+    church.setName(request.church().name());
+    church.setAddress(request.church().address());
+    church.setPhoneNumber(request.church().phoneNumber());
+    church.setEmail(request.church().email());
+    church.setWebsite(request.church().website());
+    church = churchRepository.save(church);
+
+    // Create the first admin user for this church
+    User user = new User();
+    user.setName(request.user().name());
+    user.setEmail(request.user().email());
+    user.setPassword(passwordEncoder.encode(request.user().password()));
+    user.setPhoneNumber(request.user().phoneNumber());
+    user.setRole(Role.ADMIN); // First user is always an admin
+    user.setChurch(church);
+    user = userRepository.save(user);
+
+    // Generate tokens for automatic login
+    UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
+    String accessToken = jwtUtil.generateToken(
+        userDetails,
+        user.getId(),
+        church.getId(),
+        user.getRole().name(),
+        false
+    );
+
+    String ipAddress = bruteForceProtectionService.getClientIp(httpRequest);
+    String userAgent = httpRequest.getHeader("User-Agent");
+
+    com.reuben.pastcare_spring.models.RefreshToken refreshToken = refreshTokenService.createRefreshToken(
+        user,
+        church,
+        ipAddress,
+        userAgent
+    );
+
+    return new AuthTokenData(
+        accessToken,
+        refreshToken.getToken(),
+        new UserResponse(
+            user.getId(),
+            user.getName(),
+            user.getEmail(),
+            user.getPhoneNumber(),
+            user.getTitle(),
+            user.getChurch(),
+            user.getFellowships(),
+            user.getPrimaryService(),
+            user.getRole()
+        )
+    );
   }
 
   public void logout(String refreshToken) {
@@ -149,11 +242,12 @@ public class AuthService {
     User user = refreshToken.getUser();
     UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
 
-    // Generate new access token
+    // Generate new access token (churchId can be null for SUPERADMIN)
+    Long churchId = user.getChurch() != null ? user.getChurch().getId() : null;
     String newAccessToken = jwtUtil.generateToken(
         userDetails,
         user.getId(),
-        user.getChurch().getId(),
+        churchId,
         user.getRole().name(),
         false // Refresh token already handles remember me
     );

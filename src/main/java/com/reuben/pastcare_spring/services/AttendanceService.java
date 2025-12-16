@@ -109,13 +109,13 @@ public class AttendanceService {
   }
 
   public List<AttendanceSessionResponse> getAttendanceSessionsByChurch(Long churchId) {
-    return attendanceSessionRepository.findByChurchId(churchId).stream()
+    return attendanceSessionRepository.findByChurch_Id(churchId).stream()
         .map(AttendanceSessionMapper::toAttendanceSessionResponse)
         .collect(Collectors.toList());
   }
 
   public List<AttendanceSessionResponse> getAttendanceSessionsByFellowship(Long fellowshipId) {
-    return attendanceSessionRepository.findByFellowshipId(fellowshipId).stream()
+    return attendanceSessionRepository.findByFellowship_Id(fellowshipId).stream()
         .map(AttendanceSessionMapper::toAttendanceSessionResponse)
         .collect(Collectors.toList());
   }

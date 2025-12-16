@@ -68,11 +68,13 @@ public class JwtUtil {
     /**
      * Generate JWT with tenant (church) information.
      * This is the primary method for multi-tenant JWT generation.
+     *
+     * @param churchId Can be null for SUPERADMIN users who don't belong to any church
      */
     public String generateToken(UserDetails userDetails, Long userId, Long churchId, String role, boolean rememberMe) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", userId);
-        claims.put("churchId", churchId);
+        claims.put("churchId", churchId);  // Can be null for SUPERADMIN
         claims.put("role", role);
         claims.put("tokenType", "access");
 

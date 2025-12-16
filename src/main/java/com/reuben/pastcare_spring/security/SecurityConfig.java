@@ -30,7 +30,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
-            .cors(cors -> cors.configure(http)) // Enable CORS with the configuration from CorsConfig
+            .cors(cors -> cors.disable()) // CORS is handled by CorsConfig WebMvcConfigurer
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
                 .anyRequest().authenticated()

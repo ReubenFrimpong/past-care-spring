@@ -19,7 +19,9 @@ import org.springframework.web.context.request.WebRequest;
 
 import com.reuben.pastcare_spring.dtos.ErrorResponse;
 import com.reuben.pastcare_spring.exceptions.AccountLockedException;
+import com.reuben.pastcare_spring.exceptions.DuplicateChurchException;
 import com.reuben.pastcare_spring.exceptions.DuplicateResourceException;
+import com.reuben.pastcare_spring.exceptions.DuplicateUserException;
 import com.reuben.pastcare_spring.exceptions.InvalidCredentialsException;
 import com.reuben.pastcare_spring.exceptions.ResourceNotFoundException;
 import com.reuben.pastcare_spring.exceptions.TooManyRequestsException;
@@ -143,6 +145,38 @@ public class GlobalExceptionHandler {
     ErrorResponse errorResponse = new ErrorResponse(
       HttpStatus.CONFLICT.value(),
       "Duplicate Resource",
+      exp.getMessage(),
+      request.getDescription(false).replace("uri=", "")
+    );
+
+    return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
+  }
+
+  @ExceptionHandler(DuplicateChurchException.class)
+  public ResponseEntity<ErrorResponse> handleDuplicateChurchException(
+      DuplicateChurchException exp,
+      WebRequest request) {
+    logger.warn("Duplicate church detected for request {}: {}", request.getDescription(false), exp.getMessage());
+
+    ErrorResponse errorResponse = new ErrorResponse(
+      HttpStatus.CONFLICT.value(),
+      "Duplicate Church",
+      exp.getMessage(),
+      request.getDescription(false).replace("uri=", "")
+    );
+
+    return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
+  }
+
+  @ExceptionHandler(DuplicateUserException.class)
+  public ResponseEntity<ErrorResponse> handleDuplicateUserException(
+      DuplicateUserException exp,
+      WebRequest request) {
+    logger.warn("Duplicate user detected for request {}: {}", request.getDescription(false), exp.getMessage());
+
+    ErrorResponse errorResponse = new ErrorResponse(
+      HttpStatus.CONFLICT.value(),
+      "Duplicate User",
       exp.getMessage(),
       request.getDescription(false).replace("uri=", "")
     );

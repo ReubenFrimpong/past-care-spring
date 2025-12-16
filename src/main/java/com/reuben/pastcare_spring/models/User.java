@@ -37,7 +37,7 @@ public class User extends BaseEntity{
   private String title;
 
   @ManyToOne
-  @JoinColumn(name = "church_id", nullable = false)
+  @JoinColumn(name = "church_id", nullable = true)  // Allow null for SUPERADMIN
   private Church church;
 
   @ManyToMany
@@ -64,5 +64,24 @@ public class User extends BaseEntity{
 
   @Column(nullable = false)
   private boolean accountLocked = false;
+
+  /**
+   * Validates that non-SUPERADMIN users must be associated with a church.
+   * SUPERADMIN users are allowed to have null church.
+   *
+   * @throws IllegalStateException if validation fails
+   */
+  public void validateChurchAssociation() {
+    if (role != Role.SUPERADMIN && church == null) {
+      throw new IllegalStateException("Non-superadmin users must be associated with a church");
+    }
+  }
+
+  /**
+   * Checks if this user is a superadmin.
+   */
+  public boolean isSuperAdmin() {
+    return role == Role.SUPERADMIN;
+  }
 
 }

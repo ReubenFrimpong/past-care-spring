@@ -7,6 +7,7 @@ import com.reuben.pastcare_spring.dtos.AuthLoginRequest;
 import com.reuben.pastcare_spring.dtos.AuthRegistrationRequest;
 import com.reuben.pastcare_spring.dtos.AuthResponse;
 import com.reuben.pastcare_spring.dtos.AuthTokenData;
+import com.reuben.pastcare_spring.dtos.UserChurchRegistrationRequest;
 import com.reuben.pastcare_spring.models.User;
 import com.reuben.pastcare_spring.services.AuthService;
 
@@ -68,6 +69,41 @@ public class AuthController {
   @PostMapping("/register")
   public ResponseEntity<User> createUser(@Valid @RequestBody AuthRegistrationRequest authRequest) {
     return ResponseEntity.ok(authService.register(authRequest));
+  }
+
+  /**
+   * Register a new church along with the first admin user.
+   * This endpoint creates both a church (tenant) and the first admin user in a single transaction.
+   * The user is automatically logged in after successful registration.
+   *
+   * @param request Contains both church and user registration data
+   * @return AuthResponse with user info (access and refresh tokens are set in HttpOnly cookies)
+   */
+  @PostMapping("/register/church")
+  public ResponseEntity<AuthResponse> registerChurch(
+      @Valid @RequestBody UserChurchRegistrationRequest request,
+      HttpServletRequest httpRequest,
+      HttpServletResponse httpResponse
+  ) {
+    // Register church and first admin user
+    AuthTokenData tokenData = authService.registerNewChurch(request, httpRequest);
+
+    // Set HttpOnly cookies for tokens
+    int accessTokenMaxAge = (int) (accessTokenExpiration / 1000);
+    int refreshTokenMaxAge = (int) (refreshTokenExpiration / 1000);
+
+    httpResponse.addCookie(cookieUtil.createAccessTokenCookie(
+        tokenData.accessToken(),
+        accessTokenMaxAge
+    ));
+
+    httpResponse.addCookie(cookieUtil.createRefreshTokenCookie(
+        tokenData.refreshToken(),
+        refreshTokenMaxAge
+    ));
+
+    // Return response with only user info (tokens are in HttpOnly cookies)
+    return ResponseEntity.ok(new AuthResponse(tokenData.user()));
   }
 
   @PostMapping("/logout")
