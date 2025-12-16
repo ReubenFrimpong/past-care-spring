@@ -56,7 +56,7 @@ public class MemberService {
     member.setWhatsappNumber(memberRequest.whatsappNumber());
     member.setOtherPhoneNumber(memberRequest.otherPhoneNumber());
     member.setAreaOfResidence(memberRequest.areaOfResidence());
-    member.setGpsAddress(memberRequest.gpsAddress());
+    member.setAddress(memberRequest.gpsAddress());
 
     member.setProfileImageUrl(memberRequest.profileImageUrl());
     member.setMaritalStatus(memberRequest.maritalStatus());
@@ -69,7 +69,6 @@ public class MemberService {
     member.setIsVerified(true);
 
     Member createdMember = memberRepository.save(member);
-    //create bacenta
     return MemberMapper.toMemberResponse(createdMember);
   }
 
@@ -96,7 +95,7 @@ public class MemberService {
     member.setWhatsappNumber(memberRequest.whatsappNumber());
     member.setOtherPhoneNumber(memberRequest.otherPhoneNumber());
     member.setAreaOfResidence(memberRequest.areaOfResidence());
-    member.setGpsAddress(memberRequest.gpsAddress());
+    member.setAddress(memberRequest.gpsAddress());
 
     member.setProfileImageUrl(memberRequest.profileImageUrl());
     member.setMaritalStatus(memberRequest.maritalStatus());

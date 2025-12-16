@@ -1,6 +1,7 @@
 package com.reuben.pastcare_spring.models;
 
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import com.reuben.pastcare_spring.enums.Role;
@@ -36,7 +37,7 @@ public class User extends BaseEntity{
   private String title;
 
   @ManyToOne
-  @JoinColumn(name = "church_id", nullable = true)
+  @JoinColumn(name = "church_id", nullable = false)
   private Church church;
 
   @ManyToMany
@@ -54,6 +55,14 @@ public class User extends BaseEntity{
 
   @Enumerated(EnumType.STRING)
   @Column(length = 20)
-  private Role role;
+  private Role role = Role.ADMIN;
+
+  @Column(nullable = false)
+  private int failedLoginAttempts = 0;
+
+  private LocalDateTime accountLockedUntil;
+
+  @Column(nullable = false)
+  private boolean accountLocked = false;
 
 }

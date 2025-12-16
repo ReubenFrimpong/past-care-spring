@@ -33,7 +33,7 @@ public record MemberResponse(
 
   String areaOfResidence,
 
-  String gpsAddress,
+  String address,
 
   String profileImageUrl,
 

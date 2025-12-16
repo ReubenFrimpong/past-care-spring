@@ -30,6 +30,7 @@
 		<java.version>17</java.version>
     <jjwt.version>0.12.6</jjwt.version>
     <openapi.version>2.7.0</openapi.version>
+    <javafaker.version>1.0.2</javafaker.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -90,6 +91,12 @@
       <groupId>org.springdoc</groupId>
       <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
       <version>${openapi.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.github.javafaker</groupId>
+      <artifactId>javafaker</artifactId>
+      <version>${javafaker.version}</version>
     </dependency>
 
 		<dependency>

@@ -15,7 +15,7 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 @Entity
 @Data
-public class Member extends BaseEntity {
+public class Member extends TenantBaseEntity {
 
   @Column(nullable = false)
   private String firstName;
@@ -29,10 +29,6 @@ public class Member extends BaseEntity {
 
   @Column(nullable = false)
   private String sex;
-
-  @ManyToOne
-  @JoinColumn(name = "church_id", nullable = false)
-  private Church church;
 
   @ManyToMany
   @JoinTable(
@@ -53,7 +49,7 @@ public class Member extends BaseEntity {
 
   private String areaOfResidence;
 
-  private String gpsAddress;
+  private String address;
 
   private String profileImageUrl;
 

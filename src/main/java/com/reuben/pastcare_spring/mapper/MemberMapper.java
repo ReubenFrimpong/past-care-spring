@@ -21,7 +21,7 @@ public class MemberMapper {
       member.getWhatsappNumber(),
       member.getOtherPhoneNumber(),
       member.getAreaOfResidence(),
-      member.getGpsAddress(),
+      member.getAddress(),
       member.getProfileImageUrl(),
       member.getMaritalStatus(),
       member.getSpouseName(),
