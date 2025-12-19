@@ -22,6 +22,7 @@ import com.reuben.pastcare_spring.exceptions.AccountLockedException;
 import com.reuben.pastcare_spring.exceptions.DuplicateChurchException;
 import com.reuben.pastcare_spring.exceptions.DuplicateResourceException;
 import com.reuben.pastcare_spring.exceptions.DuplicateUserException;
+import com.reuben.pastcare_spring.exceptions.FileUploadException;
 import com.reuben.pastcare_spring.exceptions.InvalidCredentialsException;
 import com.reuben.pastcare_spring.exceptions.ResourceNotFoundException;
 import com.reuben.pastcare_spring.exceptions.TooManyRequestsException;
@@ -234,6 +235,27 @@ public class GlobalExceptionHandler {
       "Invalid Request",
       exp.getMessage(),
       request.getDescription(false).replace("uri=", "")
+    );
+
+    return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+  }
+
+  @ExceptionHandler(FileUploadException.class)
+  public ResponseEntity<ErrorResponse> handleFileUploadException(
+      FileUploadException exp,
+      WebRequest request
+  ) {
+    logger.warn(
+        "File upload failed for request {}: {}",
+        request.getDescription(false),
+        exp.getMessage()
+    );
+
+    ErrorResponse errorResponse = new ErrorResponse(
+        HttpStatus.BAD_REQUEST.value(),
+        "Invalid Request",
+        exp.getMessage(),
+        request.getDescription(false).replace("uri=", "")
     );
 
     return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);

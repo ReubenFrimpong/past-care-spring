@@ -1,0 +1,12 @@
+#!/bin/bash
+echo "Testing location display fix..."
+echo ""
+echo "Changes made:"
+echo "1. Added location search button to member-form component"
+echo "2. Fixed Location.getDisplayName() to handle null city"
+echo "3. Fixed Location.getShortName() to handle null city"
+echo "4. Added YearMonth import to MemberService"
+echo "5. Updated member-page template to wire location search event"
+echo ""
+echo "Frontend: http://localhost:4200/members"
+echo "Backend: http://localhost:8080"

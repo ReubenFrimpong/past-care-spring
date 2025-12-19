@@ -1,6 +1,7 @@
 package com.reuben.pastcare_spring.dtos;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 
 import com.reuben.pastcare_spring.models.Church;
@@ -31,9 +32,7 @@ public record MemberResponse(
 
   String otherPhoneNumber,
 
-  String areaOfResidence,
-
-  String address,
+  LocationResponse location,
 
   String profileImageUrl,
 
@@ -43,7 +42,7 @@ public record MemberResponse(
 
   String occupation,
 
-  LocalDate memberSince,
+  YearMonth memberSince,
 
   String emergencyContactName,
 

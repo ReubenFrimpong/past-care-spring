@@ -3,6 +3,7 @@ package com.reuben.pastcare_spring.services;
 import com.github.javafaker.Faker;
 import com.reuben.pastcare_spring.dtos.*;
 import com.reuben.pastcare_spring.models.User;
+import com.reuben.pastcare_spring.repositories.MemberRepository;
 import com.reuben.pastcare_spring.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,6 +23,7 @@ import java.util.Random;
 public class DashboardService {
 
   private final UserRepository userRepository;
+  private final MemberRepository memberRepository;
   private final Faker faker = new Faker();
   private final Random random = new Random();
 
@@ -187,5 +189,22 @@ public class DashboardService {
    */
   public List<RecentActivityResponse> getRecentActivities() {
     return generateRecentActivities();
+  }
+
+  /**
+   * Get location-based member statistics for map visualization.
+   *
+   * @param userId Current user ID from JWT
+   * @return List of locations with member counts and GPS coordinates
+   */
+  public List<LocationStatsResponse> getLocationStatistics(Long userId) {
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new RuntimeException("User not found"));
+
+    if (user.getChurch() == null) {
+      return new ArrayList<>();
+    }
+
+    return memberRepository.getLocationStatistics(user.getChurch());
   }
 }

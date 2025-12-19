@@ -1,6 +1,9 @@
 package com.reuben.pastcare_spring.services;
 
 import jakarta.servlet.http.HttpServletRequest;
+
+import java.time.LocalDateTime;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -9,6 +12,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.reuben.pastcare_spring.dtos.AuthLoginRequest;
 import com.reuben.pastcare_spring.dtos.AuthRegistrationRequest;
@@ -21,6 +25,7 @@ import com.reuben.pastcare_spring.exceptions.DuplicateChurchException;
 import com.reuben.pastcare_spring.exceptions.DuplicateUserException;
 import com.reuben.pastcare_spring.exceptions.TooManyRequestsException;
 import com.reuben.pastcare_spring.models.Church;
+import com.reuben.pastcare_spring.models.RefreshToken;
 import com.reuben.pastcare_spring.models.User;
 import com.reuben.pastcare_spring.repositories.ChurchRepository;
 import com.reuben.pastcare_spring.repositories.UserRepository;
@@ -67,7 +72,7 @@ public class AuthService {
 
     // Check if account is locked
     if (bruteForceProtectionService.isAccountLocked(email)) {
-      java.time.LocalDateTime lockedUntil = bruteForceProtectionService.getAccountLockedUntil(email);
+      LocalDateTime lockedUntil = bruteForceProtectionService.getAccountLockedUntil(email);
       throw new AccountLockedException(
           "Your account has been temporarily locked due to multiple failed login attempts.",
           lockedUntil
@@ -99,7 +104,7 @@ public class AuthService {
       );
 
       // Create refresh token (church can be null for SUPERADMIN)
-      com.reuben.pastcare_spring.models.RefreshToken refreshToken = refreshTokenService.createRefreshToken(
+      RefreshToken refreshToken = refreshTokenService.createRefreshToken(
           user,
           user.getChurch(),
           ipAddress,
@@ -154,7 +159,7 @@ public class AuthService {
    * @throws DuplicateChurchException if a church with the same name exists
    * @throws DuplicateUserException if a user with the same email exists
    */
-  @org.springframework.transaction.annotation.Transactional
+  @Transactional
   public AuthTokenData registerNewChurch(UserChurchRegistrationRequest request, HttpServletRequest httpRequest) {
     String churchName = request.church().name();
     String userEmail = request.user().email();

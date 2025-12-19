@@ -1,43 +1,50 @@
 #!/bin/bash
 
-echo "=== Dashboard API Test with Cookies ==="
+# Comprehensive Test for Option C Location Feature
+
+echo "========================================="
+echo "Option C Location System - Final Test"
+echo "========================================="
 echo ""
 
-# Login and save cookies
-echo "1. Login..."
-curl -s -c /tmp/cookies.txt http://localhost:8080/api/auth/login \
-  -X POST \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"password123","rememberMe":false}' | jq '.'
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
 
-echo ""
-echo "2. Cookies saved:"
-cat /tmp/cookies.txt
-echo ""
+PASSED=0
+FAILED=0
 
-# Test dashboard stats
-echo "3. Test /api/dashboard/stats with cookies..."
-curl -s -b /tmp/cookies.txt http://localhost:8080/api/dashboard/stats | jq '.'
-echo ""
+print_result() {
+    if [ $1 -eq 0 ]; then
+        echo -e "${GREEN}✓ PASS${NC}: $2"
+        ((PASSED++))
+    else
+        echo -e "${RED}✗ FAIL${NC}: $2"
+        ((FAILED++))
+    fi
+}
 
-# Test full dashboard
-echo "4. Test /api/dashboard with cookies..."
-curl -s -b /tmp/cookies.txt http://localhost:8080/api/dashboard | jq '.'
-echo ""
-
-# Test pastoral care
-echo "5. Test /api/dashboard/pastoral-care with cookies..."
-curl -s -b /tmp/cookies.txt http://localhost:8080/api/dashboard/pastoral-care | jq '.'
+echo "=== Database Schema Tests ==="
 echo ""
 
-# Test events
-echo "6. Test /api/dashboard/events with cookies..."
-curl -s -b /tmp/cookies.txt http://localhost:8080/api/dashboard/events | jq '.'
+LOCATIONS_TABLE=$(mysql -u root -ppassword past-care-spring -se "SHOW TABLES LIKE 'locations';" 2>/dev/null)
+[ "$LOCATIONS_TABLE" = "locations" ] && print_result 0 "Locations table exists" || print_result 1 "Locations table exists"
+
+LOCATION_ID_COL=$(mysql -u root -ppassword past-care-spring -se "DESCRIBE member;" 2>/dev/null | grep location_id | wc -l)
+[ "$LOCATION_ID_COL" -eq 1 ] && print_result 0 "Member.location_id exists" || print_result 1 "Member.location_id missing"
+
+UNIQUE_CONSTRAINT=$(mysql -u root -ppassword past-care-spring -se "SHOW INDEX FROM locations WHERE Key_name LIKE '%coordinates%' AND Non_unique = 0;" 2>/dev/null | wc -l)
+[ "$UNIQUE_CONSTRAINT" -gt 0 ] && print_result 0 "Unique constraint on coordinates" || print_result 1 "Missing unique constraint"
+
+echo ""
+echo "=== Backend API Tests ==="
 echo ""
 
-# Test activities
-echo "7. Test /api/dashboard/activities with cookies..."
-curl -s -b /tmp/cookies.txt http://localhost:8080/api/dashboard/activities | jq '.'
+curl -s http://localhost:8080/actuator/health > /dev/null 2>&1 && print_result 0 "Backend running" || print_result 1 "Backend not running"
 
 echo ""
-echo "=== Test Complete ==="
+echo "=== Summary ==="
+echo -e "${GREEN}Passed: $PASSED${NC}"
+echo -e "${RED}Failed: $FAILED${NC}"
+[ $FAILED -eq 0 ] && echo -e "${GREEN}✓ All tests passed!${NC}" || echo -e "${RED}✗ Some failures${NC}"

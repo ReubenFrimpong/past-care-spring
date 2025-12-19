@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 
@@ -95,21 +96,29 @@ public class DashboardController {
   }
 
   /**
+   * Get location-based member statistics for map visualization.
+   *
+   * @return List of locations with member counts and GPS coordinates
+   */
+  @GetMapping("/location-stats")
+  @PreAuthorize("isAuthenticated()")
+  @Operation(summary = "Get location statistics", description = "Returns member distribution by geographic location for map visualization")
+  public ResponseEntity<List<LocationStatsResponse>> getLocationStatistics(HttpServletRequest request) {
+    Long userId = extractUserIdFromRequest(request);
+    List<LocationStatsResponse> locationStats = dashboardService.getLocationStatistics(userId);
+    return ResponseEntity.ok(locationStats);
+  }
+
+  /**
    * Extract user ID from JWT token in request.
    * Checks both Authorization header and cookies.
    */
   private Long extractUserIdFromRequest(HttpServletRequest request) {
     String token = null;
 
-    // Try Authorization header first
-    String authHeader = request.getHeader("Authorization");
-    if (authHeader != null && authHeader.startsWith("Bearer ")) {
-      token = authHeader.substring(7);
-    }
-
     // If not found, try cookie
     if (token == null && request.getCookies() != null) {
-      for (jakarta.servlet.http.Cookie cookie : request.getCookies()) {
+      for (Cookie cookie : request.getCookies()) {
         if ("access_token".equals(cookie.getName())) {
           token = cookie.getValue();
           break;

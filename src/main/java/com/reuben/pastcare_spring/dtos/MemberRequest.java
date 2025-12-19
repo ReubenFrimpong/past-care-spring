@@ -1,13 +1,14 @@
 package com.reuben.pastcare_spring.dtos;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
+import java.util.Map;
 
 import com.reuben.pastcare_spring.annotations.Unique;
-import com.reuben.pastcare_spring.models.Fellowship;
+import com.reuben.pastcare_spring.validators.InternationalPhoneNumber;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 
 public record MemberRequest(
   
@@ -33,17 +34,21 @@ public record MemberRequest(
   LocalDate dob,
   
   @NotBlank(message = "Phone number is required")
+  @InternationalPhoneNumber
   @Unique(table = "member", column = "phone_number", message = "Phone number already taken")
-
   String phoneNumber,
 
+  @InternationalPhoneNumber
   String whatsappNumber,
 
+  @InternationalPhoneNumber
   String otherPhoneNumber,
 
-  String areaOfResidence,
+  // GPS coordinates as "latitude,longitude" string
+  String coordinates,
 
-  String gpsAddress,
+  // Optional: Full Nominatim address data for location creation
+  Map<String, Object> nominatimAddress,
 
   String profileImageUrl,
 
@@ -54,10 +59,11 @@ public record MemberRequest(
 
   String occupation,
 
-  LocalDate memberSince,
+  YearMonth memberSince,
 
   String emergencyContactName,
 
+  @InternationalPhoneNumber
   String emergencyContactNumber,
 
   String notes

@@ -48,7 +48,7 @@ public abstract class TenantBaseEntity extends BaseEntity {
 
   /**
    * The church (tenant) this entity belongs to.
-   * Required and immutable after creation for data integrity.
+   * Required(for non SUPERADMINS) and immutable after creation for data integrity.
    */
   @ManyToOne
   @JoinColumn(name = "church_id", nullable = false, updatable = false)

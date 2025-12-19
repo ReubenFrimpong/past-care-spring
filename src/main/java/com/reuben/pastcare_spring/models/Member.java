@@ -1,6 +1,7 @@
 package com.reuben.pastcare_spring.models;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 
 import jakarta.persistence.Column;
@@ -47,9 +48,9 @@ public class Member extends TenantBaseEntity {
 
   private String otherPhoneNumber;
 
-  private String areaOfResidence;
-
-  private String address;
+  @ManyToOne
+  @JoinColumn(name = "location_id")
+  private Location location;
 
   private String profileImageUrl;
 
@@ -59,7 +60,7 @@ public class Member extends TenantBaseEntity {
 
   private String occupation;
 
-  private LocalDate memberSince;
+  private YearMonth memberSince;
 
   private String emergencyContactName;
 
