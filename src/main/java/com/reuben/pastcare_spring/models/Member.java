@@ -121,4 +121,13 @@ public class Member extends TenantBaseEntity {
   @JoinColumn(name = "household_id")
   private Household household;
 
+  /**
+   * The spouse of this member (bidirectional relationship).
+   * When spouse A links to spouse B, B automatically links back to A.
+   * Both members should be in the same household.
+   */
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "spouse_id")
+  private Member spouse;
+
 }

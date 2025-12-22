@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -276,4 +277,24 @@ public class GlobalExceptionHandler {
 
     return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
   }
+
+  //TODO: implement/refactor this to handle users who are non-existent to prevent the logs in the terminal
+  @ExceptionHandler(UsernameNotFoundException.class)
+  public ResponseEntity<ErrorResponse> handleUsernameNotFoundException(
+      UsernameNotFoundException exp,
+      WebRequest request) {
+      
+      // Log the event for security monitoring
+      logger.warn("User lookup failed for request {}: {}", request.getDescription(false), exp.getMessage());
+
+      ErrorResponse errorResponse = new ErrorResponse(
+          HttpStatus.UNAUTHORIZED.value(), // Usually 401 for security, though some prefer 404
+          "Authentication Failed",
+          "Incorrect email or password. Please verify your credentials.", // Generic message for security
+          request.getDescription(false).replace("uri=", "")
+      );
+
+      return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
+  }
+
 }

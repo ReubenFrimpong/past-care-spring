@@ -67,6 +67,8 @@ public record MemberRequest(
 
   String spouseName,
 
+  Long spouseId,  // Optional: ID of linked spouse member
+
   String occupation,
 
   YearMonth memberSince,

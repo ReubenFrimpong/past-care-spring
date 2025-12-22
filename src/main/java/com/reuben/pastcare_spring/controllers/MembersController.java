@@ -278,6 +278,61 @@ public class MembersController {
     return ResponseEntity.ok(memberService.getMembersByTag(churchId, tag, pageable));
   }
 
+  // ==================== Spouse Linking Endpoints ====================
+
+  /**
+   * Link two members as spouses (bidirectional).
+   * Both members will be linked to each other and their marital status will be set to "married".
+   *
+   * @param id Member ID to link
+   * @param spouseId Spouse member ID to link with
+   * @param httpRequest HTTP request to extract church ID
+   * @return Updated member response
+   */
+  @PostMapping("/{id}/spouse/{spouseId}")
+  public ResponseEntity<MemberResponse> linkSpouse(
+      @PathVariable Long id,
+      @PathVariable Long spouseId,
+      HttpServletRequest httpRequest) {
+    Long churchId = requestContextUtil.extractChurchId(httpRequest);
+    return ResponseEntity.ok(memberService.linkSpouse(id, spouseId, churchId));
+  }
+
+  /**
+   * Unlink a member from their spouse (bidirectional).
+   * Both members will have their spouse link removed.
+   *
+   * @param id Member ID to unlink
+   * @param httpRequest HTTP request to extract church ID
+   * @return Updated member response
+   */
+  @DeleteMapping("/{id}/spouse")
+  public ResponseEntity<MemberResponse> unlinkSpouse(
+      @PathVariable Long id,
+      HttpServletRequest httpRequest) {
+    Long churchId = requestContextUtil.extractChurchId(httpRequest);
+    return ResponseEntity.ok(memberService.unlinkSpouse(id, churchId));
+  }
+
+  /**
+   * Get the spouse of a member.
+   *
+   * @param id Member ID
+   * @param httpRequest HTTP request to extract church ID
+   * @return Spouse member response, or 204 No Content if not linked
+   */
+  @GetMapping("/{id}/spouse")
+  public ResponseEntity<MemberResponse> getSpouse(
+      @PathVariable Long id,
+      HttpServletRequest httpRequest) {
+    Long churchId = requestContextUtil.extractChurchId(httpRequest);
+    MemberResponse spouse = memberService.getSpouse(id, churchId);
+    if (spouse == null) {
+      return ResponseEntity.noContent().build();
+    }
+    return ResponseEntity.ok(spouse);
+  }
+
   // ==================== Profile Completeness Endpoints ====================
 
   /**

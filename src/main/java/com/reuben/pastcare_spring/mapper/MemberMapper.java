@@ -26,6 +26,7 @@ public class MemberMapper {
       member.getProfileImageUrl(),
       member.getMaritalStatus(),
       member.getSpouseName(),
+      member.getSpouse() != null ? member.getSpouse().getId() : null,  // spouseId
       member.getOccupation(),
       member.getMemberSince(),
       member.getEmergencyContactName(),

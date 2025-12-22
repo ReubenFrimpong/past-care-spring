@@ -50,8 +50,8 @@ class TagControllerTest {
         memberResponse = new MemberResponse(
                 1L, "John", null, "Doe", "Mr", "Male", null, null,
                 null, "GH", "Africa/Accra", "+233241111111", null, null,
-                null, null, "single", null, null, null,
-                null, null, null, true,
+                null, null, "single", null, null, null,  // added spouseId (null)
+                null, null, null, null, true,
                 MemberStatus.MEMBER, 75, new HashSet<>(Arrays.asList("youth", "choir"))
         );
 

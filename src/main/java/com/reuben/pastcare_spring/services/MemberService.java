@@ -983,6 +983,141 @@ public class MemberService {
     return members.map(MemberMapper::toMemberResponse);
   }
 
+  // ==================== Spouse Linking Methods ====================
+
+  /**
+   * Links two members as spouses (bidirectional).
+   * Both members must belong to the same church.
+   * If either member is already linked to a different spouse, the old link is removed.
+   *
+   * @param memberId the member to link
+   * @param spouseId the spouse member to link
+   * @param churchId the church ID for validation
+   * @return the updated member response
+   */
+  public MemberResponse linkSpouse(Long memberId, Long spouseId, Long churchId) {
+    // Validate same member not linking to self
+    if (memberId.equals(spouseId)) {
+      throw new IllegalArgumentException("A member cannot be linked to themselves as spouse");
+    }
+
+    // Fetch both members
+    Member member = memberRepository.findById(memberId)
+        .orElseThrow(() -> new IllegalArgumentException("Member not found: " + memberId));
+    Member spouse = memberRepository.findById(spouseId)
+        .orElseThrow(() -> new IllegalArgumentException("Spouse member not found: " + spouseId));
+
+    // Validate both belong to the same church
+    if (!member.getChurch().getId().equals(churchId)) {
+      throw new IllegalArgumentException("Member does not belong to your church");
+    }
+    if (!spouse.getChurch().getId().equals(churchId)) {
+      throw new IllegalArgumentException("Spouse member does not belong to your church");
+    }
+
+    // Remove existing spouse links if any (clean up old relationships)
+    if (member.getSpouse() != null && !member.getSpouse().getId().equals(spouseId)) {
+      Member oldSpouse = member.getSpouse();
+      oldSpouse.setSpouse(null);
+      oldSpouse.setSpouseName(null);
+      memberRepository.save(oldSpouse);
+    }
+    if (spouse.getSpouse() != null && !spouse.getSpouse().getId().equals(memberId)) {
+      Member oldSpouse = spouse.getSpouse();
+      oldSpouse.setSpouse(null);
+      oldSpouse.setSpouseName(null);
+      memberRepository.save(oldSpouse);
+    }
+
+    // Create bidirectional link
+    member.setSpouse(spouse);
+    member.setSpouseName(spouse.getFirstName() + " " + spouse.getLastName());
+    member.setMaritalStatus("married");
+
+    spouse.setSpouse(member);
+    spouse.setSpouseName(member.getFirstName() + " " + member.getLastName());
+    spouse.setMaritalStatus("married");
+
+    // If both are in different households, optionally assign to same household
+    // This is just a suggestion - the household assignment is left to the caller
+
+    // Recalculate profile completeness for both
+    member.setProfileCompleteness(profileCompletenessService.calculateCompleteness(member));
+    spouse.setProfileCompleteness(profileCompletenessService.calculateCompleteness(spouse));
+
+    // Save both
+    memberRepository.save(spouse);
+    Member savedMember = memberRepository.save(member);
+
+    return MemberMapper.toMemberResponse(savedMember);
+  }
+
+  /**
+   * Unlinks a member from their spouse (bidirectional).
+   * Removes the spouse link from both members.
+   *
+   * @param memberId the member to unlink
+   * @param churchId the church ID for validation
+   * @return the updated member response
+   */
+  public MemberResponse unlinkSpouse(Long memberId, Long churchId) {
+    Member member = memberRepository.findById(memberId)
+        .orElseThrow(() -> new IllegalArgumentException("Member not found: " + memberId));
+
+    // Validate church ownership
+    if (!member.getChurch().getId().equals(churchId)) {
+      throw new IllegalArgumentException("Member does not belong to your church");
+    }
+
+    // Check if member has a spouse
+    if (member.getSpouse() == null) {
+      throw new IllegalArgumentException("Member is not linked to a spouse");
+    }
+
+    // Get the spouse and unlink both sides
+    Member spouse = member.getSpouse();
+
+    member.setSpouse(null);
+    // Keep spouseName as historical reference but could be cleared if desired
+    // member.setSpouseName(null);
+
+    spouse.setSpouse(null);
+    // spouse.setSpouseName(null);
+
+    // Recalculate profile completeness for both
+    member.setProfileCompleteness(profileCompletenessService.calculateCompleteness(member));
+    spouse.setProfileCompleteness(profileCompletenessService.calculateCompleteness(spouse));
+
+    // Save both
+    memberRepository.save(spouse);
+    Member savedMember = memberRepository.save(member);
+
+    return MemberMapper.toMemberResponse(savedMember);
+  }
+
+  /**
+   * Gets the spouse of a member.
+   *
+   * @param memberId the member ID
+   * @param churchId the church ID for validation
+   * @return the spouse member response, or null if not linked
+   */
+  public MemberResponse getSpouse(Long memberId, Long churchId) {
+    Member member = memberRepository.findById(memberId)
+        .orElseThrow(() -> new IllegalArgumentException("Member not found: " + memberId));
+
+    // Validate church ownership
+    if (!member.getChurch().getId().equals(churchId)) {
+      throw new IllegalArgumentException("Member does not belong to your church");
+    }
+
+    if (member.getSpouse() == null) {
+      return null;
+    }
+
+    return MemberMapper.toMemberResponse(member.getSpouse());
+  }
+
   // ==================== Profile Completeness Methods ====================
 
   /**

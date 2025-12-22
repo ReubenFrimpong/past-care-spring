@@ -74,6 +74,7 @@ class MembersControllerTagTest {
             null,
             "single",
             null,
+            null,  // spouseId
             null,
             null,
             null,
@@ -147,7 +148,7 @@ class MembersControllerTagTest {
         MemberResponse updatedResponse = new MemberResponse(
             1L, "John", null, "Doe", null, "male", null, List.of(), null,
             "GH", "Africa/Accra", "+233241234567", null, null, null, null,
-            "single", null, null, null, null, null, null, true,
+            "single", null, null, null, null, null, null, null, true,  // added spouseId (null)
             MemberStatus.MEMBER, 75, Set.of("choir") // youth removed
         );
         when(memberService.removeTags(eq(1L), anySet())).thenReturn(updatedResponse);
@@ -174,7 +175,7 @@ class MembersControllerTagTest {
         MemberResponse updatedResponse = new MemberResponse(
             1L, "John", null, "Doe", null, "male", null, List.of(), null,
             "GH", "Africa/Accra", "+233241234567", null, null, null, null,
-            "single", null, null, null, null, null, null, true,
+            "single", null, null, null, null, null, null, null, true,  // added spouseId (null)
             MemberStatus.MEMBER, 75, Set.of("leader", "worship") // replaced
         );
         when(memberService.setTags(eq(1L), anySet())).thenReturn(updatedResponse);
