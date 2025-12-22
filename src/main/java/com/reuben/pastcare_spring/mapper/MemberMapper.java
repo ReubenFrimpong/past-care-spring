@@ -1,5 +1,7 @@
 package com.reuben.pastcare_spring.mapper;
 
+import java.util.stream.Collectors;
+
 import com.reuben.pastcare_spring.dtos.MemberResponse;
 import com.reuben.pastcare_spring.models.Member;
 
@@ -35,7 +37,21 @@ public class MemberMapper {
       member.getIsVerified(),
       member.getStatus(),
       member.getProfileCompleteness(),
-      member.getTags()
+      member.getTags(),
+      // Map parents
+      member.getParents() != null ? member.getParents().stream()
+        .map(parent -> new MemberResponse.ParentInfo(
+          parent.getId(),
+          parent.getFirstName() + " " + parent.getLastName()
+        ))
+        .collect(Collectors.toList()) : null,
+      // Map children
+      member.getChildren() != null ? member.getChildren().stream()
+        .map(child -> new MemberResponse.ChildInfo(
+          child.getId(),
+          child.getFirstName() + " " + child.getLastName()
+        ))
+        .collect(Collectors.toList()) : null
     );
   }
 

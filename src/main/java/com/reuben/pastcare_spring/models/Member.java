@@ -130,4 +130,27 @@ public class Member extends TenantBaseEntity {
   @JoinColumn(name = "spouse_id")
   private Member spouse;
 
+  // Phase 3.3: Parent-Child Relationships
+
+  /**
+   * The parent members of this member (for children).
+   * A child can have multiple parents (mother, father, guardian).
+   * Uses a join table to support multiple parents per child.
+   */
+  @ManyToMany(fetch = FetchType.LAZY)
+  @JoinTable(
+    name = "member_parents",
+    joinColumns = @JoinColumn(name = "child_id"),
+    inverseJoinColumns = @JoinColumn(name = "parent_id")
+  )
+  private Set<Member> parents = new HashSet<>();
+
+  /**
+   * The children of this member (for parents).
+   * Inverse side of the parents relationship.
+   * Automatically managed when parents are set.
+   */
+  @ManyToMany(mappedBy = "parents", fetch = FetchType.LAZY)
+  private Set<Member> children = new HashSet<>();
+
 }

@@ -65,7 +65,29 @@ public record MemberResponse(
 
   Integer profileCompleteness,
 
-  Set<String> tags
+  Set<String> tags,
+
+  // Phase 3.3: Parent-Child Relationships
+  /**
+   * List of parent IDs and names for this member (if they are a child).
+   * Simplified representation to avoid deep nesting.
+   */
+  List<ParentInfo> parents,
+
+  /**
+   * List of children IDs and names for this member (if they are a parent).
+   * Simplified representation to avoid deep nesting.
+   */
+  List<ChildInfo> children
 ) {
 
+  /**
+   * Simplified parent information to include in member response.
+   */
+  public record ParentInfo(Long id, String fullName) {}
+
+  /**
+   * Simplified child information to include in member response.
+   */
+  public record ChildInfo(Long id, String fullName) {}
 }

@@ -333,6 +333,72 @@ public class MembersController {
     return ResponseEntity.ok(spouse);
   }
 
+  // ==================== Parent-Child Relationship Endpoints ====================
+
+  /**
+   * Add a parent to a child member.
+   *
+   * @param childId Child member ID
+   * @param parentId Parent member ID
+   * @param httpRequest HTTP request to extract church ID
+   * @return Updated child member response with parents list
+   */
+  @PostMapping("/{childId}/parents/{parentId}")
+  public ResponseEntity<MemberResponse> addParent(
+      @PathVariable Long childId,
+      @PathVariable Long parentId,
+      HttpServletRequest httpRequest) {
+    Long churchId = requestContextUtil.extractChurchId(httpRequest);
+    return ResponseEntity.ok(memberService.addParent(childId, parentId, churchId));
+  }
+
+  /**
+   * Remove a parent from a child member.
+   *
+   * @param childId Child member ID
+   * @param parentId Parent member ID to remove
+   * @param httpRequest HTTP request to extract church ID
+   * @return Updated child member response
+   */
+  @DeleteMapping("/{childId}/parents/{parentId}")
+  public ResponseEntity<MemberResponse> removeParent(
+      @PathVariable Long childId,
+      @PathVariable Long parentId,
+      HttpServletRequest httpRequest) {
+    Long churchId = requestContextUtil.extractChurchId(httpRequest);
+    return ResponseEntity.ok(memberService.removeParent(childId, parentId, churchId));
+  }
+
+  /**
+   * Get all parents of a child member.
+   *
+   * @param childId Child member ID
+   * @param httpRequest HTTP request to extract church ID
+   * @return List of parent member responses
+   */
+  @GetMapping("/{childId}/parents")
+  public ResponseEntity<List<MemberResponse>> getParents(
+      @PathVariable Long childId,
+      HttpServletRequest httpRequest) {
+    Long churchId = requestContextUtil.extractChurchId(httpRequest);
+    return ResponseEntity.ok(memberService.getParents(childId, churchId));
+  }
+
+  /**
+   * Get all children of a parent member.
+   *
+   * @param parentId Parent member ID
+   * @param httpRequest HTTP request to extract church ID
+   * @return List of child member responses
+   */
+  @GetMapping("/{parentId}/children")
+  public ResponseEntity<List<MemberResponse>> getChildren(
+      @PathVariable Long parentId,
+      HttpServletRequest httpRequest) {
+    Long churchId = requestContextUtil.extractChurchId(httpRequest);
+    return ResponseEntity.ok(memberService.getChildren(parentId, churchId));
+  }
+
   // ==================== Profile Completeness Endpoints ====================
 
   /**

@@ -1118,6 +1118,125 @@ public class MemberService {
     return MemberMapper.toMemberResponse(member.getSpouse());
   }
 
+  // ==================== Parent-Child Relationship Methods ====================
+
+  /**
+   * Adds a parent to a child member.
+   *
+   * @param childId the child member ID
+   * @param parentId the parent member ID
+   * @param churchId the church ID for validation
+   * @return the updated child member response
+   */
+  public MemberResponse addParent(Long childId, Long parentId, Long churchId) {
+    // Validate not linking member to themselves
+    if (childId.equals(parentId)) {
+      throw new IllegalArgumentException("A member cannot be their own parent");
+    }
+
+    // Fetch both members
+    Member child = memberRepository.findById(childId)
+        .orElseThrow(() -> new IllegalArgumentException("Child member not found: " + childId));
+    Member parent = memberRepository.findById(parentId)
+        .orElseThrow(() -> new IllegalArgumentException("Parent member not found: " + parentId));
+
+    // Validate both belong to the same church
+    if (!child.getChurch().getId().equals(churchId)) {
+      throw new IllegalArgumentException("Child member does not belong to your church");
+    }
+    if (!parent.getChurch().getId().equals(churchId)) {
+      throw new IllegalArgumentException("Parent member does not belong to your church");
+    }
+
+    // Check if parent is already added
+    if (child.getParents().contains(parent)) {
+      throw new IllegalArgumentException("This parent is already linked to the child");
+    }
+
+    // Add parent to child
+    child.getParents().add(parent);
+
+    // Save child (bidirectional relationship will be managed by JPA)
+    Member savedChild = memberRepository.save(child);
+
+    return MemberMapper.toMemberResponse(savedChild);
+  }
+
+  /**
+   * Removes a parent from a child member.
+   *
+   * @param childId the child member ID
+   * @param parentId the parent member ID to remove
+   * @param churchId the church ID for validation
+   * @return the updated child member response
+   */
+  public MemberResponse removeParent(Long childId, Long parentId, Long churchId) {
+    Member child = memberRepository.findById(childId)
+        .orElseThrow(() -> new IllegalArgumentException("Child member not found: " + childId));
+    Member parent = memberRepository.findById(parentId)
+        .orElseThrow(() -> new IllegalArgumentException("Parent member not found: " + parentId));
+
+    // Validate church ownership
+    if (!child.getChurch().getId().equals(churchId)) {
+      throw new IllegalArgumentException("Child member does not belong to your church");
+    }
+
+    // Check if parent exists
+    if (!child.getParents().contains(parent)) {
+      throw new IllegalArgumentException("This parent is not linked to the child");
+    }
+
+    // Remove parent from child
+    child.getParents().remove(parent);
+
+    // Save child
+    Member savedChild = memberRepository.save(child);
+
+    return MemberMapper.toMemberResponse(savedChild);
+  }
+
+  /**
+   * Gets all parents of a child member.
+   *
+   * @param childId the child member ID
+   * @param churchId the church ID for validation
+   * @return list of parent member responses
+   */
+  public List<MemberResponse> getParents(Long childId, Long churchId) {
+    Member child = memberRepository.findById(childId)
+        .orElseThrow(() -> new IllegalArgumentException("Child member not found: " + childId));
+
+    // Validate church ownership
+    if (!child.getChurch().getId().equals(churchId)) {
+      throw new IllegalArgumentException("Member does not belong to your church");
+    }
+
+    return child.getParents().stream()
+        .map(MemberMapper::toMemberResponse)
+        .toList();
+  }
+
+  /**
+   * Gets all children of a parent member.
+   *
+   * @param parentId the parent member ID
+   * @param churchId the church ID for validation
+   * @return list of child member responses
+   */
+  public List<MemberResponse> getChildren(Long parentId, Long churchId) {
+    Member parent = memberRepository.findById(parentId)
+        .orElseThrow(() -> new IllegalArgumentException("Parent member not found: " + parentId));
+
+    // Validate church ownership
+    if (!parent.getChurch().getId().equals(churchId)) {
+      throw new IllegalArgumentException("Member does not belong to your church");
+    }
+
+    return parent.getChildren().stream()
+        .map(MemberMapper::toMemberResponse)
+        .toList();
+  }
+
   // ==================== Profile Completeness Methods ====================
 
   /**
