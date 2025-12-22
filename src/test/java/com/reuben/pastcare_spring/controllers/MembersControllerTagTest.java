@@ -83,7 +83,9 @@ class MembersControllerTagTest {
             true,
             MemberStatus.MEMBER,
             75,
-            Set.of("youth", "choir")
+            Set.of("youth", "choir"),
+            null,  // parents
+            null   // children
         );
 
         // Setup tag request
@@ -149,7 +151,8 @@ class MembersControllerTagTest {
             1L, "John", null, "Doe", null, "male", null, List.of(), null,
             "GH", "Africa/Accra", "+233241234567", null, null, null, null,
             "single", null, null, null, null, null, null, null, true,  // added spouseId (null)
-            MemberStatus.MEMBER, 75, Set.of("choir") // youth removed
+            MemberStatus.MEMBER, 75, Set.of("choir"), // youth removed
+            null, null // parents, children
         );
         when(memberService.removeTags(eq(1L), anySet())).thenReturn(updatedResponse);
 
@@ -176,7 +179,8 @@ class MembersControllerTagTest {
             1L, "John", null, "Doe", null, "male", null, List.of(), null,
             "GH", "Africa/Accra", "+233241234567", null, null, null, null,
             "single", null, null, null, null, null, null, null, true,  // added spouseId (null)
-            MemberStatus.MEMBER, 75, Set.of("leader", "worship") // replaced
+            MemberStatus.MEMBER, 75, Set.of("leader", "worship"), // replaced
+            null, null // parents, children
         );
         when(memberService.setTags(eq(1L), anySet())).thenReturn(updatedResponse);
 

@@ -52,7 +52,8 @@ class TagControllerTest {
                 null, "GH", "Africa/Accra", "+233241111111", null, null,
                 null, null, "single", null, null, null,  // added spouseId (null)
                 null, null, null, null, true,
-                MemberStatus.MEMBER, 75, new HashSet<>(Arrays.asList("youth", "choir"))
+                MemberStatus.MEMBER, 75, new HashSet<>(Arrays.asList("youth", "choir")),
+                null, null // parents, children
         );
 
         when(requestContextUtil.extractChurchId(any())).thenReturn(1L);
