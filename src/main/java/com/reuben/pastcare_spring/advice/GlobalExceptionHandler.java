@@ -278,19 +278,21 @@ public class GlobalExceptionHandler {
     return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
   }
 
-  //TODO: implement/refactor this to handle users who are non-existent to prevent the logs in the terminal
   @ExceptionHandler(UsernameNotFoundException.class)
   public ResponseEntity<ErrorResponse> handleUsernameNotFoundException(
       UsernameNotFoundException exp,
       WebRequest request) {
-      
-      // Log the event for security monitoring
-      logger.warn("User lookup failed for request {}: {}", request.getDescription(false), exp.getMessage());
 
+      // Log at debug level to prevent terminal spam while maintaining security audit capability
+      // In production, debug logs can be enabled for security monitoring without cluttering console
+      logger.debug("User lookup failed for request {}: {}", request.getDescription(false), exp.getMessage());
+
+      // Return same generic message as BadCredentialsException for security
+      // This prevents attackers from determining which emails exist in the system
       ErrorResponse errorResponse = new ErrorResponse(
-          HttpStatus.UNAUTHORIZED.value(), // Usually 401 for security, though some prefer 404
+          HttpStatus.UNAUTHORIZED.value(),
           "Authentication Failed",
-          "Incorrect email or password. Please verify your credentials.", // Generic message for security
+          "Incorrect email or password. Please verify your credentials.",
           request.getDescription(false).replace("uri=", "")
       );
 

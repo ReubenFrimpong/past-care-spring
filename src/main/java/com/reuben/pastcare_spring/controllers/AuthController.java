@@ -36,6 +36,9 @@ public class AuthController {
   @Value("${jwt.expiration:3600000}") // 1 hour in ms
   private Long accessTokenExpiration;
 
+  @Value("${jwt.expiration.remember-me:2592000000}") // 30 days in ms
+  private Long rememberMeExpiration;
+
   @Value("${jwt.refresh-token.expiration:2592000000}") // 30 days in ms
   private Long refreshTokenExpiration;
 
@@ -49,7 +52,9 @@ public class AuthController {
     AuthTokenData tokenData = authService.login(request, httpRequest);
 
     // Set HttpOnly cookies for tokens
-    int accessTokenMaxAge = (int) (accessTokenExpiration / 1000); // Convert to seconds
+    // If rememberMe is true, use extended expiration for access token cookie to match JWT expiration
+    long tokenExpiration = request.rememberMe() ? rememberMeExpiration : accessTokenExpiration;
+    int accessTokenMaxAge = (int) (tokenExpiration / 1000); // Convert to seconds
     int refreshTokenMaxAge = (int) (refreshTokenExpiration / 1000);
 
     httpResponse.addCookie(cookieUtil.createAccessTokenCookie(
