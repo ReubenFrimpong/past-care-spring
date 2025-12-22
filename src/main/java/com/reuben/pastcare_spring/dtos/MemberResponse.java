@@ -3,9 +3,11 @@ package com.reuben.pastcare_spring.dtos;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
+import java.util.Set;
 
 import com.reuben.pastcare_spring.models.Church;
 import com.reuben.pastcare_spring.models.Fellowship;
+import com.reuben.pastcare_spring.models.MemberStatus;
 
 public record MemberResponse(
   Long id,
@@ -25,6 +27,10 @@ public record MemberResponse(
   List<Fellowship> fellowships,
 
   LocalDate dob,
+
+  String countryCode,
+
+  String timezone,
 
   String phoneNumber,
 
@@ -50,7 +56,14 @@ public record MemberResponse(
 
   String notes,
 
-  Boolean isVerified
+  Boolean isVerified,
+
+  // Phase 2 fields
+  MemberStatus status,
+
+  Integer profileCompleteness,
+
+  Set<String> tags
 ) {
 
 }

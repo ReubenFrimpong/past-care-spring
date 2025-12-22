@@ -17,6 +17,8 @@ public class MemberMapper {
       member.getChurch(),
       member.getFellowships(),
       member.getDob(),
+      member.getCountryCode(),
+      member.getTimezone(),
       member.getPhoneNumber(),
       member.getWhatsappNumber(),
       member.getOtherPhoneNumber(),
@@ -29,7 +31,10 @@ public class MemberMapper {
       member.getEmergencyContactName(),
       member.getEmergencyContactNumber(),
       member.getNotes(),
-      member.getIsVerified()
+      member.getIsVerified(),
+      member.getStatus(),
+      member.getProfileCompleteness(),
+      member.getTags()
     );
   }
 

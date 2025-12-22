@@ -106,6 +106,13 @@
       <version>0.4.20</version>
     </dependency>
 
+    <!-- International phone number validation -->
+    <dependency>
+      <groupId>com.googlecode.libphonenumber</groupId>
+      <artifactId>libphonenumber</artifactId>
+      <version>8.13.26</version>
+    </dependency>
+
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>

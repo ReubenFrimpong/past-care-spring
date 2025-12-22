@@ -1,30 +1,29 @@
 package com.reuben.pastcare_spring.validators;
 
+import com.google.i18n.phonenumbers.NumberParseException;
+import com.google.i18n.phonenumbers.PhoneNumberUtil;
+import com.google.i18n.phonenumbers.Phonenumber;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 
 /**
- * Validator for international phone numbers.
- * Accepts various international phone number formats:
- * - +1234567890 (E.164 format with country code)
- * - 001234567890 (international prefix format)
- * - 1234567890 (local format - 7 to 15 digits)
- * - Allows spaces, dashes, and parentheses for formatting
+ * Validator for international phone numbers using Google libphonenumber library.
+ * Validates phone numbers for all 200+ countries with proper format and length checking.
  *
- * Examples of valid numbers:
- * - +233 20 123 4567 (Ghana)
+ * Accepts various international phone number formats:
+ * - +233 24 123 4567 (Ghana with country code)
  * - +1 (555) 123-4567 (USA)
  * - +44 20 7946 0958 (UK)
  * - +91 98765 43210 (India)
- * - 0123456789 (Local)
+ * - +234 802 123 4567 (Nigeria)
+ * - Allows spaces, dashes, and parentheses for formatting
+ *
+ * The validator uses the phone number's country code prefix (+233, +1, etc.)
+ * to determine which country's validation rules to apply.
  */
 public class InternationalPhoneNumberValidator implements ConstraintValidator<InternationalPhoneNumber, String> {
 
-    // Matches international phone numbers with optional country code
-    // Format: Optional + or 00, followed by 1-3 digit country code, then 7-15 digits
-    // Allows spaces, dashes, parentheses for formatting
-    private static final String INTERNATIONAL_PHONE_REGEX =
-        "^[+]?[(]?[0-9]{1,4}[)]?[-\\s.]?[(]?[0-9]{1,4}[)]?[-\\s.]?[0-9]{1,5}[-\\s.]?[0-9]{1,5}[-\\s.]?[0-9]{0,5}$";
+    private final PhoneNumberUtil phoneNumberUtil = PhoneNumberUtil.getInstance();
 
     @Override
     public void initialize(InternationalPhoneNumber constraintAnnotation) {
@@ -38,20 +37,59 @@ public class InternationalPhoneNumberValidator implements ConstraintValidator<In
             return true;
         }
 
-        // Remove all spaces, dashes, parentheses, and dots for validation
-        String cleanedNumber = phoneNumber.replaceAll("[\\s\\-().+]", "");
+        try {
+            // Parse the phone number
+            // Try with "ZZ" first (for numbers with explicit country code like +233...)
+            // If that fails, we'll catch the exception
+            Phonenumber.PhoneNumber parsedNumber;
 
-        // Must have at least 7 digits (local numbers) and max 15 (E.164 standard)
-        if (cleanedNumber.length() < 7 || cleanedNumber.length() > 15) {
+            try {
+                parsedNumber = phoneNumberUtil.parse(phoneNumber, "ZZ");
+            } catch (NumberParseException e) {
+                // If ZZ fails, try parsing with default region as US (allows more formats)
+                // This is more lenient for testing purposes
+                parsedNumber = phoneNumberUtil.parse(phoneNumber, null);
+            }
+
+            // Validate the parsed number
+            // isPossibleNumber checks if the length is valid for the country
+            // isValidNumber performs more comprehensive validation
+            boolean isValid = phoneNumberUtil.isValidNumber(parsedNumber);
+
+            if (!isValid) {
+                // Provide a more specific error message
+                context.disableDefaultConstraintViolation();
+                context.buildConstraintViolationWithTemplate(
+                    "Invalid phone number format. Please include country code (e.g., +233 24 123 4567)"
+                ).addConstraintViolation();
+            }
+
+            return isValid;
+
+        } catch (NumberParseException e) {
+            // If parsing fails, provide helpful error message
+            context.disableDefaultConstraintViolation();
+
+            String errorMessage;
+            switch (e.getErrorType()) {
+                case INVALID_COUNTRY_CODE:
+                    errorMessage = "Invalid country code. Please use a valid country code (e.g., +233 for Ghana)";
+                    break;
+                case NOT_A_NUMBER:
+                    errorMessage = "Phone number contains invalid characters";
+                    break;
+                case TOO_SHORT_NSN:
+                    errorMessage = "Phone number is too short for the selected country";
+                    break;
+                case TOO_LONG:
+                    errorMessage = "Phone number is too long";
+                    break;
+                default:
+                    errorMessage = "Invalid phone number format. Please include country code (e.g., +233 24 123 4567)";
+            }
+
+            context.buildConstraintViolationWithTemplate(errorMessage).addConstraintViolation();
             return false;
         }
-
-        // Must contain only digits
-        if (!cleanedNumber.matches("\\d+")) {
-            return false;
-        }
-
-        // Validate against regex for proper formatting
-        return phoneNumber.matches(INTERNATIONAL_PHONE_REGEX);
     }
 }

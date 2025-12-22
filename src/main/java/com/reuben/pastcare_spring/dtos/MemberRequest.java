@@ -4,11 +4,13 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.reuben.pastcare_spring.annotations.Unique;
 import com.reuben.pastcare_spring.validators.InternationalPhoneNumber;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 
 public record MemberRequest(
   
@@ -30,9 +32,17 @@ public record MemberRequest(
   Long churchId,
   
   List<Long> fellowshipIds,
-  
+
   LocalDate dob,
-  
+
+  @Pattern(regexp = "^[A-Z]{2}$", message = "Country code must be a valid 2-letter ISO code (e.g., GH, US, NG)")
+  String countryCode,
+
+  // IANA timezone (e.g., "Africa/Accra", "America/New_York", "Europe/London")
+  // Pattern allows timezone names like: Area/Location or Area/Location/Sublocation
+  @Pattern(regexp = "^[A-Za-z_]+/[A-Za-z_]+(/[A-Za-z_]+)?$", message = "Timezone must be a valid IANA timezone (e.g., Africa/Accra, America/New_York)")
+  String timezone,
+
   @NotBlank(message = "Phone number is required")
   @InternationalPhoneNumber
   @Unique(table = "member", column = "phone_number", message = "Phone number already taken")
@@ -66,7 +76,10 @@ public record MemberRequest(
   @InternationalPhoneNumber
   String emergencyContactNumber,
 
-  String notes
+  String notes,
+
+  // Phase 2 fields
+  Set<String> tags
 
 ) {
 

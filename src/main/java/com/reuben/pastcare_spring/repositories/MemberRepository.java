@@ -3,6 +3,7 @@ package com.reuben.pastcare_spring.repositories;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -12,9 +13,10 @@ import com.reuben.pastcare_spring.models.Member;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.Optional;
 
 @Repository
-public interface MemberRepository extends JpaRepository<Member, Long> {
+public interface MemberRepository extends JpaRepository<Member, Long>, JpaSpecificationExecutor<Member> {
 
   // Pagination and search
   Page<Member> findByChurch(Church church, Pageable pageable);
@@ -67,5 +69,40 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
          "GROUP BY l.id, l.city, l.coordinates, l.suburb, l.region " +
          "ORDER BY COUNT(m.id) DESC")
   java.util.List<com.reuben.pastcare_spring.dtos.LocationStatsResponse> getLocationStatistics(@Param("church") Church church);
+
+  // Phase 2: Quick Operations
+  /**
+   * Find member by phone number (for duplicate detection in quick add).
+   * @param phoneNumber The phone number to search for
+   * @return Optional containing the member if found
+   */
+  Optional<Member> findByPhoneNumber(String phoneNumber);
+
+  // Phase 2.7: Tags
+  /**
+   * Find all members in a church that have a specific tag.
+   * @param church The church to search in
+   * @param tag The tag to search for
+   * @param pageable Pagination information
+   * @return Page of members with the tag
+   */
+  @Query("SELECT m FROM Member m JOIN m.tags t WHERE m.church = :church AND t = :tag")
+  Page<Member> findByChurchAndTagsContaining(@Param("church") Church church, @Param("tag") String tag, Pageable pageable);
+
+  // Phase 3: Household Management
+  /**
+   * Find member by ID and church (for tenant isolation).
+   * @param id The member ID
+   * @param church The church
+   * @return Optional containing the member if found
+   */
+  Optional<Member> findByIdAndChurch(Long id, Church church);
+
+  /**
+   * Count members in a church that belong to a household.
+   * @param church The church
+   * @return Count of members with a household
+   */
+  long countByChurchAndHouseholdIsNotNull(Church church);
 
 }
