@@ -90,7 +90,7 @@
 
 #### Phase 5: Skills & Ministry Involvement ⭐
 - **Duration**: 2 weeks
-- **Status**: ✅ 100% COMPLETE (Backend)
+- **Status**: ✅ 100% COMPLETE (Backend & Frontend)
 - **Completed**: 2025-12-23
 - **Tasks**:
   - [x] Skills registry (Skill entity, 32 categories, CRUD operations)
@@ -101,6 +101,9 @@
   - [x] Ministry assignment tracking (Member-ministry associations)
   - [x] REST APIs (3 controllers: SkillController, MemberSkillController, MinistryController)
   - [x] Database migration V12 (5 tables, 21 default skills)
+  - [x] Skills management UI (SkillsPage component with full CRUD)
+  - [x] Ministries management UI (MinistriesPage component with leader/member assignment)
+  - [x] Member Skills component (assign skills to members with proficiency tracking)
 
 #### Phase 6: Member Self-Service Portal ⭐⭐⭐
 - **Duration**: 3-4 weeks
@@ -154,7 +157,7 @@
 - Modern Angular patterns (signals, computed, reactive forms validation)
 - No deprecated PrimeNG components (migrated from dropdown/calendar to select/datepicker)
 
-**Phase 5 Features** (Completed - Backend):
+**Phase 5 Features** (Completed - Backend & Frontend):
 
 *Backend*:
 - Skills registry (Skill entity with 32 categories)
@@ -170,6 +173,16 @@
 - SkillController (10 endpoints: CRUD, search, activate/deactivate)
 - MemberSkillController (9 endpoints: assign, update, remove, search by proficiency)
 - MinistryController (14 endpoints: CRUD, member management, skill management)
+
+*Frontend* (PrimeNG v21 + Angular 17):
+- SkillsPage component (full CRUD, 32 categories, activate/deactivate)
+- MinistriesPage component (leader assignment, member/skill associations, 4 statuses)
+- MemberSkillsComponent (proficiency tracking, willing to serve flags, years of experience)
+- Routes: /skills, /ministries
+- Navigation links in Management section
+- Signal-based state management
+- Multi-select for member and skill assignments
+- Validation with reactive forms
 
 **New Enums**:
 - LifecycleEventType (17 values)
