@@ -41,7 +41,7 @@ public class PrayerRequestService {
         prayerRequest.setIsUrgent(dto.getIsUrgent() != null ? dto.getIsUrgent() : false);
         prayerRequest.setIsPublic(dto.getIsPublic() != null ? dto.getIsPublic() : false);
         prayerRequest.setStatus(PrayerRequestStatus.PENDING);
-        prayerRequest.setChurchId(churchId);
+        prayerRequest.setChurch(member.getChurch());
 
         // Set expiry date if not provided (default 30 days)
         if (dto.getExpiresAt() != null) {

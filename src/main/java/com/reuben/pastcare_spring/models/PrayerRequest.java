@@ -59,7 +59,4 @@ public class PrayerRequest extends TenantBaseEntity {
 
     @Column
     private LocalDateTime expiresAt; // Auto-archive after this date
-
-    @Column(name = "church_id", nullable = false)
-    private Long churchId;
 }

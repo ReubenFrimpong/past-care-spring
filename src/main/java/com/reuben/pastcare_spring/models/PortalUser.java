@@ -71,7 +71,4 @@ public class PortalUser extends TenantBaseEntity {
 
     @Column
     private LocalDateTime passwordResetTokenExpiry;
-
-    @Column(name = "church_id", nullable = false)
-    private Long churchId;
 }

@@ -17,7 +17,8 @@ public interface PortalUserRepository extends JpaRepository<PortalUser, Long> {
     /**
      * Find portal user by email and church
      */
-    Optional<PortalUser> findByEmailAndChurchId(String email, Long churchId);
+    @Query("SELECT p FROM PortalUser p WHERE p.email = :email AND p.church.id = :churchId")
+    Optional<PortalUser> findByEmailAndChurchId(@Param("email") String email, @Param("churchId") Long churchId);
 
     /**
      * Find portal user by member ID
@@ -37,17 +38,20 @@ public interface PortalUserRepository extends JpaRepository<PortalUser, Long> {
     /**
      * Find all portal users by status for a church
      */
-    List<PortalUser> findByChurchIdAndStatus(Long churchId, PortalUserStatus status);
+    @Query("SELECT p FROM PortalUser p WHERE p.church.id = :churchId AND p.status = :status")
+    List<PortalUser> findByChurchIdAndStatus(@Param("churchId") Long churchId, @Param("status") PortalUserStatus status);
 
     /**
      * Find all active portal users for a church
      */
-    List<PortalUser> findByChurchIdAndIsActive(Long churchId, Boolean isActive);
+    @Query("SELECT p FROM PortalUser p WHERE p.church.id = :churchId AND p.isActive = :isActive")
+    List<PortalUser> findByChurchIdAndIsActive(@Param("churchId") Long churchId, @Param("isActive") Boolean isActive);
 
     /**
      * Count portal users by status for a church
      */
-    Long countByChurchIdAndStatus(Long churchId, PortalUserStatus status);
+    @Query("SELECT COUNT(p) FROM PortalUser p WHERE p.church.id = :churchId AND p.status = :status")
+    Long countByChurchIdAndStatus(@Param("churchId") Long churchId, @Param("status") PortalUserStatus status);
 
     /**
      * Delete expired verification tokens

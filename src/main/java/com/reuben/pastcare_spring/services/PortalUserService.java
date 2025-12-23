@@ -76,7 +76,7 @@ public class PortalUserService {
         portalUser.setVerificationToken(generateToken());
         portalUser.setVerificationTokenExpiry(LocalDateTime.now().plusHours(VERIFICATION_TOKEN_EXPIRY_HOURS));
         portalUser.setIsActive(false);
-        portalUser.setChurchId(churchId);
+        portalUser.setChurch(church);
 
         PortalUser savedPortalUser = portalUserRepository.save(portalUser);
         log.info("Created portal user: {} (ID: {})", savedPortalUser.getEmail(), savedPortalUser.getId());

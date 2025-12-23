@@ -16,7 +16,8 @@ public interface PrayerRequestRepository extends JpaRepository<PrayerRequest, Lo
     /**
      * Find all prayer requests for a church
      */
-    List<PrayerRequest> findByChurchIdOrderByCreatedAtDesc(Long churchId);
+    @Query("SELECT p FROM PrayerRequest p WHERE p.church.id = :churchId ORDER BY p.createdAt DESC")
+    List<PrayerRequest> findByChurchIdOrderByCreatedAtDesc(@Param("churchId") Long churchId);
 
     /**
      * Find prayer requests by member
@@ -26,23 +27,26 @@ public interface PrayerRequestRepository extends JpaRepository<PrayerRequest, Lo
     /**
      * Find prayer requests by status for a church
      */
-    List<PrayerRequest> findByChurchIdAndStatusOrderByCreatedAtDesc(Long churchId, PrayerRequestStatus status);
+    @Query("SELECT p FROM PrayerRequest p WHERE p.church.id = :churchId AND p.status = :status ORDER BY p.createdAt DESC")
+    List<PrayerRequest> findByChurchIdAndStatusOrderByCreatedAtDesc(@Param("churchId") Long churchId, @Param("status") PrayerRequestStatus status);
 
     /**
      * Find public (non-anonymous) active prayer requests
      */
-    @Query("SELECT p FROM PrayerRequest p WHERE p.churchId = :churchId AND p.isPublic = true AND p.status = :status ORDER BY p.createdAt DESC")
+    @Query("SELECT p FROM PrayerRequest p WHERE p.church.id = :churchId AND p.isPublic = true AND p.status = :status ORDER BY p.createdAt DESC")
     List<PrayerRequest> findPublicPrayerRequests(@Param("churchId") Long churchId, @Param("status") PrayerRequestStatus status);
 
     /**
      * Find urgent prayer requests
      */
-    List<PrayerRequest> findByChurchIdAndIsUrgentTrueOrderByCreatedAtDesc(Long churchId);
+    @Query("SELECT p FROM PrayerRequest p WHERE p.church.id = :churchId AND p.isUrgent = true ORDER BY p.createdAt DESC")
+    List<PrayerRequest> findByChurchIdAndIsUrgentTrueOrderByCreatedAtDesc(@Param("churchId") Long churchId);
 
     /**
      * Find answered prayer requests (testimonies)
      */
-    List<PrayerRequest> findByChurchIdAndStatusAndTestimonyIsNotNullOrderByAnsweredAtDesc(Long churchId, PrayerRequestStatus status);
+    @Query("SELECT p FROM PrayerRequest p WHERE p.church.id = :churchId AND p.status = :status AND p.testimony IS NOT NULL ORDER BY p.answeredAt DESC")
+    List<PrayerRequest> findByChurchIdAndStatusAndTestimonyIsNotNullOrderByAnsweredAtDesc(@Param("churchId") Long churchId, @Param("status") PrayerRequestStatus status);
 
     /**
      * Find expired prayer requests for archiving
@@ -53,5 +57,6 @@ public interface PrayerRequestRepository extends JpaRepository<PrayerRequest, Lo
     /**
      * Count active prayer requests for a church
      */
-    Long countByChurchIdAndStatus(Long churchId, PrayerRequestStatus status);
+    @Query("SELECT COUNT(p) FROM PrayerRequest p WHERE p.church.id = :churchId AND p.status = :status")
+    Long countByChurchIdAndStatus(@Param("churchId") Long churchId, @Param("status") PrayerRequestStatus status);
 }

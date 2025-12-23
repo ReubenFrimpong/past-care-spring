@@ -32,11 +32,11 @@ public interface MemberSkillRepository extends JpaRepository<MemberSkill, Long> 
                                                         @Param("skillId") Long skillId,
                                                         @Param("proficiencyLevels") List<ProficiencyLevel> proficiencyLevels);
 
-    @Query("SELECT ms FROM MemberSkill ms WHERE ms.memberId = :memberId " +
+    @Query("SELECT ms FROM MemberSkill ms WHERE ms.member.id = :memberId " +
            "AND ms.currentlyServing = true")
     List<MemberSkill> findCurrentlyServingSkills(@Param("memberId") Long memberId);
 
-    @Query("SELECT COUNT(ms) FROM MemberSkill ms WHERE ms.memberId = :memberId")
+    @Query("SELECT COUNT(ms) FROM MemberSkill ms WHERE ms.member.id = :memberId")
     Long countMemberSkills(@Param("memberId") Long memberId);
 
     void deleteByMemberIdAndSkillId(Long memberId, Long skillId);
