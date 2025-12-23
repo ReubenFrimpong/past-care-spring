@@ -107,11 +107,12 @@
 
 #### Phase 6: Member Self-Service Portal ⭐⭐⭐
 - **Duration**: 3-4 weeks
-- **Status**: ⏳ NOT STARTED
+- **Status**: ✅ 60% COMPLETE (Core Features - Backend & Frontend)
+- **Completed**: 2025-12-23
 - **Tasks**:
-  - [ ] Member self-registration
-  - [ ] Email verification
-  - [ ] Admin approval workflow
+  - [x] Member self-registration (backend + frontend)
+  - [x] Email verification system (backend)
+  - [x] Admin approval workflow (backend + frontend)
   - [ ] Profile self-management
   - [ ] Attendance viewing
   - [ ] Prayer request submission
