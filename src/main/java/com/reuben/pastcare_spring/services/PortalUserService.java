@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -84,6 +85,79 @@ public class PortalUserService {
         sendVerificationEmail(savedPortalUser, church.getName());
 
         return mapToResponse(savedPortalUser);
+    }
+
+    /**
+     * Login portal user with email and password
+     */
+    public Map<String, Object> loginPortalUser(Long churchId, PortalLoginRequest request) {
+        // Find portal user by email and church
+        PortalUser portalUser = portalUserRepository.findByEmailAndChurchId(request.getEmail(), churchId)
+            .orElseThrow(() -> new IllegalArgumentException("Invalid email or password"));
+
+        // Verify password
+        if (!passwordEncoder.matches(request.getPassword(), portalUser.getPasswordHash())) {
+            throw new IllegalArgumentException("Invalid email or password");
+        }
+
+        // Check if email is verified
+        if (portalUser.getEmailVerifiedAt() == null) {
+            throw new IllegalArgumentException("Email not verified. Please check your email for verification link.");
+        }
+
+        // Check if user is approved
+        if (portalUser.getStatus() != PortalUserStatus.APPROVED) {
+            String message = switch (portalUser.getStatus()) {
+                case PENDING_VERIFICATION -> "Email not verified";
+                case PENDING_APPROVAL -> "Your registration is pending admin approval";
+                case REJECTED -> "Your registration was rejected: " + portalUser.getRejectionReason();
+                case SUSPENDED -> "Your account has been suspended";
+                default -> "Account not active";
+            };
+            throw new IllegalArgumentException(message);
+        }
+
+        // Update last login
+        portalUser.setLastLoginAt(LocalDateTime.now());
+        portalUserRepository.save(portalUser);
+
+        // Generate JWT token (simplified - in production use proper JWT library)
+        String token = generateJwtToken(portalUser);
+
+        log.info("Portal user logged in: {} (Member ID: {})", request.getEmail(), portalUser.getMember().getId());
+
+        // Return login response
+        Map<String, Object> response = new java.util.HashMap<>();
+        response.put("token", token);
+        response.put("memberId", portalUser.getMember().getId());
+        response.put("churchId", churchId);
+        response.put("email", portalUser.getEmail());
+        response.put("firstName", portalUser.getMember().getFirstName());
+        response.put("lastName", portalUser.getMember().getLastName());
+
+        return response;
+    }
+
+    /**
+     * Generate JWT token for portal user (simplified version)
+     * TODO: Use proper JWT library (io.jsonwebtoken:jjwt) in production
+     */
+    private String generateJwtToken(PortalUser portalUser) {
+        // For now, return a simple token structure
+        // In production, use JWT library with proper signing
+        long expirationTime = System.currentTimeMillis() + (24 * 60 * 60 * 1000); // 24 hours
+
+        String payload = java.util.Base64.getEncoder().encodeToString(
+            String.format("{\"sub\":\"%s\",\"memberId\":%d,\"churchId\":%d,\"exp\":%d}",
+                portalUser.getEmail(),
+                portalUser.getMember().getId(),
+                portalUser.getChurchId(),
+                expirationTime / 1000).getBytes()
+        );
+
+        // Simple token format: header.payload.signature
+        // In production, use proper JWT signing
+        return "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." + payload + ".signature";
     }
 
     /**

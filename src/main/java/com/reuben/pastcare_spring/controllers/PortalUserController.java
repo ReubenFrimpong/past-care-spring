@@ -36,6 +36,17 @@ public class PortalUserController {
     }
 
     /**
+     * Login portal user (public endpoint)
+     */
+    @PostMapping("/login")
+    public ResponseEntity<Map<String, Object>> login(
+            @Valid @RequestBody PortalLoginRequest request,
+            @RequestParam Long churchId) {
+        Map<String, Object> loginResponse = portalUserService.loginPortalUser(churchId, request);
+        return ResponseEntity.ok(loginResponse);
+    }
+
+    /**
      * Verify email with token (public endpoint)
      */
     @GetMapping("/verify")
