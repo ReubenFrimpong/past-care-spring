@@ -107,25 +107,25 @@
 
 #### Phase 6: Member Self-Service Portal ⭐⭐⭐
 - **Duration**: 3-4 weeks
-- **Status**: ✅ 60% COMPLETE (Core Features - Backend & Frontend)
+- **Status**: ✅ 100% COMPLETE (Backend & Frontend)
 - **Completed**: 2025-12-23
 - **Tasks**:
   - [x] Member self-registration (backend + frontend)
   - [x] Email verification system (backend)
   - [x] Admin approval workflow (backend + frontend)
-  - [ ] Profile self-management
-  - [ ] Attendance viewing
-  - [ ] Prayer request submission
+  - [x] Profile self-management (MemberProfileComponent)
+  - [x] Attendance viewing (MemberAttendanceComponent with stats)
+  - [x] Prayer request submission (MemberPrayersComponent with testimony)
 
 ### Key Deliverables
-- 9 new entities (Household ✅, LifecycleEvent ✅, CommunicationLog ✅, ConfidentialNote ✅, Skill ✅, MemberSkill ✅, Ministry ✅, SavedSearch ✅, PortalUser ⏳)
-- 40+ new API endpoints (35+ implemented: quick-add, bulk operations, search, tags, spouse, parent-child, household, skills, ministries)
+- 10 new entities (Household ✅, LifecycleEvent ✅, CommunicationLog ✅, ConfidentialNote ✅, Skill ✅, MemberSkill ✅, Ministry ✅, SavedSearch ✅, PortalUser ✅, PrayerRequest ✅)
+- 50+ new API endpoints (48+ implemented: quick-add, bulk operations, search, tags, spouse, parent-child, household, skills, ministries, portal, prayers)
 - International support (phone ✅, address ✅, timezone ✅)
 - Comprehensive E2E test coverage (✅ 53 Phase 4 E2E tests, Unit tests complete)
-- Member portal with self-service (⏳ Not started)
+- Member portal with self-service (✅ Complete - registration, approval, profile, attendance, prayers)
 
 ### Implementation Summary (as of 2025-12-23)
-**Completed Entities**: Member (enhanced), Household, SavedSearch, Location (internationalized), LifecycleEvent, CommunicationLog, ConfidentialNote, Skill, MemberSkill, Ministry
+**Completed Entities**: Member (enhanced), Household, SavedSearch, Location (internationalized), LifecycleEvent, CommunicationLog, ConfidentialNote, Skill, MemberSkill, Ministry, PortalUser, PrayerRequest
 
 **Phase 1-3 Features** (Completed):
 - International phone validation with country codes
@@ -185,6 +185,33 @@
 - Multi-select for member and skill assignments
 - Validation with reactive forms
 
+**Phase 6 Features** (Completed - Backend & Frontend):
+
+*Backend*:
+- Member self-registration with email verification (PortalUser entity)
+- Admin approval workflow (5-state lifecycle: pending verification, pending approval, approved, rejected, suspended)
+- Password reset with token expiry (2-hour reset tokens, 24-hour verification tokens)
+- Prayer request management (PrayerRequest entity with 4 categories, 4 priority levels, 4 statuses)
+- Prayer request privacy controls (anonymous, urgent, public flags)
+- Testimony submission for answered prayers
+- Auto-expiry system (30-day default expiry for prayer requests)
+- Multi-tenant isolation for all portal operations
+
+*REST APIs*:
+- PortalUserController (9 endpoints: register, verify, approve, reject, password reset)
+- PrayerRequestController (11 endpoints: submit, view, testimony, archive, status updates)
+
+*Frontend* (PrimeNG v21 + Angular 17):
+- PortalRegistrationComponent (public self-registration with password strength validation)
+- PortalApprovalComponent (admin workflow for approving/rejecting registrations)
+- MemberProfileComponent (self-service profile management with emergency contacts)
+- MemberAttendanceComponent (attendance history with stats cards and attendance rate)
+- MemberPrayersComponent (submit prayers, add testimony, manage requests)
+- Routes: /portal/register, /portal/approvals, /portal/profile, /portal/attendance, /portal/prayers
+- Beautiful gradient UI with responsive design
+- Signal-based state management with reactive forms
+- Toast notifications and confirmation dialogs
+
 **New Enums**:
 - LifecycleEventType (17 values)
 - CommunicationType (10 values)
@@ -195,6 +222,10 @@
 - SkillCategory (32 values: music, technical, teaching, administrative, hospitality, etc.)
 - ProficiencyLevel (4 values: beginner, intermediate, advanced, expert)
 - MinistryStatus (4 values: active, inactive, planned, archived)
+- PortalUserStatus (5 values: pending verification, pending approval, approved, rejected, suspended)
+- PrayerRequestCategory (10 values: health, family, financial, spiritual, career, protection, thanksgiving, bereavement, salvation, other)
+- PrayerRequestPriority (4 values: low, normal, high, urgent)
+- PrayerRequestStatus (4 values: pending, active, answered, archived)
 
 **Test Coverage**:
 - **Backend Unit Tests**: 2,605+ lines across 7 test files (Phase 1-3 complete)
