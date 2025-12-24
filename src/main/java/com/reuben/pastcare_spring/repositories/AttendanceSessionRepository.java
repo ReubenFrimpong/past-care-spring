@@ -14,4 +14,9 @@ public interface AttendanceSessionRepository extends JpaRepository<AttendanceSes
   List<AttendanceSession> findByFellowship_Id(Long fellowshipId);
   List<AttendanceSession> findBySessionDateBetween(LocalDate startDate, LocalDate endDate);
   List<AttendanceSession> findByChurch_IdAndSessionDateBetween(Long churchId, LocalDate startDate, LocalDate endDate);
+
+  // Recurring session support
+  List<AttendanceSession> findByIsRecurringTrue();
+  boolean existsByChurch_IdAndSessionDateAndSessionNameAndIsRecurringFalse(
+      Long churchId, LocalDate sessionDate, String sessionName);
 }
