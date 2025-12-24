@@ -65,8 +65,6 @@ public record MemberRequest(
   @NotBlank(message = "Marital status is required")
   String maritalStatus,
 
-  String spouseName,
-
   Long spouseId,  // Optional: ID of linked spouse member
 
   String occupation,

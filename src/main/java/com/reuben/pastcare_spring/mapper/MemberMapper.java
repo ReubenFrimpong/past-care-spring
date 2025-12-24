@@ -27,7 +27,6 @@ public class MemberMapper {
       LocationMapper.toLocationResponse(member.getLocation()),
       member.getProfileImageUrl(),
       member.getMaritalStatus(),
-      member.getSpouseName(),
       member.getSpouse() != null ? member.getSpouse().getId() : null,  // spouseId
       member.getOccupation(),
       member.getMemberSince(),

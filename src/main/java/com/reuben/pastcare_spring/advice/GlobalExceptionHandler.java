@@ -283,9 +283,9 @@ public class GlobalExceptionHandler {
       UsernameNotFoundException exp,
       WebRequest request) {
 
-      // Log at debug level to prevent terminal spam while maintaining security audit capability
-      // In production, debug logs can be enabled for security monitoring without cluttering console
-      logger.debug("User lookup failed for request {}: {}", request.getDescription(false), exp.getMessage());
+      // No logging to prevent terminal spam during development
+      // UsernameNotFoundException is expected during login attempts with invalid emails
+      // Security monitoring can be done via authentication failure metrics instead
 
       // Return same generic message as BadCredentialsException for security
       // This prevents attackers from determining which emails exist in the system

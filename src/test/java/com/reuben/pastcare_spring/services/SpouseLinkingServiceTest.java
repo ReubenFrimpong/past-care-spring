@@ -90,10 +90,8 @@ class SpouseLinkingServiceTest {
         // Assert
         assertNotNull(result);
         assertEquals("John", result.firstName());
-        assertEquals("Jane Smith", member1.getSpouseName());
         assertEquals("married", member1.getMaritalStatus());
         assertEquals(member2, member1.getSpouse());
-        assertEquals("John Doe", member2.getSpouseName());
         assertEquals("married", member2.getMaritalStatus());
         assertEquals(member1, member2.getSpouse());
 
@@ -145,7 +143,7 @@ class SpouseLinkingServiceTest {
 
     @Test
     @DisplayName("Should throw exception when member belongs to different church")
-    void linkSpouse_DifferentChurch_ThrowsException() {
+    void linkSpouse_MemberDifferentChurch_ThrowsException() {
         // Arrange
         Church otherChurch = new Church();
         otherChurch.setId(2L);
@@ -164,14 +162,32 @@ class SpouseLinkingServiceTest {
     }
 
     @Test
+    @DisplayName("Should throw exception when spouse belongs to different church")
+    void linkSpouse_SpouseDifferentChurch_ThrowsException() {
+        // Arrange
+        Church otherChurch = new Church();
+        otherChurch.setId(2L);
+        member2.setChurch(otherChurch);
+
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(member1));
+        when(memberRepository.findById(2L)).thenReturn(Optional.of(member2));
+
+        // Act & Assert
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> memberService.linkSpouse(1L, 2L, 1L)
+        );
+
+        assertEquals("Spouse member does not belong to your church", exception.getMessage());
+    }
+
+    @Test
     @DisplayName("Should unlink existing spouse before linking new one")
     void linkSpouse_UnlinksPreviousSpouse() {
         // Arrange
         // member1 is already linked to member3
         member1.setSpouse(member3);
-        member1.setSpouseName("Mary Johnson");
         member3.setSpouse(member1);
-        member3.setSpouseName("John Doe");
 
         when(memberRepository.findById(1L)).thenReturn(Optional.of(member1));
         when(memberRepository.findById(2L)).thenReturn(Optional.of(member2));
@@ -183,7 +199,6 @@ class SpouseLinkingServiceTest {
 
         // Assert
         assertNull(member3.getSpouse());
-        assertNull(member3.getSpouseName());
         assertEquals(member2, member1.getSpouse());
         assertEquals(member1, member2.getSpouse());
 
@@ -196,9 +211,7 @@ class SpouseLinkingServiceTest {
     void unlinkSpouse_Success() {
         // Arrange
         member1.setSpouse(member2);
-        member1.setSpouseName("Jane Smith");
         member2.setSpouse(member1);
-        member2.setSpouseName("John Doe");
 
         when(memberRepository.findById(1L)).thenReturn(Optional.of(member1));
         when(memberRepository.save(any(Member.class))).thenAnswer(invocation -> invocation.getArgument(0));

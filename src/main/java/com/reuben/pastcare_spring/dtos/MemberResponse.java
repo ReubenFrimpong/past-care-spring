@@ -44,8 +44,6 @@ public record MemberResponse(
 
   String maritalStatus,
 
-  String spouseName,
-
   Long spouseId,  // Reference to linked spouse member
 
   String occupation,

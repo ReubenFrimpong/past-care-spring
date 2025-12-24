@@ -69,8 +69,6 @@ public class Member extends TenantBaseEntity {
 
   private String maritalStatus;
 
-  private String spouseName;
-
   private String occupation;
 
   private YearMonth memberSince;

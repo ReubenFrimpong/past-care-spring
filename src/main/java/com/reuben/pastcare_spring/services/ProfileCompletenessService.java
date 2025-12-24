@@ -18,8 +18,8 @@ public class ProfileCompletenessService {
      *
      * Field weights:
      * - Core fields (25% total): firstName, lastName, phoneNumber, sex (already required)
-     * - Important fields (50% total): email (10%), dob (10%), maritalStatus (5%),
-     *   spouseName if married (5%), location (10%), profileImageUrl (10%)
+     * - Important fields (50% total): dob (12%), maritalStatus (6%),
+     *   spouse link if married (7%), location (12%), profileImageUrl (13%)
      * - Additional fields (25% total): occupation (5%), memberSince (5%),
      *   fellowships (5%), emergencyContactName (5%), emergencyContactNumber (5%)
      *
@@ -39,29 +39,29 @@ public class ProfileCompletenessService {
 
         // Important fields (50% total)
         if (isFieldFilled(member.getDob())) {
-            completeness += 10; // Date of birth
+            completeness += 12; // Date of birth
         }
 
         if (isFieldFilled(member.getLocation())) {
-            completeness += 10; // Location
+            completeness += 12; // Location
         }
 
         if (isFieldFilled(member.getProfileImageUrl())) {
-            completeness += 10; // Profile image
+            completeness += 13; // Profile image
         }
 
         if (isFieldFilled(member.getMaritalStatus())) {
-            completeness += 5; // Marital status
+            completeness += 6; // Marital status
         }
 
-        // Spouse name only counts if married
+        // Spouse link only counts if married
         if ("married".equalsIgnoreCase(member.getMaritalStatus())) {
-            if (isFieldFilled(member.getSpouseName())) {
-                completeness += 5; // Spouse name
+            if (member.getSpouse() != null) {
+                completeness += 7; // Spouse linked
             }
         } else {
-            // If not married, spouse name is not required, so add the points
-            completeness += 5;
+            // If not married, spouse link is not required, so add the points
+            completeness += 7;
         }
 
         // Additional fields (25% total)
@@ -118,10 +118,10 @@ public class ProfileCompletenessService {
             missingFields.add("Marital Status");
         }
 
-        // Spouse name only if married
+        // Spouse link only if married
         if ("married".equalsIgnoreCase(member.getMaritalStatus()) &&
-            !isFieldFilled(member.getSpouseName())) {
-            missingFields.add("Spouse Name");
+            member.getSpouse() == null) {
+            missingFields.add("Spouse Link");
         }
 
         // Additional fields

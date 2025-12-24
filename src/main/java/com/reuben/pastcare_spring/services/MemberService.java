@@ -131,8 +131,6 @@ public class MemberService {
   }
 
   public MemberResponse createMember(MemberRequest memberRequest){
-    // Validate spouse name is required for married members
-    validateSpouseRequirement(memberRequest.maritalStatus(), memberRequest.spouseName());
 
     var member = new Member();
     member.setFirstName(memberRequest.firstName());
@@ -173,7 +171,6 @@ public class MemberService {
     }
 
     member.setMaritalStatus(memberRequest.maritalStatus());
-    member.setSpouseName(memberRequest.spouseName());
     member.setOccupation(memberRequest.occupation());
     member.setMemberSince(memberRequest.memberSince());
     member.setEmergencyContactName(memberRequest.emergencyContactName());
@@ -194,25 +191,7 @@ public class MemberService {
     return MemberMapper.toMemberResponse(createdMember);
   }
 
-  /**
-   * Validates that spouse name is provided when marital status is married.
-   * Handles case-insensitive marital status check.
-   *
-   * @param maritalStatus the marital status to validate
-   * @param spouseName the spouse name to check
-   * @throws IllegalArgumentException if married but spouse name is missing
-   */
-  private void validateSpouseRequirement(String maritalStatus, String spouseName) {
-    if (maritalStatus != null && maritalStatus.trim().equalsIgnoreCase("married")) {
-      if (spouseName == null || spouseName.trim().isEmpty()) {
-        throw new IllegalArgumentException("Spouse name is required for married members");
-      }
-    }
-  }
-
   public MemberResponse updateMember(Long id, MemberRequest memberRequest){
-    // Validate spouse name is required for married members
-    validateSpouseRequirement(memberRequest.maritalStatus(), memberRequest.spouseName());
 
     var member = memberRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Member not found"));
     member.setFirstName(memberRequest.firstName());
@@ -252,7 +231,6 @@ public class MemberService {
     }
 
     member.setMaritalStatus(memberRequest.maritalStatus());
-    member.setSpouseName(memberRequest.spouseName());
     member.setOccupation(memberRequest.occupation());
     member.setMemberSince(memberRequest.memberSince());
     member.setEmergencyContactName(memberRequest.emergencyContactName());
@@ -527,7 +505,6 @@ public class MemberService {
     member.setWhatsappNumber(data.get("whatsappNumber"));
     member.setOtherPhoneNumber(data.get("otherPhoneNumber"));
     member.setMaritalStatus(data.getOrDefault("maritalStatus", "unknown"));
-    member.setSpouseName(data.get("spouseName"));
     member.setOccupation(data.get("occupation"));
     member.setEmergencyContactName(data.get("emergencyContactName"));
     member.setEmergencyContactNumber(data.get("emergencyContactNumber"));
@@ -572,7 +549,6 @@ public class MemberService {
     if (data.containsKey("whatsappNumber")) member.setWhatsappNumber(data.get("whatsappNumber"));
     if (data.containsKey("otherPhoneNumber")) member.setOtherPhoneNumber(data.get("otherPhoneNumber"));
     if (data.containsKey("maritalStatus")) member.setMaritalStatus(data.get("maritalStatus"));
-    if (data.containsKey("spouseName")) member.setSpouseName(data.get("spouseName"));
     if (data.containsKey("occupation")) member.setOccupation(data.get("occupation"));
     if (data.containsKey("emergencyContactName")) member.setEmergencyContactName(data.get("emergencyContactName"));
     if (data.containsKey("emergencyContactNumber")) member.setEmergencyContactNumber(data.get("emergencyContactNumber"));
@@ -988,6 +964,7 @@ public class MemberService {
   /**
    * Links two members as spouses (bidirectional).
    * Both members must belong to the same church.
+   * This operation is optional - married members can just provide spouse name without linking.
    * If either member is already linked to a different spouse, the old link is removed.
    *
    * @param memberId the member to link
@@ -1019,23 +996,19 @@ public class MemberService {
     if (member.getSpouse() != null && !member.getSpouse().getId().equals(spouseId)) {
       Member oldSpouse = member.getSpouse();
       oldSpouse.setSpouse(null);
-      oldSpouse.setSpouseName(null);
       memberRepository.save(oldSpouse);
     }
     if (spouse.getSpouse() != null && !spouse.getSpouse().getId().equals(memberId)) {
       Member oldSpouse = spouse.getSpouse();
       oldSpouse.setSpouse(null);
-      oldSpouse.setSpouseName(null);
       memberRepository.save(oldSpouse);
     }
 
     // Create bidirectional link
     member.setSpouse(spouse);
-    member.setSpouseName(spouse.getFirstName() + " " + spouse.getLastName());
     member.setMaritalStatus("married");
 
     spouse.setSpouse(member);
-    spouse.setSpouseName(member.getFirstName() + " " + member.getLastName());
     spouse.setMaritalStatus("married");
 
     // If both are in different households, optionally assign to same household
@@ -1078,11 +1051,7 @@ public class MemberService {
     Member spouse = member.getSpouse();
 
     member.setSpouse(null);
-    // Keep spouseName as historical reference but could be cleared if desired
-    // member.setSpouseName(null);
-
     spouse.setSpouse(null);
-    // spouse.setSpouseName(null);
 
     // Recalculate profile completeness for both
     member.setProfileCompleteness(profileCompletenessService.calculateCompleteness(member));

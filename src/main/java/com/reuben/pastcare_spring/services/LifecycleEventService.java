@@ -160,7 +160,7 @@ public class LifecycleEventService {
      * Verify a lifecycle event.
      */
     public LifecycleEventResponse verifyLifecycleEvent(Long churchId, Long eventId, Long userId) {
-        Church church = churchRepository.findById(churchId)
+        churchRepository.findById(churchId)
             .orElseThrow(() -> new EntityNotFoundException("Church not found with id: " + churchId));
 
         LifecycleEvent event = lifecycleEventRepository.findById(eventId)
@@ -184,7 +184,7 @@ public class LifecycleEventService {
      * Delete a lifecycle event.
      */
     public void deleteLifecycleEvent(Long churchId, Long eventId) {
-        Church church = churchRepository.findById(churchId)
+        churchRepository.findById(churchId)
             .orElseThrow(() -> new EntityNotFoundException("Church not found with id: " + churchId));
 
         LifecycleEvent event = lifecycleEventRepository.findById(eventId)

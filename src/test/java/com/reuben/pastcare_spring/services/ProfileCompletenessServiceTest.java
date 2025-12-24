@@ -105,7 +105,7 @@ class ProfileCompletenessServiceTest {
     void testCalculateCompletenessMarriedWithSpouse() {
         Member member = createMinimalMember();
         member.setMaritalStatus("married");
-        member.setSpouseName("Jane Doe");
+        // Spouse linking is optional - spouse field removed
 
         int completeness = service.calculateCompleteness(member);
         assertEquals(35, completeness); // 25 (core) + 5 (marital status) + 5 (spouse name)
@@ -306,7 +306,7 @@ class ProfileCompletenessServiceTest {
     void testNullStringHandling() {
         Member member = createMinimalMember();
         member.setOccupation(null);
-        member.setSpouseName(null);
+        // Spouse linking is optional - no spouse set
         member.setEmergencyContactName(null);
         member.setEmergencyContactNumber(null);
 
@@ -320,7 +320,7 @@ class ProfileCompletenessServiceTest {
     void testEmptyStringHandling() {
         Member member = createMinimalMember();
         member.setOccupation("");
-        member.setSpouseName("   ");
+        // Spouse linking is optional - no spouse set
 
         int completeness = service.calculateCompleteness(member);
 
@@ -348,7 +348,7 @@ class ProfileCompletenessServiceTest {
 
         member.setProfileImageUrl("https://example.com/image.jpg");
         member.setMaritalStatus("married");
-        member.setSpouseName("Jane Doe");
+        // Spouse linking is optional - spouse field removed
         member.setOccupation("Engineer");
         member.setMemberSince(YearMonth.of(2020, 1));
 
