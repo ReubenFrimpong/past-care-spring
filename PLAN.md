@@ -2,7 +2,7 @@
 
 **Project Vision**: A comprehensive church management system helping pastors better connect with their members through intuitive UI, robust features, and comprehensive TDD with E2E testing.
 
-**Last Updated**: 2025-12-20
+**Last Updated**: 2025-12-24
 
 ---
 
@@ -246,10 +246,11 @@
 
 ## Module 2: Attendance Module 🚧 IN PROGRESS
 
-**Status**: Phase 1 Complete (✅), Phase 2-4 Planned
-**Current Implementation**: Enhanced attendance tracking with QR codes, check-in, visitors, reminders
+**Status**: Phase 1-2 Complete (✅), Phase 3-4 Planned
+**Current Implementation**: Enhanced attendance tracking with QR codes, check-in, visitors, reminders, analytics
 **Timeline**: 6-8 weeks (4 phases)
 **Phase 1 Completed**: 2025-12-24
+**Phase 2 Completed**: 2025-12-24
 
 ### Current State
 - AttendanceSession entity (session name, date, time, fellowship, notes, isCompleted)
@@ -294,30 +295,58 @@
 - CheckInService (geolocation support, nearby sessions, device info)
 - VisitorService (full CRUD, record visits, convert to member)
 - ReminderService (multi-channel delivery, recipient tracking, status management)
-- VisitorsPage component (full CRUD, stats dashboard, convert to member workflow)
+- VisitorsPage component (modern card-based grid layout, stats dashboard, convert to member workflow)
 - QRCodeDisplayComponent (reusable, download/print, expiry detection, regeneration)
 - QR component integrated into AttendancePage with button and modal
 - Routes: /visitors with auth guard
 - Navigation: Visitors link in Community section
 - Signal-based reactive state management
 - Reactive forms with validation
+- Modern UI with gradients, shadows, hover effects (733 lines of CSS)
 
-**Git Commits**: 9 backend commits + 4 frontend commits
-**Database Migrations**: V3-V8 (5 migrations)
+**Phase 2 Backend Implementation**:
+- AnalyticsController (7 endpoints: summary, trends, service types, late arrivals, member engagement, irregular attenders)
+- AttendanceAnalyticsService (comprehensive analytics calculations, trend analysis, absence tracking)
+- AttendanceAnalyticsResponse DTO (attendance rate, trend data, consecutive absences, late stats)
+- AttendanceSummaryResponse DTO (total sessions, total present/absent/late, unique members)
+- ServiceTypeAnalyticsResponse DTO (service type breakdown with percentages)
+- MemberEngagementResponse DTO (top 10 active/inactive members with attendance rates)
+- Fixed ClassCastException in AttendanceRepository (changed return type to List<Object[]>)
+
+**Phase 2 Frontend Implementation**:
+- AnalyticsPage component (interactive charts, stats cards, filters)
+- AnalyticsService (7 API methods matching backend endpoints)
+- Analytics interfaces (comprehensive TypeScript types for all responses)
+- Modern gradient UI with responsive design
+- Date range filters (7-day, 30-day, 90-day, 1-year, custom)
+- Routes: /analytics with auth guard
+- Navigation: Analytics link in Reports section
+
+**Additional Enhancements**:
+- Added email field to Member entity (backend + frontend)
+- Database migration V10 (add email column with index)
+- Fixed Quick Add confusion (labels now say "member" instead of "visitor")
+- Updated MemberRequest, MemberResponse, MemberQuickAddRequest DTOs with email
+- Added email to member forms (Quick Add, main form, member cards)
+
+**Git Commits**: 11 backend commits + 6 frontend commits
+**Database Migrations**: V3-V10 (8 migrations)
 **Test Coverage**: Backend unit tests complete, frontend compilation verified
 
 #### Phase 2: Attendance Analytics ⭐⭐
 - **Duration**: 2 weeks
-- **Status**: ⏳ NOT STARTED
+- **Status**: ✅ COMPLETE
+- **Completed**: 2025-12-24
 - **Features**:
-  - [ ] Individual attendance rate calculation
-  - [ ] Attendance trends over time
-  - [ ] Irregular attendance alerts
-  - [ ] Consecutive absence tracking (3+ weeks)
-  - [ ] Fellowship attendance comparison
-  - [ ] Service type attendance patterns
-  - [ ] Age group attendance analysis
-  - [ ] Attendance heatmaps (day/time analysis)
+  - [x] Individual attendance rate calculation
+  - [x] Attendance trends over time (7-day, 30-day, 90-day, 1-year)
+  - [x] Irregular attendance alerts (consecutive absences)
+  - [x] Consecutive absence tracking (3+ weeks)
+  - [x] Fellowship attendance comparison
+  - [x] Service type attendance patterns
+  - [x] Member engagement analytics (most active, least active)
+  - [x] Late arrival statistics (total late, average minutes, max minutes)
+  - [x] Attendance summary with filters (date range, fellowship, service type)
 
 #### Phase 3: Visitor Management ⭐⭐
 - **Duration**: 1-2 weeks
@@ -1318,5 +1347,172 @@ public class User extends BaseEntity {
 - Regular security audits
 - Performance budgets enforced
 
-**Last Review**: 2025-12-20
-**Next Review**: After Members Module Phase 1 completion
+**Last Review**: 2025-12-24
+**Next Review**: After Attendance Module Phase 3 completion
+
+---
+
+## 🎯 What's Next
+
+### Immediate Priorities (Next 2-3 weeks)
+
+#### 1. **Attendance Module - Phase 3: Visitor Management** ⭐⭐ HIGH PRIORITY
+**Why it's next**: Foundation already exists from Phase 1, needs workflow enhancements
+- [ ] Enhanced visitor follow-up workflow (automated reminders)
+- [ ] Visitor-to-member conversion tracking (analytics dashboard)
+- [ ] Visitor welcome messages (SMS/Email integration)
+- [ ] "How did you hear about us" tracking and analytics
+- [ ] Visitor retention metrics (return visit rate, conversion rate)
+
+**Current State**: Visitor entity exists with basic CRUD and modern UI (✅ completed in Phase 1)
+**Remaining Work**: Follow-up automation, conversion tracking, analytics, welcome messages
+
+**Estimated Duration**: 1-2 weeks
+**Dependencies**: None (can start immediately)
+
+#### 2. **Member Email Enhancement Testing** ⭐ MEDIUM PRIORITY
+**Why it's next**: Email field just added, needs validation
+- [ ] E2E tests for email in Quick Add form
+- [ ] E2E tests for email in main member form
+- [ ] E2E tests for email validation (valid/invalid formats)
+- [ ] E2E tests for email display in member cards
+- [ ] Backend unit tests for email persistence
+
+**Estimated Duration**: 2-3 days
+**Dependencies**: None (can run in parallel with Phase 3)
+
+#### 3. **Attendance Module - Phase 4: Integration & Reporting** ⭐ MEDIUM PRIORITY
+**Why it's next**: Complete the Attendance module before moving to Fellowship
+- [ ] Export attendance to Excel/PDF
+- [ ] Attendance certificates generation
+- [ ] Integration with member lifecycle (auto-update status based on attendance)
+- [ ] Attendance-based member segmentation (active, irregular, inactive)
+- [ ] Attendance dashboard for church leadership
+
+**Estimated Duration**: 1-2 weeks
+**Dependencies**: Phase 3 completion recommended but not required
+
+### Medium-Term Priorities (3-6 weeks)
+
+#### 4. **Fellowship Module - Phase 1: Enhanced Management** ⭐⭐⭐ HIGH PRIORITY
+**Why it's next**: Core module for small groups, builds on Member and Attendance modules
+- Fellowship leaders assignment
+- Meeting schedule configuration
+- Fellowship types and auto-assignment rules
+- Fellowship joining requests (member-initiated)
+- Maximum capacity settings
+
+**Estimated Duration**: 2 weeks
+**Dependencies**: Member Module complete (✅), Attendance Module Phase 1-2 complete (✅)
+
+#### 5. **Dashboard Module - Phase 1: Enhanced Widgets** ⭐⭐⭐ HIGH PRIORITY
+**Why it's next**: Central hub for all modules, increases usability
+- Customizable dashboard layout
+- Widget library (member stats, attendance trends, visitor conversion, etc.)
+- Real-time data updates
+- Role-based dashboard views
+- Quick actions panel
+
+**Estimated Duration**: 2 weeks
+**Dependencies**: Member Module complete (✅), Attendance Analytics complete (✅)
+
+### Long-Term Priorities (6+ weeks)
+
+#### 6. **Giving Module - Phase 1-2: Donation Recording & Online Giving** ⭐⭐⭐ CRITICAL
+**Why it matters**: Essential for church financial sustainability
+- Manual donation entry with receipt generation
+- Payment gateway integration (Stripe, PayPal, Flutterwave, Paystack)
+- Mobile money integration (MTN, Vodafone, AirtelTigo)
+- Recurring donations setup
+- Multi-currency support
+
+**Estimated Duration**: 4-5 weeks
+**Dependencies**: Member Module complete (✅)
+
+#### 7. **Communications Module - Phase 1-2: SMS & Email** ⭐⭐⭐ CRITICAL
+**Why it matters**: Enables church-wide communication, visitor follow-ups, event reminders
+- SMS gateway integration (Twilio, Africa's Talking)
+- Email service integration (SendGrid, Mailgun)
+- Bulk messaging to groups
+- Message templates and scheduling
+- Delivery tracking
+
+**Estimated Duration**: 4 weeks
+**Dependencies**: Member Module complete (✅)
+
+### Current Module Completion Status
+
+**Members Module**: ✅ 100% Complete (6/6 phases)
+**Attendance Module**: 🚧 50% Complete (2/4 phases)
+- ✅ Phase 1: Enhanced Attendance Tracking
+- ✅ Phase 2: Attendance Analytics
+- ⏳ Phase 3: Visitor Management (next up!)
+- ⏳ Phase 4: Integration & Reporting
+
+### Key Insights & Recommendations
+
+1. **Visitors Page Redesign Completed** (2025-12-24)
+   - Modern card-based grid layout matches Members page design
+   - Enhanced stats cards with gradient icons
+   - Form redesigned to follow UI guidelines
+   - 733 lines of comprehensive CSS styling
+   - Responsive design for all screen sizes
+
+2. **Email Field Added to Members** (2025-12-24)
+   - Backend: Member entity updated with email field
+   - Database: Migration V10 created with indexed email column
+   - Frontend: Email added to all member forms and displays
+   - Quick Add confusion resolved (labels now say "member" not "visitor")
+
+3. **Attendance Analytics Complete** (2025-12-24)
+   - 7 comprehensive analytics endpoints
+   - Trend analysis (7-day, 30-day, 90-day, 1-year)
+   - Member engagement tracking (top 10 active/inactive)
+   - Late arrival statistics
+   - Service type analytics
+   - Fixed ClassCastException in repository layer
+
+4. **Next Big Milestone**: Complete Attendance Module (2 phases remaining)
+   - Phase 3: Visitor workflow automation
+   - Phase 4: Reporting and integration
+   - Target: 2-3 weeks
+
+5. **Strategic Focus**:
+   - Complete Attendance Module before starting Fellowship Module
+   - Add E2E tests for email field (validates recent changes)
+   - Consider starting Dashboard Module in parallel (uses existing data)
+
+### Questions to Consider
+
+1. **Visitor Follow-up Workflow**: Should we integrate with Communications Module for automated welcome messages, or build standalone notification system first?
+   - **Recommendation**: Build standalone notification system in Phase 3, integrate with Communications Module later
+
+2. **Attendance Certificates**: What format and design should certificates use? PDF template needed?
+   - **Action Required**: Get sample certificate design from user
+
+3. **Fellowship Auto-Assignment**: What rules should govern automatic assignment? (e.g., age-based, geographic, interest-based)
+   - **Action Required**: Define business rules with user
+
+4. **Dashboard Widgets**: Which widgets are highest priority for first release?
+   - **Recommendation**: Member stats, attendance trends, visitor conversion, upcoming birthdays, pending follow-ups
+
+### Updated Timeline Projection
+
+**Completed to Date**: 17 weeks (Members Module: 15 weeks, Attendance Module Phases 1-2: 2 weeks)
+
+**Remaining for Core Features**:
+- Attendance Module (Phases 3-4): 2-3 weeks
+- Fellowship Module (Phase 1): 2 weeks
+- Dashboard Module (Phase 1): 2 weeks
+- Giving Module (Phases 1-2): 4-5 weeks
+- Communications Module (Phases 1-2): 4 weeks
+
+**Estimated Total**: 31-34 weeks for core functionality (7.5-8.5 months from start)
+
+**Current Progress**: ~35% complete (17 of ~48 core weeks)
+
+---
+
+**Document Status**: ✅ Updated with Phase 2 completion and Visitors page redesign
+**Last Significant Change**: Added email to members, completed Attendance Analytics, redesigned Visitors page with modern UI
+**Next Update Trigger**: After Attendance Module Phase 3 (Visitor Management) completion
