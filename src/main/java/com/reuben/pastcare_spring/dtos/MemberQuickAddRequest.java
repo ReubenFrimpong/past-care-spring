@@ -28,6 +28,9 @@ public record MemberQuickAddRequest(
     @Unique(table = "member", column = "phone_number", message = "Phone number already exists")
     String phoneNumber,
 
+    @Pattern(regexp = "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$", message = "Email must be valid")
+    String email,
+
     @NotBlank(message = "Sex is required")
     @Pattern(regexp = "^(male|female|MALE|FEMALE)$", message = "Sex must be either 'male' or 'female'")
     String sex,

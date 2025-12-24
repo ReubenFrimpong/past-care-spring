@@ -158,3 +158,5 @@ Issues
    - **Option D**: Keep current with enhanced security (rate limiting, CAPTCHA)
    - Recommendation: Implement Option C (invite codes) as Phase 1, Option B (slugs) as Phase 2
    - See PORTAL_IMPROVEMENTS_ANALYSIS.md for detailed comparison and implementation plans
+11. Add email to members
+12. Clarify the quick add and the visitors add page

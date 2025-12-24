@@ -22,6 +22,7 @@ public class MemberMapper {
       member.getCountryCode(),
       member.getTimezone(),
       member.getPhoneNumber(),
+      member.getEmail(),
       member.getWhatsappNumber(),
       member.getOtherPhoneNumber(),
       LocationMapper.toLocationResponse(member.getLocation()),

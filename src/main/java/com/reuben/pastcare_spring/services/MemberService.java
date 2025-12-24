@@ -158,6 +158,7 @@ public class MemberService {
     member.setCountryCode(memberRequest.countryCode() != null ? memberRequest.countryCode() : "GH"); // Default to Ghana
     member.setTimezone(memberRequest.timezone() != null ? memberRequest.timezone() : "Africa/Accra"); // Default to Ghana timezone
     member.setPhoneNumber(memberRequest.phoneNumber());
+    member.setEmail(memberRequest.email());
     member.setWhatsappNumber(memberRequest.whatsappNumber());
     member.setOtherPhoneNumber(memberRequest.otherPhoneNumber());
 
@@ -218,6 +219,7 @@ public class MemberService {
     member.setCountryCode(memberRequest.countryCode() != null ? memberRequest.countryCode() : "GH"); // Default to Ghana
     member.setTimezone(memberRequest.timezone() != null ? memberRequest.timezone() : "Africa/Accra"); // Default to Ghana timezone
     member.setPhoneNumber(memberRequest.phoneNumber());
+    member.setEmail(memberRequest.email());
     member.setWhatsappNumber(memberRequest.whatsappNumber());
     member.setOtherPhoneNumber(memberRequest.otherPhoneNumber());
 
@@ -305,6 +307,7 @@ public class MemberService {
     member.setFirstName(request.firstName());
     member.setLastName(request.lastName());
     member.setPhoneNumber(request.phoneNumber());
+    member.setEmail(request.email());
     member.setSex(request.sex());
     member.setChurch(church);
 

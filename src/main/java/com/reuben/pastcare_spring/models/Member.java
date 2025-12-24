@@ -57,6 +57,9 @@ public class Member extends TenantBaseEntity {
   @Column(unique = true, nullable = false)
   private String phoneNumber;
 
+  @Column(length = 100)
+  private String email;
+
   private String whatsappNumber;
 
   private String otherPhoneNumber;

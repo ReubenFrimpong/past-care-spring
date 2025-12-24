@@ -34,6 +34,8 @@ public record MemberResponse(
 
   String phoneNumber,
 
+  String email,
+
   String whatsappNumber,
 
   String otherPhoneNumber,

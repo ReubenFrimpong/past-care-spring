@@ -1,5 +1,6 @@
 package com.reuben.pastcare_spring.services;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -372,12 +373,12 @@ public class CheckInService {
       visitor.setEmail(email);
       visitor.setIsFirstTime(true);
       visitor.setVisitCount(1);
-      visitor.setLastVisitDate(LocalDateTime.now());
+      visitor.setLastVisitDate(LocalDate.now());
       visitor = visitorRepository.save(visitor);
     } else {
       // Update existing visitor
       visitor.setVisitCount(visitor.getVisitCount() + 1);
-      visitor.setLastVisitDate(LocalDateTime.now());
+      visitor.setLastVisitDate(LocalDate.now());
       if (visitor.getVisitCount() > 1) {
         visitor.setIsFirstTime(false);
       }
@@ -406,11 +407,16 @@ public class CheckInService {
 
     return new CheckInResponse(
         response.attendanceId(),
+        response.sessionId(),
         response.sessionName(),
+        null, // memberId
+        null, // memberName
+        visitor.getId(),
         firstName + " " + lastName,
+        response.checkInMethod(),
         response.checkInTime(),
-        response.status(),
         response.isLate(),
+        response.minutesLate(),
         welcomeMessage
     );
   }
