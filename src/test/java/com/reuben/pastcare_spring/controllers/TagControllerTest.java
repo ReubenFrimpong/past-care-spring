@@ -48,12 +48,35 @@ class TagControllerTest {
     @BeforeEach
     void setUp() {
         memberResponse = new MemberResponse(
-                1L, "John", null, "Doe", "Mr", "Male", null, null,
-                null, "GH", "Africa/Accra", "+233241111111", null, null,
-                null, null, "single", null, null, null,  // added spouseId (null)
-                null, null, null, null, true,
-                MemberStatus.MEMBER, 75, new HashSet<>(Arrays.asList("youth", "choir")),
-                null, null // parents, children
+                1L,                    // id
+                "John",                // firstName
+                null,                  // otherName
+                "Doe",                 // lastName
+                "Mr",                  // title
+                "Male",                // sex
+                null,                  // church
+                null,                  // fellowships
+                null,                  // dob
+                "GH",                  // countryCode
+                "Africa/Accra",        // timezone
+                "+233241111111",       // phoneNumber
+                null,                  // whatsappNumber
+                null,                  // otherPhoneNumber
+                null,                  // location
+                null,                  // profileImageUrl
+                "single",              // maritalStatus
+                null,                  // spouseId
+                null,                  // occupation
+                null,                  // memberSince
+                null,                  // emergencyContactName
+                null,                  // emergencyContactNumber
+                null,                  // notes
+                true,                  // isVerified
+                MemberStatus.MEMBER,   // status
+                75,                    // profileCompleteness
+                new HashSet<>(Arrays.asList("youth", "choir")), // tags
+                null,                  // parents
+                null                   // children
         );
 
         when(requestContextUtil.extractChurchId(any())).thenReturn(1L);

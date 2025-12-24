@@ -152,7 +152,6 @@ class MemberTimezoneTest {
             null, // nominatimAddress
             null, // profileImageUrl
             "single", // maritalStatus
-            null, // spouseName
             null, // spouseId
             null, // occupation
             null, // memberSince
