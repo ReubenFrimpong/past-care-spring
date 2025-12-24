@@ -20,6 +20,7 @@ import com.reuben.pastcare_spring.dtos.AttendanceResponse;
 import com.reuben.pastcare_spring.dtos.AttendanceSessionRequest;
 import com.reuben.pastcare_spring.dtos.AttendanceSessionResponse;
 import com.reuben.pastcare_spring.dtos.BulkAttendanceRequest;
+import com.reuben.pastcare_spring.dtos.QRCodeResponse;
 import com.reuben.pastcare_spring.services.AttendanceService;
 
 import jakarta.validation.Valid;
@@ -79,6 +80,11 @@ public class AttendanceController {
   @PutMapping("/sessions/{id}/complete")
   public ResponseEntity<AttendanceSessionResponse> completeAttendanceSession(@PathVariable Long id) {
     return ResponseEntity.ok(attendanceService.completeAttendanceSession(id));
+  }
+
+  @PostMapping("/sessions/{id}/qr-code")
+  public ResponseEntity<QRCodeResponse> generateQRCode(@PathVariable Long id) {
+    return ResponseEntity.ok(attendanceService.generateQRCodeForSession(id));
   }
 
   @DeleteMapping("/sessions/{id}")

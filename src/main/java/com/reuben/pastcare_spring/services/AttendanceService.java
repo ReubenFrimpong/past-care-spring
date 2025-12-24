@@ -1,6 +1,7 @@
 package com.reuben.pastcare_spring.services;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -12,6 +13,7 @@ import com.reuben.pastcare_spring.dtos.AttendanceResponse;
 import com.reuben.pastcare_spring.dtos.AttendanceSessionRequest;
 import com.reuben.pastcare_spring.dtos.AttendanceSessionResponse;
 import com.reuben.pastcare_spring.dtos.BulkAttendanceRequest;
+import com.reuben.pastcare_spring.dtos.QRCodeResponse;
 import com.reuben.pastcare_spring.mapper.AttendanceMapper;
 import com.reuben.pastcare_spring.mapper.AttendanceSessionMapper;
 import com.reuben.pastcare_spring.models.Attendance;
@@ -33,18 +35,21 @@ public class AttendanceService {
   private final ChurchRepository churchRepository;
   private final FellowshipRepository fellowshipRepository;
   private final MemberRepository memberRepository;
+  private final QRCodeService qrCodeService;
 
   public AttendanceService(
       AttendanceSessionRepository attendanceSessionRepository,
       AttendanceRepository attendanceRepository,
       ChurchRepository churchRepository,
       FellowshipRepository fellowshipRepository,
-      MemberRepository memberRepository) {
+      MemberRepository memberRepository,
+      QRCodeService qrCodeService) {
     this.attendanceSessionRepository = attendanceSessionRepository;
     this.attendanceRepository = attendanceRepository;
     this.churchRepository = churchRepository;
     this.fellowshipRepository = fellowshipRepository;
     this.memberRepository = memberRepository;
+    this.qrCodeService = qrCodeService;
   }
 
   @Transactional
@@ -180,5 +185,42 @@ public class AttendanceService {
     session.setIsCompleted(true);
     AttendanceSession updatedSession = attendanceSessionRepository.save(session);
     return AttendanceSessionMapper.toAttendanceSessionResponse(updatedSession, true);
+  }
+
+  /**
+   * Generate QR code for an attendance session.
+   * Phase 1: Enhanced Attendance Tracking
+   *
+   * @param sessionId The attendance session ID
+   * @return QRCodeResponse with QR code data and image
+   */
+  @Transactional
+  public QRCodeResponse generateQRCodeForSession(Long sessionId) {
+    AttendanceSession session = attendanceSessionRepository.findById(sessionId)
+        .orElseThrow(() -> new IllegalArgumentException("Attendance session not found with id: " + sessionId));
+
+    // Generate encrypted QR code data
+    String qrCodeData = qrCodeService.generateQRCodeData(sessionId);
+
+    // Generate QR code image as Base64
+    String qrCodeImage = qrCodeService.generateQRCodeImage(qrCodeData);
+
+    // Set expiry time (24 hours from now by default)
+    LocalDateTime expiresAt = LocalDateTime.now().plusHours(24);
+
+    // Save QR code data to session
+    session.setQrCodeData(qrCodeData);
+    session.setQrCodeUrl(qrCodeImage);
+    session.setQrCodeExpiresAt(expiresAt);
+    attendanceSessionRepository.save(session);
+
+    return new QRCodeResponse(
+        sessionId,
+        session.getSessionName(),
+        qrCodeData,
+        qrCodeImage,
+        expiresAt,
+        "QR code generated successfully"
+    );
   }
 }
