@@ -1,6 +1,7 @@
 package com.reuben.pastcare_spring.controllers;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -74,5 +75,45 @@ public class CheckInController {
       @RequestParam double longitude,
       @RequestParam(required = false) Integer maxDistanceMeters) {
     return ResponseEntity.ok(checkInService.findNearbySessions(latitude, longitude, maxDistanceMeters));
+  }
+
+  /**
+   * Check in a member using their phone number.
+   * This endpoint looks up the member by phone number and performs check-in.
+   * Used primarily for QR code check-in flow.
+   *
+   * @param request Map containing sessionId, phoneNumber, checkInMethod, qrCodeData, deviceInfo
+   * @return CheckInResponse with attendance details
+   */
+  @PostMapping("/by-phone")
+  public ResponseEntity<CheckInResponse> checkInByPhone(@RequestBody Map<String, Object> request) {
+    Long sessionId = ((Number) request.get("sessionId")).longValue();
+    String phoneNumber = (String) request.get("phoneNumber");
+    String qrCodeData = (String) request.get("qrCodeData");
+    String deviceInfo = (String) request.get("deviceInfo");
+
+    return ResponseEntity.ok(checkInService.checkInByPhone(sessionId, phoneNumber, qrCodeData, deviceInfo));
+  }
+
+  /**
+   * Check in a visitor (creates visitor record if needed and marks attendance).
+   * Used for QR code check-in flow when user selects "I'm a Visitor".
+   *
+   * @param request Map containing sessionId, firstName, lastName, phoneNumber, email, qrCodeData, deviceInfo
+   * @return CheckInResponse with attendance details
+   */
+  @PostMapping("/visitor")
+  public ResponseEntity<CheckInResponse> checkInVisitor(@RequestBody Map<String, Object> request) {
+    Long sessionId = ((Number) request.get("sessionId")).longValue();
+    String firstName = (String) request.get("firstName");
+    String lastName = (String) request.get("lastName");
+    String phoneNumber = (String) request.get("phoneNumber");
+    String email = (String) request.get("email");
+    String qrCodeData = (String) request.get("qrCodeData");
+    String deviceInfo = (String) request.get("deviceInfo");
+
+    return ResponseEntity.ok(
+        checkInService.checkInVisitor(sessionId, firstName, lastName, phoneNumber, email, qrCodeData, deviceInfo)
+    );
   }
 }

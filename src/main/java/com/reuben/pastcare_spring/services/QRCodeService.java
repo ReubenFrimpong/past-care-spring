@@ -40,6 +40,9 @@ public class QRCodeService {
     @Value("${qrcode.default.expiry.hours:24}")
     private int defaultExpiryHours;
 
+    @Value("${app.frontend.url:http://localhost:4200}")
+    private String frontendUrl;
+
     private static final String ALGORITHM = "AES";
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
@@ -161,6 +164,30 @@ public class QRCodeService {
      */
     public String generateQRCodeImage(String qrCodeData) {
         return generateQRCodeImage(qrCodeData, 300, 300);
+    }
+
+    /**
+     * Generate check-in URL for QR code.
+     * The URL points to the frontend check-in page with encrypted session data.
+     *
+     * @param sessionId The attendance session ID
+     * @return Full check-in URL
+     */
+    public String generateCheckInUrl(Long sessionId) {
+        String encryptedData = generateQRCodeData(sessionId);
+        return frontendUrl + "/check-in?qr=" + encryptedData;
+    }
+
+    /**
+     * Generate check-in URL with custom expiry.
+     *
+     * @param sessionId The attendance session ID
+     * @param expiryDateTime Custom expiry date and time
+     * @return Full check-in URL
+     */
+    public String generateCheckInUrl(Long sessionId, LocalDateTime expiryDateTime) {
+        String encryptedData = generateQRCodeData(sessionId, expiryDateTime);
+        return frontendUrl + "/check-in?qr=" + encryptedData;
     }
 
     /**

@@ -199,11 +199,14 @@ public class AttendanceService {
     AttendanceSession session = attendanceSessionRepository.findById(sessionId)
         .orElseThrow(() -> new IllegalArgumentException("Attendance session not found with id: " + sessionId));
 
-    // Generate encrypted QR code data
-    String qrCodeData = qrCodeService.generateQRCodeData(sessionId);
+    // Generate check-in URL with encrypted session data
+    String checkInUrl = qrCodeService.generateCheckInUrl(sessionId);
 
-    // Generate QR code image as Base64
-    String qrCodeImage = qrCodeService.generateQRCodeImage(qrCodeData);
+    // Generate QR code image containing the check-in URL
+    String qrCodeImage = qrCodeService.generateQRCodeImage(checkInUrl);
+
+    // Keep the encrypted data for validation (without URL wrapper)
+    String qrCodeData = qrCodeService.generateQRCodeData(sessionId);
 
     // Set expiry time (24 hours from now by default)
     LocalDateTime expiresAt = LocalDateTime.now().plusHours(24);
@@ -220,7 +223,7 @@ public class AttendanceService {
         qrCodeData,
         qrCodeImage,
         expiresAt,
-        "QR code generated successfully"
+        "QR code generated successfully. Scan to check in at: " + checkInUrl
     );
   }
 }

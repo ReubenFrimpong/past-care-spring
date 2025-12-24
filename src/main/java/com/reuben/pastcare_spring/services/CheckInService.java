@@ -301,4 +301,117 @@ public class CheckInService {
 
     return message.toString();
   }
+
+  /**
+   * Check in a member using their phone number.
+   * This method looks up the member by phone and performs QR code check-in.
+   *
+   * @param sessionId The attendance session ID
+   * @param phoneNumber The member's phone number
+   * @param qrCodeData The QR code data for validation
+   * @param deviceInfo Device information
+   * @return CheckInResponse with attendance details
+   */
+  @Transactional
+  public CheckInResponse checkInByPhone(Long sessionId, String phoneNumber, String qrCodeData, String deviceInfo) {
+    // Find member by phone number
+    Member member = memberRepository.findByPhoneNumber(phoneNumber)
+        .orElseThrow(() -> new IllegalArgumentException(
+            "No member found with phone number: " + phoneNumber +
+            ". Please check your number or see the registration desk."
+        ));
+
+    // Create check-in request
+    CheckInRequest request = new CheckInRequest(
+        sessionId,
+        member.getId(),
+        null, // visitorId
+        CheckInMethod.QR_CODE,
+        qrCodeData,
+        null, // latitude
+        null, // longitude
+        deviceInfo
+    );
+
+    // Perform check-in
+    return checkIn(request);
+  }
+
+  /**
+   * Check in a visitor (creates visitor record if needed and marks attendance).
+   *
+   * @param sessionId The attendance session ID
+   * @param firstName Visitor's first name
+   * @param lastName Visitor's last name
+   * @param phoneNumber Visitor's phone number
+   * @param email Visitor's email (optional)
+   * @param qrCodeData The QR code data for validation
+   * @param deviceInfo Device information
+   * @return CheckInResponse with attendance details
+   */
+  @Transactional
+  public CheckInResponse checkInVisitor(
+      Long sessionId,
+      String firstName,
+      String lastName,
+      String phoneNumber,
+      String email,
+      String qrCodeData,
+      String deviceInfo
+  ) {
+    // Check if visitor already exists by phone number
+    Visitor visitor = visitorRepository.findByPhoneNumber(phoneNumber)
+        .orElse(null);
+
+    if (visitor == null) {
+      // Create new visitor
+      visitor = new Visitor();
+      visitor.setFirstName(firstName);
+      visitor.setLastName(lastName);
+      visitor.setPhoneNumber(phoneNumber);
+      visitor.setEmail(email);
+      visitor.setIsFirstTime(true);
+      visitor.setVisitCount(1);
+      visitor.setLastVisitDate(LocalDateTime.now());
+      visitor = visitorRepository.save(visitor);
+    } else {
+      // Update existing visitor
+      visitor.setVisitCount(visitor.getVisitCount() + 1);
+      visitor.setLastVisitDate(LocalDateTime.now());
+      if (visitor.getVisitCount() > 1) {
+        visitor.setIsFirstTime(false);
+      }
+      visitor = visitorRepository.save(visitor);
+    }
+
+    // Create check-in request for visitor
+    CheckInRequest request = new CheckInRequest(
+        sessionId,
+        null, // memberId
+        visitor.getId(),
+        CheckInMethod.QR_CODE,
+        qrCodeData,
+        null, // latitude
+        null, // longitude
+        deviceInfo
+    );
+
+    // Perform check-in
+    CheckInResponse response = checkIn(request);
+
+    // Update message to be more welcoming for visitors
+    String welcomeMessage = visitor.getIsFirstTime()
+        ? "Welcome! Thank you for visiting us for the first time. You're checked in!"
+        : "Welcome back! Great to see you again. You're checked in!";
+
+    return new CheckInResponse(
+        response.attendanceId(),
+        response.sessionName(),
+        firstName + " " + lastName,
+        response.checkInTime(),
+        response.status(),
+        response.isLate(),
+        welcomeMessage
+    );
+  }
 }
