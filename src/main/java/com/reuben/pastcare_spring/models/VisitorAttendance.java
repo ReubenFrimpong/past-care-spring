@@ -2,7 +2,6 @@ package com.reuben.pastcare_spring.models;
 
 import java.time.LocalDateTime;
 
-import com.reuben.pastcare_spring.enums.AttendanceStatus;
 import com.reuben.pastcare_spring.enums.CheckInMethod;
 
 import jakarta.persistence.Column;
@@ -11,40 +10,34 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
- * Attendance record for a member in a specific session.
+ * VisitorAttendance entity for tracking visitor attendance at sessions.
+ * Links visitors to attendance sessions with check-in details.
  *
- * Multi-Tenancy: This entity is tenant-scoped through its relationships:
- * - Member (extends TenantBaseEntity with church_id)
- * - AttendanceSession (extends TenantBaseEntity with church_id)
+ * Phase 1: Enhanced Attendance Tracking - Visitor Management
  *
- * No explicit church_id needed as it's inherited from the relationships.
- * Queries are automatically scoped by the member's or session's church.
+ * Multi-Tenancy: Tenant-scoped through relationships with Visitor and AttendanceSession.
  */
 @EqualsAndHashCode(callSuper = true)
 @Entity
 @Data
-public class Attendance extends BaseEntity {
+@Table(uniqueConstraints = {
+  @UniqueConstraint(columnNames = {"visitor_id", "attendance_session_id"})
+})
+public class VisitorAttendance extends BaseEntity {
 
   @ManyToOne
-  @JoinColumn(name = "member_id", nullable = false)
-  private Member member;
+  @JoinColumn(name = "visitor_id", nullable = false)
+  private Visitor visitor;
 
   @ManyToOne
   @JoinColumn(name = "attendance_session_id", nullable = false)
   private AttendanceSession attendanceSession;
-
-  @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
-  private AttendanceStatus status;
-
-  @Column(columnDefinition = "TEXT")
-  private String remarks;
-
-  // Phase 1: Enhanced Attendance Tracking fields
 
   @Enumerated(EnumType.STRING)
   @Column(nullable = false, length = 30)
@@ -64,4 +57,7 @@ public class Attendance extends BaseEntity {
 
   @Column(length = 200)
   private String deviceInfo;
+
+  @Column(columnDefinition = "TEXT")
+  private String remarks;
 }
