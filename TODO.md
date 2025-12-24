@@ -103,3 +103,58 @@ TEST CASES
 3. One user does not see the data that is outside their access
 
 # Write a comprehensive test for the members page. Cover all edge cases and user scenarios. Assert the presence of all form inputs and assert persistence
+
+Issues
+1. ✅ A married person should not be forced to link their spouse because it's possible the couple do not attend the same church - FIXED: Spouse name and spouse linking are now optional for married members
+2. ✅ Lifecycle events, communication logs, confidential-notes missing api endpoints and backend logic - FIXED:
+   - **Lifecycle Events**: Backend 100% COMPLETE (added LifecycleEventController)
+   - **Communication Logs**: Backend 100% COMPLETE (added CommunicationLogService & CommunicationLogController)
+   - **Confidential Notes**: Backend 100% COMPLETE (added ConfidentialNoteService & ConfidentialNoteController)
+   - **Prevention**: Created IMPLEMENTATION_CHECKLIST.md to prevent this from happening again
+3. ✅ Bulk update form inputs are boring and unintuitive - FIXED: Complete redesign with modern UI:
+   - Replaced basic checkboxes with p-inputSwitch toggles
+   - Replaced dropdowns with p-select and p-selectButton
+   - Added p-chips for intuitive tag input
+   - Card-based layout with active states
+   - Visual feedback with icons and animations
+   - Contextual help messages
+   - Disabled submit button until fields are selected
+4. No feedback when uploading profile picture
+5. ✅ Inconsistent form design used for lifecyle events, communication logs, confidential information, portal login, portal registration - FIXED:
+   - **Lifecycle Events, Communication Logs, Confidential Notes**: All standardized to match member-form design
+   - **Portal Login**: Replaced PrimeNG components with native inputs + .form-control
+   - **Portal Registration**: Replaced all PrimeNG form components with standardized inputs
+   - Removed embedded forms from member edit form, created tabbed member-detail-page
+   - All forms now use: app-autocomplete, native inputs with .form-control, .form-row/.form-group layout
+   - Documentation: FORM_STANDARDIZATION_COMPLETE.md, FORM_STANDARDIZATION_REAL_SOLUTION.md
+6. Why does this api get called twice http://localhost:8080/api/members/tags on page member-page load
+7. ✅ Ministries page and Skills page UI looks boring. Ministries page currently is not usuable as it get stuck with a scrolling dialog meanwhile search on skills page isn't functional as well - FIXED:
+   - **Ministries Page**: Fixed scrolling dialog with contentStyle max-height and overflow-y
+   - **Ministries Page**: Fixed search functionality with #dt table reference and filterTable() method
+   - **Ministries Page Forms**: Standardized all forms to use app-autocomplete, app-multiselect, native inputs with .form-control
+   - **Skills Page**: Fixed search functionality with #dt table reference and filterTable() method
+   - **Skills Page Forms**: Standardized all forms to use app-autocomplete, native inputs with .form-control
+   - **UI Improvements**: Enhanced page headers (larger font), improved search input styling with icon positioning
+   - **Consistency**: Both pages now match member-form design system using global src/styles.css
+   - All PrimeNG form components removed (p-select, p-inputText, p-textarea replaced)
+   - Proper AutocompleteOption and MultiSelectOption conversions for dropdowns
+   - TypeScript compilation: SUCCESS (no errors)
+   - Frontend build: SUCCESS (only bundle size warnings, not critical)
+8. Portal registration address input must be the location selector - DECISION NEEDED
+   - Analysis completed in PORTAL_IMPROVEMENTS_ANALYSIS.md
+   - **Option A**: Extract location selector into reusable component (complex, better UX consistency)
+   - **Option B**: Keep simple text input for portal (recommended - simpler UX for self-registration)
+   - Recommendation: Keep simple text input, admin can enhance location later
+9. ✅ Admin side nav should be hidden on all portal related urls - FIXED:
+   - Added `isPortalRoute` property to side-nav-component
+   - Added `checkIfPortalRoute()` method checking if URL starts with `/portal`
+   - Updated template condition: `@if (isAuthenticated && !isPortalRoute)`
+   - Side nav now hidden on `/portal/login`, `/portal/register`, `/portal/home`, etc.
+10. How is the church being determined for a user registering via the portal? Church UUID implementation - DECISION NEEDED
+   - Analysis completed in PORTAL_IMPROVEMENTS_ANALYSIS.md
+   - **Option A**: Full UUID implementation (most secure, high effort)
+   - **Option B**: Church slug system (balanced - secure + user-friendly)
+   - **Option C**: Invitation code system (recommended - quick, secure, simple)
+   - **Option D**: Keep current with enhanced security (rate limiting, CAPTCHA)
+   - Recommendation: Implement Option C (invite codes) as Phase 1, Option B (slugs) as Phase 2
+   - See PORTAL_IMPROVEMENTS_ANALYSIS.md for detailed comparison and implementation plans
