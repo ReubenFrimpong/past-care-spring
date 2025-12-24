@@ -54,10 +54,8 @@ public class AttendanceSession extends TenantBaseEntity {
 
   private LocalDateTime qrCodeExpiresAt;
 
-  @Column(precision = 10, scale = 8)
   private Double geofenceLatitude;
 
-  @Column(precision = 11, scale = 8)
   private Double geofenceLongitude;
 
   private Integer geofenceRadiusMeters = 100;

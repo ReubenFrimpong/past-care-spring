@@ -49,10 +49,8 @@ public class VisitorAttendance extends BaseEntity {
 
   private Integer minutesLate;
 
-  @Column(precision = 10, scale = 8)
   private Double checkInLocationLat;
 
-  @Column(precision = 11, scale = 8)
   private Double checkInLocationLong;
 
   @Column(length = 200)
