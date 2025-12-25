@@ -5,8 +5,6 @@ import java.time.YearMonth;
 import java.util.List;
 import java.util.Set;
 
-import com.reuben.pastcare_spring.models.Church;
-import com.reuben.pastcare_spring.models.Fellowship;
 import com.reuben.pastcare_spring.models.MemberStatus;
 
 public record MemberResponse(
@@ -22,9 +20,11 @@ public record MemberResponse(
 
   String sex,
 
-  Church church,
+  Long churchId,
 
-  List<Fellowship> fellowships,
+  String churchName,
+
+  List<FellowshipSummary> fellowships,
 
   LocalDate dob,
 
@@ -90,4 +90,9 @@ public record MemberResponse(
    * Simplified child information to include in member response.
    */
   public record ChildInfo(Long id, String fullName) {}
+
+  /**
+   * Simplified fellowship information to avoid circular references.
+   */
+  public record FellowshipSummary(Long id, String name) {}
 }

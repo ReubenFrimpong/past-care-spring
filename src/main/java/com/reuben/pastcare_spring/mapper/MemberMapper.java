@@ -16,8 +16,14 @@ public class MemberMapper {
       member.getLastName(),
       member.getTitle(),
       member.getSex(),
-      member.getChurch(),
-      member.getFellowships(),
+      member.getChurch() != null ? member.getChurch().getId() : null,
+      member.getChurch() != null ? member.getChurch().getName() : null,
+      member.getFellowships() != null ? member.getFellowships().stream()
+        .map(fellowship -> new MemberResponse.FellowshipSummary(
+          fellowship.getId(),
+          fellowship.getName()
+        ))
+        .collect(Collectors.toList()) : null,
       member.getDob(),
       member.getCountryCode(),
       member.getTimezone(),
