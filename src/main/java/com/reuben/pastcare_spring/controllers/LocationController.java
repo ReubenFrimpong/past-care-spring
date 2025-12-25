@@ -1,12 +1,20 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.models.Location;
+import com.reuben.pastcare_spring.services.LocationService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/location")
 public class LocationController {
+
+    @Autowired
+    private LocationService locationService;
 
     private final RestTemplate restTemplate = new RestTemplate();
     private static final String NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
@@ -46,6 +54,41 @@ public class LocationController {
                 .body(new ErrorResponse("Failed to search location: " + e.getMessage()));
         }
     }
+
+    /**
+     * Create or get existing location from Nominatim data
+     * This endpoint ensures locations are deduplicated by coordinates
+     */
+    @PostMapping("/create-from-nominatim")
+    public ResponseEntity<?> createLocationFromNominatim(@RequestBody NominatimLocationRequest request) {
+        try {
+            Location location = locationService.getOrCreateLocation(
+                request.coordinates(),
+                request.address()
+            );
+            return ResponseEntity.ok(new LocationResponse(
+                location.getId(),
+                location.getCoordinates(),
+                location.getDisplayName(),
+                location.getFullAddress()
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                .body(new ErrorResponse("Failed to create location: " + e.getMessage()));
+        }
+    }
+
+    private record NominatimLocationRequest(
+        String coordinates,
+        Map<String, Object> address
+    ) {}
+
+    private record LocationResponse(
+        Long id,
+        String coordinates,
+        String displayName,
+        String fullAddress
+    ) {}
 
     private record ErrorResponse(String message) {}
 }

@@ -70,4 +70,25 @@ public interface AttendanceSessionRepository extends JpaRepository<AttendanceSes
   List<Object[]> countSessionsByCompletionStatus(@Param("churchId") Long churchId,
                                                   @Param("startDate") LocalDate startDate,
                                                   @Param("endDate") LocalDate endDate);
+
+  // Phase 4: Export and Integration Queries
+
+  /**
+   * Count sessions by church and date range
+   */
+  @Query("SELECT COUNT(s) FROM AttendanceSession s " +
+         "WHERE s.church.id = :churchId " +
+         "AND s.sessionDate BETWEEN :startDate AND :endDate")
+  Long countByChurchIdAndSessionDateBetween(@Param("churchId") Long churchId,
+                                             @Param("startDate") LocalDate startDate,
+                                             @Param("endDate") LocalDate endDate);
+
+  /**
+   * Find sessions by church and date range, ordered by date descending
+   */
+  List<AttendanceSession> findByChurch_IdAndSessionDateBetweenOrderBySessionDateDesc(
+    Long churchId,
+    LocalDate startDate,
+    LocalDate endDate
+  );
 }

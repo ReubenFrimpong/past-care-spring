@@ -109,6 +109,108 @@ public class DashboardController {
     return ResponseEntity.ok(locationStats);
   }
 
+  // Dashboard Phase 1: Enhanced Widgets
+
+  /**
+   * Get members with birthdays this week.
+   *
+   * @return List of members celebrating birthdays this week
+   */
+  @GetMapping("/birthdays")
+  @PreAuthorize("isAuthenticated()")
+  @Operation(summary = "Get birthdays this week", description = "Returns members with birthdays this week")
+  public ResponseEntity<List<BirthdayResponse>> getBirthdaysThisWeek(HttpServletRequest request) {
+    Long userId = extractUserIdFromRequest(request);
+    List<BirthdayResponse> birthdays = dashboardService.getBirthdaysThisWeek(userId);
+    return ResponseEntity.ok(birthdays);
+  }
+
+  /**
+   * Get members with membership anniversaries this month.
+   *
+   * @return List of members celebrating membership anniversaries
+   */
+  @GetMapping("/anniversaries")
+  @PreAuthorize("isAuthenticated()")
+  @Operation(summary = "Get anniversaries this month", description = "Returns members with membership anniversaries this month")
+  public ResponseEntity<List<AnniversaryResponse>> getAnniversariesThisMonth(HttpServletRequest request) {
+    Long userId = extractUserIdFromRequest(request);
+    List<AnniversaryResponse> anniversaries = dashboardService.getAnniversariesThisMonth(userId);
+    return ResponseEntity.ok(anniversaries);
+  }
+
+  /**
+   * Get irregular attenders (members absent 3+ weeks).
+   *
+   * @return List of members requiring follow-up due to irregular attendance
+   */
+  @GetMapping("/irregular-attenders")
+  @PreAuthorize("isAuthenticated()")
+  @Operation(summary = "Get irregular attenders", description = "Returns members who haven't attended in 3+ weeks")
+  public ResponseEntity<List<IrregularAttenderResponse>> getIrregularAttenders(HttpServletRequest request) {
+    Long userId = extractUserIdFromRequest(request);
+    List<IrregularAttenderResponse> irregularAttenders = dashboardService.getIrregularAttenders(userId);
+    return ResponseEntity.ok(irregularAttenders);
+  }
+
+  /**
+   * Get member growth trend (last 6 months).
+   *
+   * @return Monthly member growth data
+   */
+  @GetMapping("/member-growth")
+  @PreAuthorize("isAuthenticated()")
+  @Operation(summary = "Get member growth trend", description = "Returns member growth data for the last 6 months")
+  public ResponseEntity<List<MemberGrowthResponse>> getMemberGrowthTrend(HttpServletRequest request) {
+    Long userId = extractUserIdFromRequest(request);
+    List<MemberGrowthResponse> growthTrend = dashboardService.getMemberGrowthTrend(userId);
+    return ResponseEntity.ok(growthTrend);
+  }
+
+  // Dashboard Phase 1: Additional Widgets
+
+  /**
+   * Get attendance summary for this month.
+   *
+   * @return Attendance summary with key metrics
+   */
+  @GetMapping("/attendance-summary")
+  @PreAuthorize("isAuthenticated()")
+  @Operation(summary = "Get attendance summary", description = "Returns attendance summary for current month")
+  public ResponseEntity<AttendanceSummaryResponse> getAttendanceSummary(HttpServletRequest request) {
+    Long userId = extractUserIdFromRequest(request);
+    AttendanceSummaryResponse summary = dashboardService.getAttendanceSummaryThisMonth(userId);
+    return ResponseEntity.ok(summary);
+  }
+
+  /**
+   * Get service type analytics (last 30 days).
+   *
+   * @return List of service type analytics
+   */
+  @GetMapping("/service-analytics")
+  @PreAuthorize("isAuthenticated()")
+  @Operation(summary = "Get service type analytics", description = "Returns service type breakdown for last 30 days")
+  public ResponseEntity<List<ServiceTypeAnalyticsResponse>> getServiceAnalytics(HttpServletRequest request) {
+    Long userId = extractUserIdFromRequest(request);
+    List<ServiceTypeAnalyticsResponse> analytics = dashboardService.getServiceTypeAnalytics(userId);
+    return ResponseEntity.ok(analytics);
+  }
+
+  /**
+   * Get top active members (last 90 days).
+   *
+   * @return List of top 10 most active members
+   */
+  @GetMapping("/top-active-members")
+  @PreAuthorize("isAuthenticated()")
+  @Operation(summary = "Get top active members", description = "Returns top 10 most active members based on attendance")
+  public ResponseEntity<List<MemberEngagementResponse>> getTopActiveMembers(HttpServletRequest request) {
+    Long userId = extractUserIdFromRequest(request);
+    List<MemberEngagementResponse> topMembers = dashboardService.getTopActiveMembers(userId);
+    return ResponseEntity.ok(topMembers);
+  }
+
   /**
    * Extract user ID from JWT token in request.
    * Checks both Authorization header and cookies.

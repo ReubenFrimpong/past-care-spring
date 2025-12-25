@@ -146,4 +146,42 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
          "GROUP BY m.id, a.checkInMethod " +
          "ORDER BY COUNT(a) DESC")
   List<Object[]> getMemberPreferredCheckInMethods(@Param("churchId") Long churchId);
+
+  // Phase 4: Export and Integration Queries
+
+  /**
+   * Find all attendance records for a session
+   */
+  List<Attendance> findByAttendanceSession(com.reuben.pastcare_spring.models.AttendanceSession session);
+
+  /**
+   * Find attendance by session and member
+   */
+  List<Attendance> findByAttendanceSessionAndMemberId(
+    com.reuben.pastcare_spring.models.AttendanceSession session,
+    Long memberId
+  );
+
+  /**
+   * Count attendance by member, status, and date range
+   */
+  @Query("SELECT COUNT(a) FROM Attendance a " +
+         "JOIN a.attendanceSession s " +
+         "WHERE a.member.id = :memberId " +
+         "AND a.status = :status " +
+         "AND s.sessionDate BETWEEN :startDate AND :endDate")
+  Long countByMemberIdAndStatusAndSessionDateBetween(
+    @Param("memberId") Long memberId,
+    @Param("status") AttendanceStatus status,
+    @Param("startDate") LocalDate startDate,
+    @Param("endDate") LocalDate endDate
+  );
+
+  /**
+   * Find most recent attendance by member and status
+   */
+  Optional<Attendance> findTopByMemberIdAndStatusOrderByCheckInTimeDesc(
+    Long memberId,
+    AttendanceStatus status
+  );
 }

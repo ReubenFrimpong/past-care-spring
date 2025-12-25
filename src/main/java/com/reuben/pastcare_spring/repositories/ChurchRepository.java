@@ -17,4 +17,9 @@ public interface ChurchRepository extends JpaRepository<Church, Long> {
    * Check if a church with the given name exists (case-insensitive).
    */
   boolean existsByNameIgnoreCase(String name);
+
+  /**
+   * Find a church by email.
+   */
+  Optional<Church> findByEmail(String email);
 }

@@ -105,4 +105,87 @@ public interface MemberRepository extends JpaRepository<Member, Long>, JpaSpecif
    */
   long countByChurchAndHouseholdIsNotNull(Church church);
 
+  // Phase 4: Export and Integration Queries
+  /**
+   * Find all members by church ID.
+   * @param churchId The church ID
+   * @return List of members in the church
+   */
+  @Query("SELECT m FROM Member m WHERE m.church.id = :churchId")
+  java.util.List<Member> findByChurchId(@Param("churchId") Long churchId);
+
+  // Dashboard Phase 1: Enhanced Widgets
+
+  /**
+   * Find members with birthdays this week.
+   * Returns members whose birthday falls within the current week.
+   */
+  @Query(value = "SELECT m.id as memberId, m.first_name as firstName, m.last_name as lastName, " +
+                 "m.dob as dateOfBirth, " +
+                 "TIMESTAMPDIFF(YEAR, m.dob, CURDATE()) as age, " +
+                 "CASE " +
+                 "  WHEN DAYOFYEAR(DATE_ADD(CURDATE(), INTERVAL (YEAR(CURDATE()) - YEAR(m.dob)) YEAR)) = DAYOFYEAR(CURDATE()) THEN 'Today' " +
+                 "  WHEN DAYOFYEAR(DATE_ADD(CURDATE(), INTERVAL (YEAR(CURDATE()) - YEAR(m.dob)) YEAR)) = DAYOFYEAR(CURDATE()) + 1 THEN 'Tomorrow' " +
+                 "  ELSE CONCAT('In ', DATEDIFF(DATE_ADD(m.dob, INTERVAL (YEAR(CURDATE()) - YEAR(m.dob)) YEAR), CURDATE()), ' days') " +
+                 "END as daysUntil " +
+                 "FROM member m " +
+                 "WHERE m.church_id = :#{#church.id} " +
+                 "AND m.dob IS NOT NULL " +
+                 "AND WEEK(DATE_ADD(m.dob, INTERVAL (YEAR(CURDATE()) - YEAR(m.dob)) YEAR)) = WEEK(CURDATE()) " +
+                 "ORDER BY DAYOFYEAR(DATE_ADD(m.dob, INTERVAL (YEAR(CURDATE()) - YEAR(m.dob)) YEAR))",
+         nativeQuery = true)
+  java.util.List<com.reuben.pastcare_spring.dtos.BirthdayResponse> findMembersWithBirthdaysThisWeek(@Param("church") Church church);
+
+  /**
+   * Find members with membership anniversaries this month.
+   * Returns members whose memberSince anniversary falls in the current month.
+   */
+  @Query(value = "SELECT m.id as memberId, m.first_name as firstName, m.last_name as lastName, " +
+                 "m.member_since as memberSince, " +
+                 "TIMESTAMPDIFF(YEAR, CONCAT(m.member_since, '-01'), CURDATE()) as yearsOfMembership " +
+                 "FROM member m " +
+                 "WHERE m.church_id = :#{#church.id} " +
+                 "AND m.member_since IS NOT NULL " +
+                 "AND MONTH(CONCAT(m.member_since, '-01')) = MONTH(CURDATE()) " +
+                 "ORDER BY DAY(CONCAT(m.member_since, '-01'))",
+         nativeQuery = true)
+  java.util.List<com.reuben.pastcare_spring.dtos.AnniversaryResponse> findMembersWithAnniversariesThisMonth(@Param("church") Church church);
+
+  /**
+   * Find irregular attenders (members who haven't attended in N weeks).
+   * Uses attendance data to identify members absent for threshold weeks.
+   */
+  @Query(value = "SELECT m.id as memberId, m.first_name as firstName, m.last_name as lastName, " +
+                 "m.phone_number as phoneNumber, " +
+                 "MAX(a.created_at) as lastAttendanceDate, " +
+                 "TIMESTAMPDIFF(WEEK, MAX(a.created_at), CURDATE()) as weeksAbsent " +
+                 "FROM member m " +
+                 "LEFT JOIN attendance a ON m.id = a.member_id " +
+                 "WHERE m.church_id = :#{#church.id} " +
+                 "GROUP BY m.id " +
+                 "HAVING weeksAbsent >= :weeksThreshold OR lastAttendanceDate IS NULL " +
+                 "ORDER BY weeksAbsent DESC " +
+                 "LIMIT 10",
+         nativeQuery = true)
+  java.util.List<com.reuben.pastcare_spring.dtos.IrregularAttenderResponse> findIrregularAttenders(
+      @Param("church") Church church,
+      @Param("weeksThreshold") int weeksThreshold);
+
+  /**
+   * Get member growth trend for the last N months.
+   * Returns monthly new member count and total member count.
+   */
+  @Query(value = "SELECT DATE_FORMAT(MIN(m.created_at), '%b %Y') as month, " +
+                 "CAST(COUNT(*) AS SIGNED) as newMembers, " +
+                 "CAST((SELECT COUNT(*) FROM member WHERE church_id = :#{#church.id} AND created_at <= LAST_DAY(MIN(m.created_at))) AS SIGNED) as totalMembers " +
+                 "FROM member m " +
+                 "WHERE m.church_id = :#{#church.id} " +
+                 "AND m.created_at >= DATE_SUB(CURDATE(), INTERVAL :months MONTH) " +
+                 "GROUP BY YEAR(m.created_at), MONTH(m.created_at) " +
+                 "ORDER BY YEAR(MIN(m.created_at)) DESC, MONTH(MIN(m.created_at)) DESC",
+         nativeQuery = true)
+  java.util.List<com.reuben.pastcare_spring.dtos.MemberGrowthResponse> getMemberGrowthTrend(
+      @Param("church") Church church,
+      @Param("months") int months);
+
 }
