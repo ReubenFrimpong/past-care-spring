@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -444,23 +445,25 @@ public class FellowshipService {
     // Count growth in last 30 and 90 days
     // This counts both approved join requests AND members who were created recently
     // (as a proxy for when they joined the fellowship until we have proper join timestamps)
-    LocalDateTime thirtyDaysAgo = LocalDateTime.now().minusDays(30);
-    LocalDateTime ninetyDaysAgo = LocalDateTime.now().minusDays(90);
+    LocalDateTime thirtyDaysAgoLDT = LocalDateTime.now().minusDays(30);
+    LocalDateTime ninetyDaysAgoLDT = LocalDateTime.now().minusDays(90);
+    Instant thirtyDaysAgo = Instant.now().minus(30, java.time.temporal.ChronoUnit.DAYS);
+    Instant ninetyDaysAgo = Instant.now().minus(90, java.time.temporal.ChronoUnit.DAYS);
 
-    // Count from join requests
+    // Count from join requests (uses LocalDateTime)
     List<FellowshipJoinRequest> allRequests = joinRequestRepository.findByFellowshipId(fellowshipId);
     int joinRequestGrowth30Days = (int) allRequests.stream()
       .filter(r -> r.getStatus() == FellowshipJoinRequestStatus.APPROVED)
-      .filter(r -> r.getReviewedAt() != null && r.getReviewedAt().isAfter(thirtyDaysAgo))
+      .filter(r -> r.getReviewedAt() != null && r.getReviewedAt().isAfter(thirtyDaysAgoLDT))
       .count();
 
     int joinRequestGrowth90Days = (int) allRequests.stream()
       .filter(r -> r.getStatus() == FellowshipJoinRequestStatus.APPROVED)
-      .filter(r -> r.getReviewedAt() != null && r.getReviewedAt().isAfter(ninetyDaysAgo))
+      .filter(r -> r.getReviewedAt() != null && r.getReviewedAt().isAfter(ninetyDaysAgoLDT))
       .count();
 
     // Count members who were created recently (as proxy for fellowship join date)
-    // This helps track members added directly without join requests
+    // This helps track members added directly without join requests (uses Instant)
     int recentMembersLast30Days = 0;
     int recentMembersLast90Days = 0;
     if (fellowship.getMembers() != null) {
