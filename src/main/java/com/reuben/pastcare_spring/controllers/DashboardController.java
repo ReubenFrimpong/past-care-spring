@@ -212,6 +212,20 @@ public class DashboardController {
   }
 
   /**
+   * Get fellowship health overview.
+   *
+   * @return Fellowship comparison data ranked by health
+   */
+  @GetMapping("/fellowship-health")
+  @PreAuthorize("isAuthenticated()")
+  @Operation(summary = "Get fellowship health overview", description = "Returns fellowship comparison data ranked by health status and size")
+  public ResponseEntity<List<FellowshipComparisonResponse>> getFellowshipHealthOverview(HttpServletRequest request) {
+    Long userId = extractUserIdFromRequest(request);
+    List<FellowshipComparisonResponse> fellowshipHealth = dashboardService.getFellowshipHealthOverview(userId);
+    return ResponseEntity.ok(fellowshipHealth);
+  }
+
+  /**
    * Extract user ID from JWT token in request.
    * Checks both Authorization header and cookies.
    */

@@ -407,10 +407,10 @@
 
 ## Module 3: Fellowship Module ⚡ IN PROGRESS
 
-**Status**: Phase 1 Complete (Backend & Frontend Core Features)
-**Current Implementation**: Enhanced fellowship management with leaders, schedules, join requests
+**Status**: Phase 1 Complete, Phase 2 Analytics IN PROGRESS
+**Current Implementation**: Enhanced fellowship management with leaders, schedules, join requests, analytics
 **Timeline**: 4-6 weeks (3 phases)
-**Completion**: Phase 1 - 100% (2025-12-25)
+**Completion**: Phase 1 - 100% (2025-12-25), Phase 2 Analytics - 50% (2025-12-25)
 
 ### Current State
 - Fellowship entity (enhanced with 10 new fields)
@@ -435,18 +435,27 @@
   - [x] Fellowship status (isActive, acceptingMembers flags)
   - [x] Fellowship joining requests (member-initiated with approval workflow)
 
-#### Phase 2: Fellowship Activities & Engagement ⭐⭐
-- **Duration**: 2 weeks
-- **Status**: ⏳ NOT STARTED
-- **Features**:
-  - [ ] Fellowship meetings (separate from church services)
+#### Phase 2: Fellowship Analytics ⭐⭐
+- **Duration**: 1-2 weeks
+- **Status**: ⚡ IN PROGRESS (50% complete - Backend done)
+- **Completed Features**:
+  - [x] Fellowship analytics endpoints (3 new endpoints)
+  - [x] Fellowship health metrics (occupancy, growth, health status)
+  - [x] Fellowship comparison dashboard
+  - [x] Growth tracking (30-day, 90-day trends)
+  - [x] Health status calculation (EXCELLENT, GOOD, FAIR, AT_RISK)
+  - [x] Fellowship ranking system
+  - [x] Dashboard widget integration
+- **Remaining Features**:
+  - [ ] Frontend Fellowship Analytics component
+  - [ ] E2E tests for fellowship analytics
+  - [ ] Fellowship meetings tracking (separate from church services)
   - [ ] Fellowship attendance tracking
   - [ ] Fellowship announcements
   - [ ] Fellowship prayer requests (group-specific)
   - [ ] Fellowship events calendar
   - [ ] Member engagement scoring per fellowship
   - [ ] Fellowship WhatsApp/Telegram integration
-  - [ ] Fellowship reports (attendance, growth, activities)
 
 #### Phase 3: Fellowship Analytics & Growth ⭐
 - **Duration**: 1-2 weeks
@@ -506,6 +515,24 @@ public class Fellowship extends TenantBaseEntity {
 - ✅ FellowshipController (17 endpoints: CRUD, active, accepting members, by type, leader assignment, join requests with approve/reject)
 - ✅ Validation (capacity limits, duplicate requests, accepting members status)
 - ✅ Multi-tenant security (all entities properly scoped to church)
+
+### Phase 2 Analytics Implementation (2025-12-25) - 50% Complete
+
+**Backend (Complete)**:
+- ✅ FellowshipAnalyticsResponse DTO (health metrics, growth tracking, occupancy rate)
+- ✅ FellowshipComparisonResponse DTO (fellowship ranking and comparison)
+- ✅ FellowshipService analytics methods (3 new methods: getFellowshipAnalytics, getAllFellowshipAnalytics, getFellowshipComparison)
+- ✅ FellowshipController analytics endpoints (3 new endpoints: /{id}/analytics, /analytics/all, /analytics/comparison)
+- ✅ DashboardService fellowship widget (getFellowshipHealthOverview)
+- ✅ DashboardController fellowship endpoint (/dashboard/fellowship-health)
+- ✅ Health status calculation (EXCELLENT, GOOD, FAIR, AT_RISK based on occupancy, growth, size)
+- ✅ Growth trend tracking (GROWING, STABLE, DECLINING based on 30/90-day metrics)
+- ✅ Fellowship ranking system (sorted by health status and member count)
+
+**Remaining (Frontend + Tests)**:
+- ⏳ Frontend Fellowship Analytics component
+- ⏳ E2E tests for fellowship analytics
+- ⏳ Dashboard fellowship health widget UI
 
 **Frontend (Complete)**:
 - ✅ fellowship.ts interfaces (10 interfaces/enums with display labels)

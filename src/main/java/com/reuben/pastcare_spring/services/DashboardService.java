@@ -22,6 +22,7 @@ public class DashboardService {
   private final UserRepository userRepository;
   private final MemberRepository memberRepository;
   private final AttendanceAnalyticsService attendanceAnalyticsService;
+  private final FellowshipService fellowshipService;
 
   /**
    * Get complete dashboard data for the current user.
@@ -294,5 +295,23 @@ public class DashboardService {
         .sorted((a, b) -> Long.compare(b.sessionsAttended(), a.sessionsAttended()))
         .limit(10)
         .toList();
+  }
+
+  /**
+   * Get fellowship health overview.
+   * Dashboard Phase 1: Fellowship Analytics Widget
+   *
+   * @param userId Current user ID from JWT
+   * @return Fellowship comparison data ranked by health
+   */
+  public List<FellowshipComparisonResponse> getFellowshipHealthOverview(Long userId) {
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new RuntimeException("User not found"));
+
+    if (user.getChurch() == null) {
+      return new ArrayList<>();
+    }
+
+    return fellowshipService.getFellowshipComparison();
   }
 }

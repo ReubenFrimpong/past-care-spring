@@ -283,4 +283,39 @@ public class FellowshipController {
     FellowshipResponse updated = fellowshipService.removeMembersBulk(id, memberIds);
     return ResponseEntity.ok(updated);
   }
+
+  // ========== Fellowship Phase 2: Analytics Endpoints ==========
+
+  /**
+   * Get analytics for a specific fellowship
+   */
+  @GetMapping("/{id}/analytics")
+  @PreAuthorize("isAuthenticated()")
+  @Operation(summary = "Get fellowship analytics", description = "Returns analytics for a specific fellowship including health metrics, growth trends, and occupancy")
+  public ResponseEntity<FellowshipAnalyticsResponse> getFellowshipAnalytics(@PathVariable Long id) {
+    FellowshipAnalyticsResponse analytics = fellowshipService.getFellowshipAnalytics(id);
+    return ResponseEntity.ok(analytics);
+  }
+
+  /**
+   * Get analytics for all fellowships
+   */
+  @GetMapping("/analytics/all")
+  @PreAuthorize("isAuthenticated()")
+  @Operation(summary = "Get all fellowship analytics", description = "Returns analytics for all fellowships in the church")
+  public ResponseEntity<List<FellowshipAnalyticsResponse>> getAllFellowshipAnalytics() {
+    List<FellowshipAnalyticsResponse> analytics = fellowshipService.getAllFellowshipAnalytics();
+    return ResponseEntity.ok(analytics);
+  }
+
+  /**
+   * Get fellowship comparison data
+   */
+  @GetMapping("/analytics/comparison")
+  @PreAuthorize("isAuthenticated()")
+  @Operation(summary = "Get fellowship comparison", description = "Returns comparison data for all fellowships ranked by health and size")
+  public ResponseEntity<List<FellowshipComparisonResponse>> getFellowshipComparison() {
+    List<FellowshipComparisonResponse> comparison = fellowshipService.getFellowshipComparison();
+    return ResponseEntity.ok(comparison);
+  }
 }

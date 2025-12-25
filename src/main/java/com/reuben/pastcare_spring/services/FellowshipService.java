@@ -426,4 +426,161 @@ public class FellowshipService {
       .orElseThrow(() -> new IllegalArgumentException("Fellowship not found with id: " + fellowshipId));
     return FellowshipResponse.fromEntity(updated);
   }
+
+  // Fellowship Phase 2: Analytics
+
+  /**
+   * Get analytics for a specific fellowship
+   */
+  public FellowshipAnalyticsResponse getFellowshipAnalytics(Long fellowshipId) {
+    Fellowship fellowship = fellowshipRepository.findById(fellowshipId)
+      .orElseThrow(() -> new IllegalArgumentException("Fellowship not found with id: " + fellowshipId));
+
+    int currentMembers = fellowship.getMembers() != null ? fellowship.getMembers().size() : 0;
+    Integer maxCapacity = fellowship.getMaxCapacity() != null ? fellowship.getMaxCapacity() : 100;
+
+    double occupancyRate = maxCapacity > 0 ? (currentMembers * 100.0 / maxCapacity) : 0.0;
+
+    // Count join requests in last 30 and 90 days
+    LocalDateTime thirtyDaysAgo = LocalDateTime.now().minusDays(30);
+    LocalDateTime ninetyDaysAgo = LocalDateTime.now().minusDays(90);
+
+    List<FellowshipJoinRequest> allRequests = joinRequestRepository.findByFellowshipId(fellowshipId);
+    int memberGrowthLast30Days = (int) allRequests.stream()
+      .filter(r -> r.getStatus() == FellowshipJoinRequestStatus.APPROVED)
+      .filter(r -> r.getReviewedAt() != null && r.getReviewedAt().isAfter(thirtyDaysAgo))
+      .count();
+
+    int memberGrowthLast90Days = (int) allRequests.stream()
+      .filter(r -> r.getStatus() == FellowshipJoinRequestStatus.APPROVED)
+      .filter(r -> r.getReviewedAt() != null && r.getReviewedAt().isAfter(ninetyDaysAgo))
+      .count();
+
+    int pendingRequests = (int) allRequests.stream()
+      .filter(r -> r.getStatus() == FellowshipJoinRequestStatus.PENDING)
+      .count();
+
+    double growthRate = currentMembers > 0 ? (memberGrowthLast90Days * 100.0 / currentMembers) : 0.0;
+
+    String healthStatus = FellowshipAnalyticsResponse.calculateHealthStatus(
+      occupancyRate, memberGrowthLast30Days, currentMembers);
+
+    String growthTrend = FellowshipAnalyticsResponse.calculateGrowthTrend(
+      memberGrowthLast30Days, memberGrowthLast90Days);
+
+    boolean isHealthy = "EXCELLENT".equals(healthStatus) || "GOOD".equals(healthStatus);
+
+    return new FellowshipAnalyticsResponse(
+      fellowship.getId(),
+      fellowship.getName(),
+      currentMembers,
+      maxCapacity,
+      Math.round(occupancyRate * 100.0) / 100.0, // Round to 2 decimal places
+      memberGrowthLast30Days,
+      memberGrowthLast90Days,
+      Math.round(growthRate * 100.0) / 100.0,
+      pendingRequests,
+      isHealthy,
+      healthStatus,
+      growthTrend
+    );
+  }
+
+  /**
+   * Get analytics for all fellowships in the church
+   */
+  public List<FellowshipAnalyticsResponse> getAllFellowshipAnalytics() {
+    List<Fellowship> fellowships = fellowshipRepository.findAll();
+    return fellowships.stream()
+      .map(f -> getFellowshipAnalytics(f.getId()))
+      .collect(Collectors.toList());
+  }
+
+  /**
+   * Get fellowship comparison data for dashboard
+   */
+  public List<FellowshipComparisonResponse> getFellowshipComparison() {
+    List<Fellowship> fellowships = fellowshipRepository.findAll();
+    LocalDateTime thirtyDaysAgo = LocalDateTime.now().minusDays(30);
+
+    List<FellowshipComparisonResponse> comparisons = fellowships.stream()
+      .map(fellowship -> {
+        int memberCount = fellowship.getMembers() != null ? fellowship.getMembers().size() : 0;
+
+        List<FellowshipJoinRequest> requests = joinRequestRepository.findByFellowshipId(fellowship.getId());
+
+        int joinRequestsLast30Days = (int) requests.stream()
+          .filter(r -> r.getRequestedAt().isAfter(thirtyDaysAgo))
+          .count();
+
+        int totalRequests = requests.size();
+        int approvedRequests = (int) requests.stream()
+          .filter(r -> r.getStatus() == FellowshipJoinRequestStatus.APPROVED)
+          .count();
+
+        int approvalRate = totalRequests > 0 ? (approvedRequests * 100 / totalRequests) : 0;
+
+        FellowshipAnalyticsResponse analytics = getFellowshipAnalytics(fellowship.getId());
+
+        return new FellowshipComparisonResponse(
+          fellowship.getId(),
+          fellowship.getName(),
+          fellowship.getFellowshipType() != null ? fellowship.getFellowshipType().name() : "UNKNOWN",
+          memberCount,
+          0.0, // Average attendance rate - will be implemented when attendance tracking is added
+          joinRequestsLast30Days,
+          approvalRate,
+          analytics.healthStatus(),
+          0 // Rank will be assigned after sorting
+        );
+      })
+      .collect(Collectors.toList());
+
+    // Sort by health status and member count, then assign ranks
+    comparisons.sort((a, b) -> {
+      // Sort by health status first (EXCELLENT > GOOD > FAIR > AT_RISK)
+      int healthCompare = compareHealthStatus(a.healthStatus(), b.healthStatus());
+      if (healthCompare != 0) return healthCompare;
+
+      // Then by member count descending
+      return Integer.compare(b.memberCount(), a.memberCount());
+    });
+
+    // Assign ranks
+    for (int i = 0; i < comparisons.size(); i++) {
+      FellowshipComparisonResponse old = comparisons.get(i);
+      comparisons.set(i, new FellowshipComparisonResponse(
+        old.fellowshipId(),
+        old.fellowshipName(),
+        old.fellowshipType(),
+        old.memberCount(),
+        old.averageAttendanceRate(),
+        old.joinRequestsLast30Days(),
+        old.approvalRate(),
+        old.healthStatus(),
+        i + 1 // Rank (1-based)
+      ));
+    }
+
+    return comparisons;
+  }
+
+  /**
+   * Helper method to compare health status for sorting
+   */
+  private int compareHealthStatus(String a, String b) {
+    int rankA = getHealthStatusRank(a);
+    int rankB = getHealthStatusRank(b);
+    return Integer.compare(rankA, rankB);
+  }
+
+  private int getHealthStatusRank(String healthStatus) {
+    return switch (healthStatus) {
+      case "EXCELLENT" -> 1;
+      case "GOOD" -> 2;
+      case "FAIR" -> 3;
+      case "AT_RISK" -> 4;
+      default -> 5;
+    };
+  }
 }
