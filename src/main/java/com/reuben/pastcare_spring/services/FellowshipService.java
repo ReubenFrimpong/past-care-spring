@@ -441,20 +441,41 @@ public class FellowshipService {
 
     double occupancyRate = maxCapacity > 0 ? (currentMembers * 100.0 / maxCapacity) : 0.0;
 
-    // Count join requests in last 30 and 90 days
+    // Count growth in last 30 and 90 days
+    // This counts both approved join requests AND members who were created recently
+    // (as a proxy for when they joined the fellowship until we have proper join timestamps)
     LocalDateTime thirtyDaysAgo = LocalDateTime.now().minusDays(30);
     LocalDateTime ninetyDaysAgo = LocalDateTime.now().minusDays(90);
 
+    // Count from join requests
     List<FellowshipJoinRequest> allRequests = joinRequestRepository.findByFellowshipId(fellowshipId);
-    int memberGrowthLast30Days = (int) allRequests.stream()
+    int joinRequestGrowth30Days = (int) allRequests.stream()
       .filter(r -> r.getStatus() == FellowshipJoinRequestStatus.APPROVED)
       .filter(r -> r.getReviewedAt() != null && r.getReviewedAt().isAfter(thirtyDaysAgo))
       .count();
 
-    int memberGrowthLast90Days = (int) allRequests.stream()
+    int joinRequestGrowth90Days = (int) allRequests.stream()
       .filter(r -> r.getStatus() == FellowshipJoinRequestStatus.APPROVED)
       .filter(r -> r.getReviewedAt() != null && r.getReviewedAt().isAfter(ninetyDaysAgo))
       .count();
+
+    // Count members who were created recently (as proxy for fellowship join date)
+    // This helps track members added directly without join requests
+    int recentMembersLast30Days = 0;
+    int recentMembersLast90Days = 0;
+    if (fellowship.getMembers() != null) {
+      recentMembersLast30Days = (int) fellowship.getMembers().stream()
+        .filter(m -> m.getCreatedAt() != null && m.getCreatedAt().isAfter(thirtyDaysAgo))
+        .count();
+
+      recentMembersLast90Days = (int) fellowship.getMembers().stream()
+        .filter(m -> m.getCreatedAt() != null && m.getCreatedAt().isAfter(ninetyDaysAgo))
+        .count();
+    }
+
+    // Combine both sources (max of the two, since join requests might overlap with member creation)
+    int memberGrowthLast30Days = Math.max(joinRequestGrowth30Days, recentMembersLast30Days);
+    int memberGrowthLast90Days = Math.max(joinRequestGrowth90Days, recentMembersLast90Days);
 
     int pendingRequests = (int) allRequests.stream()
       .filter(r -> r.getStatus() == FellowshipJoinRequestStatus.PENDING)
