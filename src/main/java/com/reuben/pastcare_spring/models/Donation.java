@@ -78,10 +78,24 @@ public class Donation extends TenantBaseEntity {
   private String notes;
 
   /**
-   * Campaign this donation is for (optional)
+   * Campaign this donation is for (optional) - kept for backward compatibility
    */
   @Column(length = 100)
   private String campaign;
+
+  /**
+   * Campaign entity this donation is associated with (Phase 3)
+   */
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "campaign_id")
+  private Campaign campaignEntity;
+
+  /**
+   * Pledge this donation is fulfilling (Phase 3)
+   */
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "pledge_id")
+  private Pledge pledge;
 
   /**
    * Whether a receipt has been issued
