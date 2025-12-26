@@ -18,6 +18,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -185,6 +186,7 @@ public class HouseholdService {
     /**
      * Delete household
      */
+    @Transactional
     public void deleteHousehold(Long churchId, Long householdId) {
         Church church = churchRepository.findById(churchId)
             .orElseThrow(() -> new EntityNotFoundException("Church not found with id: " + churchId));
@@ -192,10 +194,14 @@ public class HouseholdService {
         Household household = householdRepository.findByIdAndChurch(householdId, church)
             .orElseThrow(() -> new EntityNotFoundException("Household not found with id: " + householdId));
 
-        // Remove household association from all members
-        for (Member member : household.getMembers()) {
+        // Remove household association from all members before deleting
+        // This prevents foreign key constraint violations
+        List<Member> members = new ArrayList<>(household.getMembers());
+        for (Member member : members) {
             member.setHousehold(null);
+            memberRepository.save(member);
         }
+        household.getMembers().clear();
 
         householdRepository.delete(household);
     }

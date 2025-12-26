@@ -1,9 +1,11 @@
 package com.reuben.pastcare_spring.repositories;
 
+import com.reuben.pastcare_spring.models.Campaign;
 import com.reuben.pastcare_spring.models.Church;
 import com.reuben.pastcare_spring.models.Donation;
 import com.reuben.pastcare_spring.models.DonationType;
 import com.reuben.pastcare_spring.models.Member;
+import com.reuben.pastcare_spring.models.Pledge;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -145,5 +147,29 @@ public interface DonationRepository extends JpaRepository<Donation, Long> {
       @Param("churchId") Long churchId,
       @Param("startDate") LocalDate startDate,
       @Param("endDate") LocalDate endDate
+  );
+
+  /**
+   * Find donations by campaign entity (Phase 3)
+   */
+  List<Donation> findByCampaignEntityAndChurch(Campaign campaign, Church church);
+
+  /**
+   * Find donations by pledge (Phase 3)
+   */
+  List<Donation> findByPledgeAndChurch(Pledge pledge, Church church);
+
+  /**
+   * Count donations by campaign (Phase 3)
+   */
+  long countByCampaignEntityAndChurch(Campaign campaign, Church church);
+
+  /**
+   * Get total donations for a campaign (Phase 3)
+   */
+  @Query("SELECT COALESCE(SUM(d.amount), 0) FROM Donation d WHERE d.campaignEntity = :campaign AND d.church = :church")
+  BigDecimal getTotalDonationsByCampaign(
+      @Param("campaign") Campaign campaign,
+      @Param("church") Church church
   );
 }

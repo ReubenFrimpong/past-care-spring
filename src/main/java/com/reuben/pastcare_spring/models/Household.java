@@ -47,8 +47,9 @@ public class Household extends TenantBaseEntity {
     /**
      * All members belonging to this household
      * Mapped by the household field in Member entity
+     * Note: We don't cascade deletes - members should remain even if household is deleted
      */
-    @OneToMany(mappedBy = "household", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "household", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, fetch = FetchType.LAZY, orphanRemoval = false)
     private List<Member> members = new ArrayList<>();
 
     /**

@@ -1,6 +1,7 @@
 package com.reuben.pastcare_spring.controllers;
 
 import com.reuben.pastcare_spring.dtos.*;
+import com.reuben.pastcare_spring.models.FellowshipMemberAction;
 import com.reuben.pastcare_spring.models.FellowshipType;
 import com.reuben.pastcare_spring.services.FellowshipService;
 import com.reuben.pastcare_spring.util.RequestContextUtil;
@@ -14,6 +15,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/fellowships")
@@ -284,6 +286,17 @@ public class FellowshipController {
     return ResponseEntity.ok(updated);
   }
 
+  /**
+   * Get member IDs for a fellowship
+   */
+  @GetMapping("/{id}/members/ids")
+  @PreAuthorize("isAuthenticated()")
+  @Operation(summary = "Get fellowship member IDs", description = "Returns list of member IDs in this fellowship")
+  public ResponseEntity<java.util.List<Long>> getFellowshipMemberIds(@PathVariable Long id) {
+    java.util.List<Long> memberIds = fellowshipService.getFellowshipMemberIds(id);
+    return ResponseEntity.ok(memberIds);
+  }
+
   // ========== Fellowship Phase 2: Analytics Endpoints ==========
 
   /**
@@ -317,5 +330,106 @@ public class FellowshipController {
   public ResponseEntity<List<FellowshipComparisonResponse>> getFellowshipComparison() {
     List<FellowshipComparisonResponse> comparison = fellowshipService.getFellowshipComparison();
     return ResponseEntity.ok(comparison);
+  }
+
+  /**
+   * Get fellowship retention metrics
+   */
+  @GetMapping("/{id}/retention")
+  @PreAuthorize("isAuthenticated()")
+  @Operation(summary = "Get fellowship retention metrics", description = "Returns retention metrics for a fellowship over a specified time period")
+  public ResponseEntity<FellowshipRetentionResponse> getFellowshipRetention(
+      @PathVariable Long id,
+      @RequestParam String startDate,
+      @RequestParam String endDate) {
+    java.time.LocalDate start = java.time.LocalDate.parse(startDate);
+    java.time.LocalDate end = java.time.LocalDate.parse(endDate);
+    FellowshipRetentionResponse retention = fellowshipService.getFellowshipRetention(id, start, end);
+    return ResponseEntity.ok(retention);
+  }
+
+  /**
+   * Record a fellowship membership action
+   */
+  @PostMapping("/{id}/record-action")
+  @PreAuthorize("isAuthenticated()")
+  @Operation(summary = "Record membership action", description = "Records a fellowship membership action for retention tracking")
+  public ResponseEntity<Void> recordMembershipAction(
+      @PathVariable Long id,
+      @RequestBody Map<String, Object> request,
+      HttpServletRequest httpRequest) {
+    Long memberId = Long.valueOf(request.get("memberId").toString());
+    String actionStr = request.get("action").toString();
+    String notes = request.get("notes") != null ? request.get("notes").toString() : null;
+    Long userId = requestContextUtil.extractUserId(httpRequest);
+
+    FellowshipMemberAction action = FellowshipMemberAction.valueOf(actionStr);
+    fellowshipService.recordMembershipAction(id, memberId, action, notes, userId);
+    return ResponseEntity.ok().build();
+  }
+
+  // ========== Fellowship Multiplication Tracking ==========
+
+  /**
+   * Get all fellowship multiplications
+   */
+  @GetMapping("/multiplications")
+  @PreAuthorize("isAuthenticated()")
+  @Operation(summary = "Get all multiplications", description = "Returns all fellowship multiplication events")
+  public ResponseEntity<List<FellowshipMultiplicationResponse>> getAllMultiplications() {
+    List<FellowshipMultiplicationResponse> multiplications = fellowshipService.getAllMultiplications();
+    return ResponseEntity.ok(multiplications);
+  }
+
+  /**
+   * Get multiplications for a specific fellowship
+   */
+  @GetMapping("/{id}/multiplications")
+  @PreAuthorize("isAuthenticated()")
+  @Operation(summary = "Get fellowship multiplications", description = "Returns multiplication events for a specific fellowship (as parent)")
+  public ResponseEntity<List<FellowshipMultiplicationResponse>> getFellowshipMultiplications(
+      @PathVariable Long id) {
+    List<FellowshipMultiplicationResponse> multiplications = fellowshipService.getFellowshipMultiplications(id);
+    return ResponseEntity.ok(multiplications);
+  }
+
+  /**
+   * Record a fellowship multiplication
+   */
+  @PostMapping("/{id}/multiply")
+  @PreAuthorize("isAuthenticated()")
+  @Operation(summary = "Record multiplication", description = "Records a fellowship multiplication event")
+  public ResponseEntity<FellowshipMultiplicationResponse> recordMultiplication(
+      @PathVariable Long id,
+      @RequestBody RecordMultiplicationRequest request,
+      HttpServletRequest httpRequest) {
+    Long userId = requestContextUtil.extractUserId(httpRequest);
+    FellowshipMultiplicationResponse multiplication = fellowshipService.recordMultiplication(id, request, userId);
+    return ResponseEntity.ok(multiplication);
+  }
+
+  // ========== Fellowship Balance Recommendations ==========
+
+  /**
+   * Get balance recommendations for all fellowships
+   */
+  @GetMapping("/balance-recommendations")
+  @PreAuthorize("isAuthenticated()")
+  @Operation(summary = "Get balance recommendations", description = "Returns balance recommendations for all fellowships")
+  public ResponseEntity<List<FellowshipBalanceRecommendationResponse>> getBalanceRecommendations() {
+    List<FellowshipBalanceRecommendationResponse> recommendations = fellowshipService.getBalanceRecommendations();
+    return ResponseEntity.ok(recommendations);
+  }
+
+  /**
+   * Get balance recommendation for a specific fellowship
+   */
+  @GetMapping("/{id}/balance-recommendation")
+  @PreAuthorize("isAuthenticated()")
+  @Operation(summary = "Get fellowship balance recommendation", description = "Returns balance recommendation for a specific fellowship")
+  public ResponseEntity<FellowshipBalanceRecommendationResponse> getFellowshipBalanceRecommendation(
+      @PathVariable Long id) {
+    FellowshipBalanceRecommendationResponse recommendation = fellowshipService.getFellowshipBalanceRecommendation(id);
+    return ResponseEntity.ok(recommendation);
   }
 }

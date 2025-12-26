@@ -19,6 +19,8 @@ public class FellowshipService {
 
   private final FellowshipRepository fellowshipRepository;
   private final FellowshipJoinRequestRepository joinRequestRepository;
+  private final FellowshipMemberHistoryRepository memberHistoryRepository;
+  private final FellowshipMultiplicationRepository multiplicationRepository;
   private final UserRepository userRepository;
   private final MemberRepository memberRepository;
   private final LocationRepository locationRepository;
@@ -428,6 +430,22 @@ public class FellowshipService {
     return FellowshipResponse.fromEntity(updated);
   }
 
+  /**
+   * Get list of member IDs in a fellowship
+   */
+  public List<Long> getFellowshipMemberIds(Long fellowshipId) {
+    Fellowship fellowship = fellowshipRepository.findById(fellowshipId)
+      .orElseThrow(() -> new IllegalArgumentException("Fellowship not found with id: " + fellowshipId));
+
+    if (fellowship.getMembers() == null) {
+      return List.of();
+    }
+
+    return fellowship.getMembers().stream()
+      .map(Member::getId)
+      .toList();
+  }
+
   // Fellowship Phase 2: Analytics
 
   /**
@@ -606,5 +624,243 @@ public class FellowshipService {
       case "AT_RISK" -> 4;
       default -> 5;
     };
+  }
+
+  /**
+   * Get fellowship retention metrics for a time period
+   */
+  public FellowshipRetentionResponse getFellowshipRetention(Long fellowshipId, java.time.LocalDate startDate, java.time.LocalDate endDate) {
+    Fellowship fellowship = fellowshipRepository.findById(fellowshipId)
+      .orElseThrow(() -> new IllegalArgumentException("Fellowship not found with id: " + fellowshipId));
+
+    // Get history for the period
+    List<FellowshipMemberHistory> history = memberHistoryRepository
+      .findByFellowshipAndEffectiveDateBetween(fellowship, startDate, endDate);
+
+    // Count different actions
+    long joined = history.stream().filter(h -> h.getAction() == FellowshipMemberAction.JOINED).count();
+    long left = history.stream().filter(h -> h.getAction() == FellowshipMemberAction.LEFT).count();
+    long transfersIn = history.stream().filter(h -> h.getAction() == FellowshipMemberAction.TRANSFERRED_IN).count();
+    long transfersOut = history.stream().filter(h -> h.getAction() == FellowshipMemberAction.TRANSFERRED_OUT).count();
+    long inactive = history.stream().filter(h -> h.getAction() == FellowshipMemberAction.INACTIVE).count();
+    long reactivated = history.stream().filter(h -> h.getAction() == FellowshipMemberAction.REACTIVATED).count();
+
+    // Calculate members at start and end
+    int currentMembers = fellowship.getMembers() != null ? fellowship.getMembers().size() : 0;
+    int netChange = (int) (joined + transfersIn + reactivated - left - transfersOut - inactive);
+    int membersAtStart = currentMembers - netChange;
+
+    // Calculate retention and churn rates
+    double retentionRate = membersAtStart > 0 ?
+      ((membersAtStart - left) * 100.0 / membersAtStart) : 100.0;
+    double churnRate = membersAtStart > 0 ?
+      (left * 100.0 / membersAtStart) : 0.0;
+
+    String healthIndicator = calculateRetentionHealth(retentionRate);
+
+    return new FellowshipRetentionResponse(
+      fellowship.getId(),
+      fellowship.getName(),
+      startDate,
+      endDate,
+      membersAtStart,
+      (int) joined,
+      (int) left,
+      currentMembers,
+      Math.round(retentionRate * 100.0) / 100.0,
+      Math.round(churnRate * 100.0) / 100.0,
+      (int) transfersIn,
+      (int) transfersOut,
+      (int) inactive,
+      (int) reactivated,
+      healthIndicator
+    );
+  }
+
+  /**
+   * Record a fellowship membership action (for tracking retention)
+   */
+  @Transactional
+  public void recordMembershipAction(Long fellowshipId, Long memberId, FellowshipMemberAction action,
+                                     String notes, Long recordedByUserId) {
+    Fellowship fellowship = fellowshipRepository.findById(fellowshipId)
+      .orElseThrow(() -> new IllegalArgumentException("Fellowship not found"));
+    Member member = memberRepository.findById(memberId)
+      .orElseThrow(() -> new IllegalArgumentException("Member not found"));
+    User recordedBy = userRepository.findById(recordedByUserId)
+      .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+    FellowshipMemberHistory history = new FellowshipMemberHistory();
+    history.setFellowship(fellowship);
+    history.setMember(member);
+    history.setAction(action);
+    history.setEffectiveDate(java.time.LocalDate.now());
+    history.setNotes(notes);
+    history.setRecordedBy(recordedBy);
+    history.setChurch(fellowship.getChurch());
+
+    memberHistoryRepository.save(history);
+  }
+
+  private String calculateRetentionHealth(double retentionRate) {
+    if (retentionRate >= 90.0) return "EXCELLENT";
+    if (retentionRate >= 75.0) return "GOOD";
+    if (retentionRate >= 60.0) return "CONCERNING";
+    return "CRITICAL";
+  }
+
+  // ========== Fellowship Multiplication Tracking ==========
+
+  /**
+   * Get all fellowship multiplications
+   */
+  public List<FellowshipMultiplicationResponse> getAllMultiplications() {
+    return multiplicationRepository.findAllByOrderByMultiplicationDateDesc().stream()
+      .map(this::toMultiplicationResponse)
+      .collect(Collectors.toList());
+  }
+
+  /**
+   * Get multiplications for a specific fellowship (as parent)
+   */
+  public List<FellowshipMultiplicationResponse> getFellowshipMultiplications(Long fellowshipId) {
+    Fellowship fellowship = fellowshipRepository.findById(fellowshipId)
+      .orElseThrow(() -> new IllegalArgumentException("Fellowship not found"));
+    return multiplicationRepository.findByParentFellowship(fellowship).stream()
+      .map(this::toMultiplicationResponse)
+      .collect(Collectors.toList());
+  }
+
+  /**
+   * Record a fellowship multiplication event
+   */
+  @Transactional
+  public FellowshipMultiplicationResponse recordMultiplication(Long parentId, RecordMultiplicationRequest request, Long recordedByUserId) {
+    Fellowship parent = fellowshipRepository.findById(parentId)
+      .orElseThrow(() -> new IllegalArgumentException("Parent fellowship not found"));
+    Fellowship child = fellowshipRepository.findById(request.childFellowshipId())
+      .orElseThrow(() -> new IllegalArgumentException("Child fellowship not found"));
+    User recordedBy = userRepository.findById(recordedByUserId)
+      .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+    FellowshipMultiplication multiplication = new FellowshipMultiplication();
+    multiplication.setParentFellowship(parent);
+    multiplication.setChildFellowship(child);
+    multiplication.setMultiplicationDate(request.multiplicationDate());
+    multiplication.setReason(request.reason());
+    multiplication.setMembersTransferred(request.membersTransferred());
+    multiplication.setNotes(request.notes());
+    multiplication.setRecordedBy(recordedBy);
+    multiplication.setChurch(parent.getChurch());
+
+    FellowshipMultiplication saved = multiplicationRepository.save(multiplication);
+    return toMultiplicationResponse(saved);
+  }
+
+  private FellowshipMultiplicationResponse toMultiplicationResponse(FellowshipMultiplication multiplication) {
+    return new FellowshipMultiplicationResponse(
+      multiplication.getId(),
+      multiplication.getParentFellowship().getId(),
+      multiplication.getParentFellowship().getName(),
+      multiplication.getChildFellowship().getId(),
+      multiplication.getChildFellowship().getName(),
+      multiplication.getMultiplicationDate(),
+      multiplication.getReason(),
+      multiplication.getMembersTransferred(),
+      multiplication.getNotes(),
+      multiplication.getCreatedAt()
+    );
+  }
+
+  // ========== Fellowship Balance Recommendations ==========
+
+  /**
+   * Get balance recommendations for all fellowships
+   */
+  public List<FellowshipBalanceRecommendationResponse> getBalanceRecommendations() {
+    List<Fellowship> fellowships = fellowshipRepository.findAll();
+    List<FellowshipBalanceRecommendationResponse> recommendations = new ArrayList<>();
+
+    for (Fellowship fellowship : fellowships) {
+      FellowshipBalanceRecommendationResponse recommendation = analyzeBalance(fellowship);
+      if (recommendation != null) {
+        recommendations.add(recommendation);
+      }
+    }
+
+    return recommendations;
+  }
+
+  /**
+   * Get balance recommendation for a specific fellowship
+   */
+  public FellowshipBalanceRecommendationResponse getFellowshipBalanceRecommendation(Long fellowshipId) {
+    Fellowship fellowship = fellowshipRepository.findById(fellowshipId)
+      .orElseThrow(() -> new IllegalArgumentException("Fellowship not found"));
+    return analyzeBalance(fellowship);
+  }
+
+  private FellowshipBalanceRecommendationResponse analyzeBalance(Fellowship fellowship) {
+    int currentSize = fellowship.getMembers().size();
+    Integer maxCapacity = fellowship.getMaxCapacity();
+
+    // Optimal fellowship size: 12-25 members for effective community
+    int optimalMin = 12;
+    int optimalMax = 25;
+
+    List<String> suggestedActions = new ArrayList<>();
+    String recommendationType = null;
+    String priority = "LOW";
+    String reason = null;
+
+    // Fellowship is too large
+    if (maxCapacity != null && currentSize >= maxCapacity) {
+      recommendationType = "SPLIT";
+      priority = "HIGH";
+      reason = "Fellowship has reached maximum capacity";
+      suggestedActions.add("Identify potential leaders for new fellowship");
+      suggestedActions.add("Plan multiplication date");
+      suggestedActions.add("Divide members geographically or by life stage");
+    } else if (currentSize > optimalMax) {
+      recommendationType = "SPLIT";
+      priority = maxCapacity != null && currentSize > maxCapacity * 0.8 ? "HIGH" : "MEDIUM";
+      reason = "Fellowship size exceeds optimal range for community building";
+      suggestedActions.add("Consider multiplying into two fellowships");
+      suggestedActions.add("Maintain 60-70% of current members in each group");
+    }
+    // Fellowship is too small
+    else if (currentSize < optimalMin && currentSize > 0) {
+      recommendationType = "MERGE";
+      priority = currentSize < 5 ? "HIGH" : "MEDIUM";
+      reason = "Fellowship size below optimal range";
+      suggestedActions.add("Consider merging with another small fellowship");
+      suggestedActions.add("Increase recruitment efforts");
+      suggestedActions.add("Partner with larger fellowship for events");
+    }
+    // Fellowship is approaching capacity
+    else if (maxCapacity != null && currentSize > maxCapacity * 0.8) {
+      recommendationType = "NEW_FELLOWSHIP";
+      priority = "MEDIUM";
+      reason = "Fellowship approaching maximum capacity";
+      suggestedActions.add("Begin preparing for future multiplication");
+      suggestedActions.add("Identify and train potential leaders");
+      suggestedActions.add("Monitor growth trends");
+    }
+    // No recommendation needed
+    else {
+      return null;
+    }
+
+    return new FellowshipBalanceRecommendationResponse(
+      fellowship.getId(),
+      fellowship.getName(),
+      recommendationType,
+      priority,
+      reason,
+      currentSize,
+      optimalMax,
+      null, // demographicImbalance - could be enhanced later
+      suggestedActions
+    );
   }
 }
