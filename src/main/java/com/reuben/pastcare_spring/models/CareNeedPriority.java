@@ -1,11 +1,18 @@
 package com.reuben.pastcare_spring.models;
 
-/**
- * Priority levels for care needs
- */
 public enum CareNeedPriority {
-    LOW,
-    NORMAL,
-    HIGH,
-    URGENT
+    LOW("Low"),
+    MEDIUM("Medium"),
+    HIGH("High"),
+    URGENT("Urgent");
+
+    private final String displayName;
+
+    CareNeedPriority(String displayName) {
+        this.displayName = displayName;
+    }
+
+    public String getDisplayName() {
+        return displayName;
+    }
 }

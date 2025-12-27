@@ -12,8 +12,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -42,8 +42,8 @@ public class CareNeedService {
         careNeed.setChurch(church);
 
         // Set member
-        Member member = memberRepository.findById(request.memberId())
-            .orElseThrow(() -> new IllegalArgumentException("Member not found with id: " + request.memberId()));
+        Member member = memberRepository.findById(request.getMemberId())
+            .orElseThrow(() -> new IllegalArgumentException("Member not found with id: " + request.getMemberId()));
         careNeed.setMember(member);
 
         // Set created by user
@@ -85,9 +85,9 @@ public class CareNeedService {
             .orElseThrow(() -> new IllegalArgumentException("Care need not found with id: " + id));
 
         // Update member if changed
-        if (!careNeed.getMember().getId().equals(request.memberId())) {
-            Member member = memberRepository.findById(request.memberId())
-                .orElseThrow(() -> new IllegalArgumentException("Member not found with id: " + request.memberId()));
+        if (!careNeed.getMember().getId().equals(request.getMemberId())) {
+            Member member = memberRepository.findById(request.getMemberId())
+                .orElseThrow(() -> new IllegalArgumentException("Member not found with id: " + request.getMemberId()));
             careNeed.setMember(member);
         }
 
@@ -118,7 +118,10 @@ public class CareNeedService {
             .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + userId));
 
         careNeed.setAssignedTo(assignedTo);
-        careNeed.setStatus(CareNeedStatus.ASSIGNED);
+        // Update status to IN_PROGRESS if currently OPEN
+        if (careNeed.getStatus() == CareNeedStatus.OPEN) {
+            careNeed.setStatus(CareNeedStatus.IN_PROGRESS);
+        }
 
         CareNeed updated = careNeedRepository.save(careNeed);
         return CareNeedResponse.fromEntity(updated);
@@ -148,7 +151,13 @@ public class CareNeedService {
 
         careNeed.setStatus(CareNeedStatus.RESOLVED);
         careNeed.setResolvedDate(LocalDateTime.now());
-        careNeed.setResolutionNotes(resolutionNotes);
+
+        // Append resolution notes to existing notes
+        if (resolutionNotes != null && !resolutionNotes.isEmpty()) {
+            String existingNotes = careNeed.getNotes() != null ? careNeed.getNotes() : "";
+            String separator = existingNotes.isEmpty() ? "" : "\n\n--- Resolution Notes ---\n";
+            careNeed.setNotes(existingNotes + separator + resolutionNotes);
+        }
 
         CareNeed updated = careNeedRepository.save(careNeed);
         return CareNeedResponse.fromEntity(updated);
@@ -204,14 +213,15 @@ public class CareNeedService {
             .orElseThrow(() -> new IllegalArgumentException("Church not found with id: " + churchId));
 
         long total = careNeedRepository.countByChurch(church);
-        long pending = careNeedRepository.countByChurchAndStatus(church, CareNeedStatus.PENDING);
+        long open = careNeedRepository.countByChurchAndStatus(church, CareNeedStatus.OPEN);
         long inProgress = careNeedRepository.countByChurchAndStatus(church, CareNeedStatus.IN_PROGRESS);
         long resolved = careNeedRepository.countByChurchAndStatus(church, CareNeedStatus.RESOLVED);
         long urgent = careNeedRepository.countByChurchAndPriority(church, CareNeedPriority.URGENT);
 
-        List<CareNeed> overdue = careNeedRepository.findOverdueCareNeeds(church, LocalDateTime.now());
+        List<CareNeed> overdueList = careNeedRepository.findOverdueCareNeeds(church, LocalDate.now());
+        long overdue = (long) overdueList.size();
 
-        return new CareNeedStatsResponse(total, pending, inProgress, resolved, urgent, overdue.size());
+        return new CareNeedStatsResponse(total, open, inProgress, resolved, urgent, overdue);
     }
 
     /**
@@ -220,7 +230,49 @@ public class CareNeedService {
     public List<CareNeedResponse> getOverdueCareNeeds(Long churchId) {
         Church church = churchRepository.findById(churchId)
             .orElseThrow(() -> new IllegalArgumentException("Church not found with id: " + churchId));
-        return careNeedRepository.findOverdueCareNeeds(church, LocalDateTime.now()).stream()
+        return careNeedRepository.findOverdueCareNeeds(church, LocalDate.now()).stream()
+            .map(CareNeedResponse::fromEntity)
+            .collect(Collectors.toList());
+    }
+
+    /**
+     * Get urgent care needs
+     */
+    public List<CareNeedResponse> getUrgentCareNeeds(Long churchId) {
+        Church church = churchRepository.findById(churchId)
+            .orElseThrow(() -> new IllegalArgumentException("Church not found with id: " + churchId));
+        return careNeedRepository.findByChurchAndPriorityAndStatusIn(
+            church,
+            CareNeedPriority.URGENT,
+            List.of(CareNeedStatus.OPEN, CareNeedStatus.IN_PROGRESS, CareNeedStatus.PENDING)
+        ).stream()
+            .map(CareNeedResponse::fromEntity)
+            .collect(Collectors.toList());
+    }
+
+    /**
+     * Get unassigned care needs
+     */
+    public List<CareNeedResponse> getUnassignedCareNeeds(Long churchId) {
+        Church church = churchRepository.findById(churchId)
+            .orElseThrow(() -> new IllegalArgumentException("Church not found with id: " + churchId));
+        return careNeedRepository.findByChurchAndAssignedToIsNullAndStatus(church, CareNeedStatus.OPEN).stream()
+            .map(CareNeedResponse::fromEntity)
+            .collect(Collectors.toList());
+    }
+
+    /**
+     * Get care needs by member
+     */
+    public List<CareNeedResponse> getCareNeedsByMember(Long churchId, Long memberId) {
+        // Validate church exists
+        churchRepository.findById(churchId)
+            .orElseThrow(() -> new IllegalArgumentException("Church not found with id: " + churchId));
+
+        Member member = memberRepository.findById(memberId)
+            .orElseThrow(() -> new IllegalArgumentException("Member not found with id: " + memberId));
+
+        return careNeedRepository.findByMemberOrderByCreatedAtDesc(member).stream()
             .map(CareNeedResponse::fromEntity)
             .collect(Collectors.toList());
     }
@@ -228,9 +280,11 @@ public class CareNeedService {
     /**
      * Auto-detect members needing care based on attendance patterns
      * Returns list of member IDs with 3+ consecutive absences (no attendance in last 21 days)
+     * Only includes members who have been in the system for at least 3 weeks
      */
     public List<Long> detectMembersNeedingCare(Long churchId) {
-        return careNeedRepository.findMembersWithConsecutiveAbsences(churchId);
+        LocalDateTime threeWeeksAgo = LocalDateTime.now().minusWeeks(3);
+        return careNeedRepository.findMembersWithConsecutiveAbsences(churchId, threeWeeksAgo);
     }
 
     /**
@@ -254,7 +308,7 @@ public class CareNeedService {
                 member.getId(),
                 member.getFirstName() + " " + member.getLastName(),
                 "No attendance recorded in the last 3 weeks",
-                CareNeedType.SPIRITUAL,
+                CareNeedType.SPIRITUAL_GUIDANCE,
                 CareNeedPriority.HIGH,
                 "Follow up with " + member.getFirstName() + " " + member.getLastName(),
                 "Member has not attended services for 3 or more consecutive weeks. " +
@@ -268,28 +322,28 @@ public class CareNeedService {
      * Helper method to update care need from request
      */
     private void updateCareNeedFromRequest(CareNeed careNeed, CareNeedRequest request) {
-        careNeed.setTitle(request.title());
-        careNeed.setDescription(request.description());
-        careNeed.setType(request.type());
-        careNeed.setPriority(request.priority() != null ? request.priority() : CareNeedPriority.NORMAL);
-        careNeed.setDueDate(request.dueDate());
-        careNeed.setFollowUpRequired(request.followUpRequired() != null ? request.followUpRequired() : false);
-        careNeed.setFollowUpDate(request.followUpDate());
+        careNeed.setTitle(request.getTitle());
+        careNeed.setDescription(request.getDescription());
+        careNeed.setType(request.getType());
+        careNeed.setPriority(request.getPriority() != null ? request.getPriority() : CareNeedPriority.MEDIUM);
+        careNeed.setDueDate(request.getDueDate());
+        careNeed.setFollowUpRequired(request.getFollowUpRequired() != null ? request.getFollowUpRequired() : false);
+        careNeed.setFollowUpDate(request.getFollowUpDate());
+        careNeed.setIsConfidential(request.getIsConfidential() != null ? request.getIsConfidential() : false);
+        careNeed.setNotes(request.getNotes());
 
         // Handle assigned user
-        if (request.assignedToUserId() != null) {
-            User assignedTo = userRepository.findById(request.assignedToUserId())
-                .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + request.assignedToUserId()));
+        if (request.getAssignedToId() != null) {
+            User assignedTo = userRepository.findById(request.getAssignedToId())
+                .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + request.getAssignedToId()));
             careNeed.setAssignedTo(assignedTo);
-            // Auto-set status to ASSIGNED if not already set
-            if (careNeed.getStatus() == CareNeedStatus.PENDING) {
-                careNeed.setStatus(CareNeedStatus.ASSIGNED);
-            }
         }
 
-        // Handle tags
-        if (request.tags() != null) {
-            careNeed.setTags(new HashSet<>(request.tags()));
+        // Handle status if provided
+        if (request.getStatus() != null) {
+            careNeed.setStatus(request.getStatus());
+        } else if (careNeed.getStatus() == null) {
+            careNeed.setStatus(CareNeedStatus.OPEN);
         }
     }
 }

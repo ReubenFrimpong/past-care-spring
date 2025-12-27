@@ -1,13 +1,20 @@
 package com.reuben.pastcare_spring.models;
 
-/**
- * Status of a care need in the pastoral care workflow
- */
 public enum CareNeedStatus {
-    PENDING,        // New, not yet assigned
-    ASSIGNED,       // Assigned to someone
-    IN_PROGRESS,    // Being worked on
-    ON_HOLD,        // Temporarily paused
-    RESOLVED,       // Successfully resolved
-    CLOSED          // Closed (may not be fully resolved)
+    OPEN("Open"),
+    IN_PROGRESS("In Progress"),
+    PENDING("Pending"),
+    RESOLVED("Resolved"),
+    CLOSED("Closed"),
+    CANCELLED("Cancelled");
+
+    private final String displayName;
+
+    CareNeedStatus(String displayName) {
+        this.displayName = displayName;
+    }
+
+    public String getDisplayName() {
+        return displayName;
+    }
 }

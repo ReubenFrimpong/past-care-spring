@@ -4,6 +4,7 @@ import com.reuben.pastcare_spring.dtos.*;
 import com.reuben.pastcare_spring.models.CrisisSeverity;
 import com.reuben.pastcare_spring.models.CrisisStatus;
 import com.reuben.pastcare_spring.models.CrisisType;
+import com.reuben.pastcare_spring.models.Member;
 import com.reuben.pastcare_spring.services.CrisisService;
 import com.reuben.pastcare_spring.util.RequestContextUtil;
 import io.swagger.v3.oas.annotations.Operation;
@@ -297,5 +298,32 @@ public class CrisisController {
         Long churchId = requestContextUtil.extractChurchId(httpRequest);
         CrisisStatsResponse stats = crisisService.getCrisisStats(churchId);
         return ResponseEntity.ok(stats);
+    }
+
+    /**
+     * Auto-detect and add affected members based on geographic location
+     */
+    @PostMapping("/{id}/auto-detect-members")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PASTOR', 'LEADER')")
+    @Operation(summary = "Auto-detect affected members", description = "Automatically detects and adds members in the affected geographic area")
+    public ResponseEntity<List<Member>> autoDetectAffectedMembers(@PathVariable Long id) {
+        List<Member> affectedMembers = crisisService.autoDetectAffectedMembers(id);
+        return ResponseEntity.ok(affectedMembers);
+    }
+
+    /**
+     * Preview members that would be affected by geographic criteria (without adding them)
+     */
+    @GetMapping("/preview-affected-members")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Preview affected members", description = "Preview which members would be affected based on geographic criteria")
+    public ResponseEntity<List<Member>> previewAffectedMembers(
+            @RequestParam(required = false) String suburb,
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) String district,
+            @RequestParam(required = false) String region,
+            @RequestParam(required = false) String countryCode) {
+        List<Member> members = crisisService.previewAffectedMembers(suburb, city, district, region, countryCode);
+        return ResponseEntity.ok(members);
     }
 }

@@ -1,0 +1,35 @@
+-- Create care needs table
+CREATE TABLE care_needs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    church_id BIGINT NOT NULL,
+    member_id BIGINT NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    priority VARCHAR(20) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'OPEN',
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    assigned_to_id BIGINT,
+    due_date DATE,
+    resolved_date DATETIME,
+    notes TEXT,
+    follow_up_required BOOLEAN DEFAULT FALSE,
+    follow_up_date DATE,
+    is_confidential BOOLEAN DEFAULT FALSE,
+    created_by_id BIGINT,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    CONSTRAINT fk_care_need_church FOREIGN KEY (church_id) REFERENCES churches(id) ON DELETE CASCADE,
+    CONSTRAINT fk_care_need_member FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE,
+    CONSTRAINT fk_care_need_assigned_to FOREIGN KEY (assigned_to_id) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_care_need_created_by FOREIGN KEY (created_by_id) REFERENCES users(id) ON DELETE SET NULL,
+    
+    INDEX idx_care_need_church (church_id),
+    INDEX idx_care_need_member (member_id),
+    INDEX idx_care_need_status (status),
+    INDEX idx_care_need_priority (priority),
+    INDEX idx_care_need_type (type),
+    INDEX idx_care_need_assigned_to (assigned_to_id),
+    INDEX idx_care_need_due_date (due_date),
+    INDEX idx_care_need_created_at (created_at)
+);

@@ -188,4 +188,19 @@ public interface MemberRepository extends JpaRepository<Member, Long>, JpaSpecif
       @Param("church") Church church,
       @Param("months") int months);
 
+  // Find members by geographic location (for crisis management)
+  @Query("SELECT m FROM Member m JOIN m.location l WHERE m.church = :church " +
+         "AND (:suburb IS NULL OR LOWER(l.suburb) = LOWER(:suburb)) " +
+         "AND (:city IS NULL OR LOWER(l.city) = LOWER(:city)) " +
+         "AND (:district IS NULL OR LOWER(l.district) = LOWER(:district)) " +
+         "AND (:region IS NULL OR LOWER(l.region) = LOWER(:region)) " +
+         "AND (:countryCode IS NULL OR l.countryCode = :countryCode)")
+  java.util.List<Member> findByGeographicLocation(
+      @Param("church") Church church,
+      @Param("suburb") String suburb,
+      @Param("city") String city,
+      @Param("district") String district,
+      @Param("region") String region,
+      @Param("countryCode") String countryCode);
+
 }

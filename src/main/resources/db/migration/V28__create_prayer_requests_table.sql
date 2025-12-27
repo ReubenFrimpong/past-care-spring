@@ -1,0 +1,37 @@
+-- Create prayer requests table
+CREATE TABLE prayer_requests (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    church_id BIGINT NOT NULL,
+    member_id BIGINT NOT NULL,
+    submitted_by_user_id BIGINT NOT NULL,
+    title VARCHAR(200) NOT NULL,
+    description TEXT,
+    category VARCHAR(50) NOT NULL,
+    priority VARCHAR(20) NOT NULL DEFAULT 'NORMAL',
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    is_anonymous BOOLEAN DEFAULT FALSE,
+    is_urgent BOOLEAN DEFAULT FALSE,
+    expiration_date DATE,
+    answered_date DATETIME,
+    testimony TEXT,
+    prayer_count INT DEFAULT 0,
+    is_public BOOLEAN DEFAULT TRUE,
+    tags VARCHAR(500),
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+
+    CONSTRAINT fk_prayer_request_church FOREIGN KEY (church_id) REFERENCES churches(id) ON DELETE CASCADE,
+    CONSTRAINT fk_prayer_request_member FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE,
+    CONSTRAINT fk_prayer_request_submitted_by FOREIGN KEY (submitted_by_user_id) REFERENCES users(id) ON DELETE CASCADE,
+
+    INDEX idx_prayer_request_church (church_id),
+    INDEX idx_prayer_request_member (member_id),
+    INDEX idx_prayer_request_submitted_by (submitted_by_user_id),
+    INDEX idx_prayer_request_status (status),
+    INDEX idx_prayer_request_category (category),
+    INDEX idx_prayer_request_priority (priority),
+    INDEX idx_prayer_request_expiration_date (expiration_date),
+    INDEX idx_prayer_request_is_urgent (is_urgent),
+    INDEX idx_prayer_request_is_public (is_public),
+    INDEX idx_prayer_request_created_at (created_at)
+);

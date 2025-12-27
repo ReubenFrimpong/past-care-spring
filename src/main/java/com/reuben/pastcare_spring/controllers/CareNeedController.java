@@ -240,6 +240,58 @@ public class CareNeedController {
     }
 
     /**
+     * Get urgent care needs
+     */
+    @GetMapping("/urgent")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Get urgent", description = "Returns urgent care needs")
+    public ResponseEntity<List<CareNeedResponse>> getUrgentCareNeeds(HttpServletRequest httpRequest) {
+        Long churchId = requestContextUtil.extractChurchId(httpRequest);
+        List<CareNeedResponse> careNeeds = careNeedService.getUrgentCareNeeds(churchId);
+        return ResponseEntity.ok(careNeeds);
+    }
+
+    /**
+     * Get unassigned care needs
+     */
+    @GetMapping("/unassigned")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Get unassigned", description = "Returns unassigned care needs")
+    public ResponseEntity<List<CareNeedResponse>> getUnassignedCareNeeds(HttpServletRequest httpRequest) {
+        Long churchId = requestContextUtil.extractChurchId(httpRequest);
+        List<CareNeedResponse> careNeeds = careNeedService.getUnassignedCareNeeds(churchId);
+        return ResponseEntity.ok(careNeeds);
+    }
+
+    /**
+     * Get care needs for the current user (assigned to me)
+     */
+    @GetMapping("/assigned-to-me")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Get my assigned care needs", description = "Returns care needs assigned to the current user")
+    public ResponseEntity<List<CareNeedResponse>> getMyAssignedCareNeeds(HttpServletRequest httpRequest) {
+        Long churchId = requestContextUtil.extractChurchId(httpRequest);
+        Long userId = requestContextUtil.extractUserId(httpRequest);
+        List<CareNeedResponse> careNeeds = careNeedService.getAssignedCareNeeds(churchId, userId, org.springframework.data.domain.Pageable.unpaged())
+            .getContent();
+        return ResponseEntity.ok(careNeeds);
+    }
+
+    /**
+     * Get care needs by member
+     */
+    @GetMapping("/member/{memberId}")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Get by member", description = "Returns care needs for a specific member")
+    public ResponseEntity<List<CareNeedResponse>> getCareNeedsByMember(
+            @PathVariable Long memberId,
+            HttpServletRequest httpRequest) {
+        Long churchId = requestContextUtil.extractChurchId(httpRequest);
+        List<CareNeedResponse> careNeeds = careNeedService.getCareNeedsByMember(churchId, memberId);
+        return ResponseEntity.ok(careNeeds);
+    }
+
+    /**
      * Auto-detect members needing care
      */
     @GetMapping("/detect-needs")

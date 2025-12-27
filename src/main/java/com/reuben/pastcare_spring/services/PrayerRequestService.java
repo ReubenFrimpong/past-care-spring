@@ -1,193 +1,305 @@
 package com.reuben.pastcare_spring.services;
 
-import com.reuben.pastcare_spring.dtos.PrayerRequestDto;
+import com.reuben.pastcare_spring.dtos.PrayerRequestRequest;
+import com.reuben.pastcare_spring.dtos.PrayerRequestResponse;
+import com.reuben.pastcare_spring.dtos.PrayerRequestStatsResponse;
 import com.reuben.pastcare_spring.models.*;
-import com.reuben.pastcare_spring.repositories.MemberRepository;
-import com.reuben.pastcare_spring.repositories.PrayerRequestRepository;
+import com.reuben.pastcare_spring.repositories.*;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
+/**
+ * Service for managing prayer requests
+ */
 @Service
 @RequiredArgsConstructor
-@Slf4j
-@Transactional
 public class PrayerRequestService {
 
     private final PrayerRequestRepository prayerRequestRepository;
     private final MemberRepository memberRepository;
+    private final UserRepository userRepository;
+    private final ChurchRepository churchRepository;
 
     /**
-     * Submit a new prayer request
+     * Create a new prayer request (submit request)
      */
-    public PrayerRequest submitPrayerRequest(Long churchId, Long memberId, PrayerRequestDto dto) {
-        Member member = memberRepository.findById(memberId)
-            .orElseThrow(() -> new IllegalArgumentException("Member not found"));
-
-        if (!member.getChurch().getId().equals(churchId)) {
-            throw new IllegalArgumentException("Unauthorized access to member");
-        }
-
+    @Transactional
+    public PrayerRequestResponse createPrayerRequest(Long churchId, PrayerRequestRequest request, Long currentUserId) {
         PrayerRequest prayerRequest = new PrayerRequest();
-        prayerRequest.setMember(member);
-        prayerRequest.setRequest(dto.getRequest());
-        prayerRequest.setCategory(dto.getCategory());
-        prayerRequest.setPriority(dto.getPriority() != null ? dto.getPriority() : PrayerRequestPriority.NORMAL);
-        prayerRequest.setIsAnonymous(dto.getIsAnonymous() != null ? dto.getIsAnonymous() : false);
-        prayerRequest.setIsUrgent(dto.getIsUrgent() != null ? dto.getIsUrgent() : false);
-        prayerRequest.setIsPublic(dto.getIsPublic() != null ? dto.getIsPublic() : false);
-        prayerRequest.setStatus(PrayerRequestStatus.PENDING);
-        prayerRequest.setChurch(member.getChurch());
 
-        // Set expiry date if not provided (default 30 days)
-        if (dto.getExpiresAt() != null) {
-            prayerRequest.setExpiresAt(dto.getExpiresAt());
-        } else {
-            prayerRequest.setExpiresAt(LocalDateTime.now().plusDays(30));
-        }
+        // Set church (tenant isolation)
+        Church church = churchRepository.findById(churchId)
+            .orElseThrow(() -> new IllegalArgumentException("Church not found with id: " + churchId));
+        prayerRequest.setChurch(church);
+
+        // Set member
+        Member member = memberRepository.findById(request.getMemberId())
+            .orElseThrow(() -> new IllegalArgumentException("Member not found with id: " + request.getMemberId()));
+        prayerRequest.setMember(member);
+
+        // Set submitted by user
+        User submittedBy = userRepository.findById(currentUserId)
+            .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + currentUserId));
+        prayerRequest.setSubmittedBy(submittedBy);
+
+        updatePrayerRequestFromRequest(prayerRequest, request);
 
         PrayerRequest saved = prayerRequestRepository.save(prayerRequest);
-        log.info("Prayer request submitted by member: {} (ID: {})", member.getFirstName(), memberId);
-
-        return saved;
+        return PrayerRequestResponse.fromEntity(saved);
     }
 
     /**
-     * Get all prayer requests for a church
+     * Get prayer request by ID
      */
-    @Transactional(readOnly = true)
-    public List<PrayerRequest> getAllPrayerRequests(Long churchId) {
-        return prayerRequestRepository.findByChurchIdOrderByCreatedAtDesc(churchId);
+    public PrayerRequestResponse getPrayerRequestById(Long id) {
+        PrayerRequest prayerRequest = prayerRequestRepository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Prayer request not found with id: " + id));
+        return PrayerRequestResponse.fromEntity(prayerRequest);
     }
 
     /**
-     * Get prayer requests by member
+     * Get all prayer requests for a church with pagination
      */
-    @Transactional(readOnly = true)
-    public List<PrayerRequest> getMemberPrayerRequests(Long memberId) {
-        return prayerRequestRepository.findByMemberIdOrderByCreatedAtDesc(memberId);
+    public Page<PrayerRequestResponse> getPrayerRequests(Long churchId, Pageable pageable) {
+        Church church = churchRepository.findById(churchId)
+            .orElseThrow(() -> new IllegalArgumentException("Church not found with id: " + churchId));
+        return prayerRequestRepository.findByChurch(church, pageable)
+            .map(PrayerRequestResponse::fromEntity);
     }
 
     /**
-     * Get prayer requests by status
+     * Update an existing prayer request
      */
-    @Transactional(readOnly = true)
-    public List<PrayerRequest> getPrayerRequestsByStatus(Long churchId, PrayerRequestStatus status) {
-        return prayerRequestRepository.findByChurchIdAndStatusOrderByCreatedAtDesc(churchId, status);
+    @Transactional
+    public PrayerRequestResponse updatePrayerRequest(Long id, PrayerRequestRequest request) {
+        PrayerRequest prayerRequest = prayerRequestRepository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Prayer request not found with id: " + id));
+
+        // Update member if changed
+        if (!prayerRequest.getMember().getId().equals(request.getMemberId())) {
+            Member member = memberRepository.findById(request.getMemberId())
+                .orElseThrow(() -> new IllegalArgumentException("Member not found with id: " + request.getMemberId()));
+            prayerRequest.setMember(member);
+        }
+
+        updatePrayerRequestFromRequest(prayerRequest, request);
+        PrayerRequest updated = prayerRequestRepository.save(prayerRequest);
+        return PrayerRequestResponse.fromEntity(updated);
     }
 
     /**
-     * Get public prayer requests (for prayer team/church)
+     * Delete a prayer request
      */
-    @Transactional(readOnly = true)
-    public List<PrayerRequest> getPublicPrayerRequests(Long churchId) {
-        return prayerRequestRepository.findPublicPrayerRequests(churchId, PrayerRequestStatus.ACTIVE);
+    @Transactional
+    public void deletePrayerRequest(Long id) {
+        PrayerRequest prayerRequest = prayerRequestRepository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Prayer request not found with id: " + id));
+        prayerRequestRepository.delete(prayerRequest);
+    }
+
+    /**
+     * Increment prayer count (when someone prays)
+     */
+    @Transactional
+    public PrayerRequestResponse incrementPrayerCount(Long id) {
+        PrayerRequest prayerRequest = prayerRequestRepository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Prayer request not found with id: " + id));
+
+        prayerRequest.incrementPrayerCount();
+        PrayerRequest updated = prayerRequestRepository.save(prayerRequest);
+        return PrayerRequestResponse.fromEntity(updated);
+    }
+
+    /**
+     * Mark prayer request as answered with testimony
+     */
+    @Transactional
+    public PrayerRequestResponse markAsAnswered(Long id, String testimony) {
+        PrayerRequest prayerRequest = prayerRequestRepository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Prayer request not found with id: " + id));
+
+        prayerRequest.setStatus(PrayerRequestStatus.ANSWERED);
+        prayerRequest.setAnsweredDate(LocalDateTime.now());
+
+        if (testimony != null && !testimony.isEmpty()) {
+            prayerRequest.setTestimony(testimony);
+        }
+
+        PrayerRequest updated = prayerRequestRepository.save(prayerRequest);
+        return PrayerRequestResponse.fromEntity(updated);
+    }
+
+    /**
+     * Archive/expire prayer requests
+     */
+    @Transactional
+    public PrayerRequestResponse archivePrayerRequest(Long id) {
+        PrayerRequest prayerRequest = prayerRequestRepository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Prayer request not found with id: " + id));
+
+        prayerRequest.setStatus(PrayerRequestStatus.ARCHIVED);
+        PrayerRequest updated = prayerRequestRepository.save(prayerRequest);
+        return PrayerRequestResponse.fromEntity(updated);
+    }
+
+    /**
+     * Get active prayer requests
+     */
+    public List<PrayerRequestResponse> getActivePrayerRequests(Long churchId) {
+        Church church = churchRepository.findById(churchId)
+            .orElseThrow(() -> new IllegalArgumentException("Church not found with id: " + churchId));
+        return prayerRequestRepository.findActivePrayerRequests(church).stream()
+            .map(PrayerRequestResponse::fromEntity)
+            .collect(Collectors.toList());
     }
 
     /**
      * Get urgent prayer requests
      */
-    @Transactional(readOnly = true)
-    public List<PrayerRequest> getUrgentPrayerRequests(Long churchId) {
-        return prayerRequestRepository.findByChurchIdAndIsUrgentTrueOrderByCreatedAtDesc(churchId);
+    public List<PrayerRequestResponse> getUrgentPrayerRequests(Long churchId) {
+        Church church = churchRepository.findById(churchId)
+            .orElseThrow(() -> new IllegalArgumentException("Church not found with id: " + churchId));
+        return prayerRequestRepository.findUrgentPrayerRequests(church).stream()
+            .map(PrayerRequestResponse::fromEntity)
+            .collect(Collectors.toList());
     }
 
     /**
-     * Update prayer request status
+     * Get prayer requests by status
      */
-    public PrayerRequest updateStatus(Long churchId, Long prayerRequestId, PrayerRequestStatus status) {
-        PrayerRequest prayerRequest = prayerRequestRepository.findById(prayerRequestId)
-            .orElseThrow(() -> new IllegalArgumentException("Prayer request not found"));
-
-        if (!prayerRequest.getChurchId().equals(churchId)) {
-            throw new IllegalArgumentException("Unauthorized access to prayer request");
-        }
-
-        prayerRequest.setStatus(status);
-
-        if (status == PrayerRequestStatus.ANSWERED) {
-            prayerRequest.setAnsweredAt(LocalDateTime.now());
-        }
-
-        return prayerRequestRepository.save(prayerRequest);
+    public Page<PrayerRequestResponse> getPrayerRequestsByStatus(Long churchId, PrayerRequestStatus status, Pageable pageable) {
+        Church church = churchRepository.findById(churchId)
+            .orElseThrow(() -> new IllegalArgumentException("Church not found with id: " + churchId));
+        return prayerRequestRepository.findByChurchAndStatus(church, status, pageable)
+            .map(PrayerRequestResponse::fromEntity);
     }
 
     /**
-     * Add testimony for answered prayer
+     * Get prayer requests by category
      */
-    public PrayerRequest addTestimony(Long churchId, Long prayerRequestId, Long memberId, String testimony) {
-        PrayerRequest prayerRequest = prayerRequestRepository.findById(prayerRequestId)
-            .orElseThrow(() -> new IllegalArgumentException("Prayer request not found"));
-
-        if (!prayerRequest.getChurchId().equals(churchId)) {
-            throw new IllegalArgumentException("Unauthorized access to prayer request");
-        }
-
-        // Only the member who submitted can add testimony
-        if (!prayerRequest.getMember().getId().equals(memberId)) {
-            throw new IllegalArgumentException("Only the prayer request owner can add testimony");
-        }
-
-        prayerRequest.setTestimony(testimony);
-        prayerRequest.setStatus(PrayerRequestStatus.ANSWERED);
-        prayerRequest.setAnsweredAt(LocalDateTime.now());
-
-        PrayerRequest updated = prayerRequestRepository.save(prayerRequest);
-        log.info("Testimony added for prayer request: {}", prayerRequestId);
-
-        return updated;
+    public Page<PrayerRequestResponse> getPrayerRequestsByCategory(Long churchId, PrayerCategory category, Pageable pageable) {
+        Church church = churchRepository.findById(churchId)
+            .orElseThrow(() -> new IllegalArgumentException("Church not found with id: " + churchId));
+        return prayerRequestRepository.findByChurchAndCategory(church, category, pageable)
+            .map(PrayerRequestResponse::fromEntity);
     }
 
     /**
-     * Get prayer testimonies
+     * Get prayer requests submitted by a specific user
      */
-    @Transactional(readOnly = true)
-    public List<PrayerRequest> getPrayerTestimonies(Long churchId) {
-        return prayerRequestRepository.findByChurchIdAndStatusAndTestimonyIsNotNullOrderByAnsweredAtDesc(
-            churchId, PrayerRequestStatus.ANSWERED
-        );
+    public Page<PrayerRequestResponse> getMyPrayerRequests(Long churchId, Long userId, Pageable pageable) {
+        Church church = churchRepository.findById(churchId)
+            .orElseThrow(() -> new IllegalArgumentException("Church not found with id: " + churchId));
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + userId));
+        return prayerRequestRepository.findByChurchAndSubmittedBy(church, user, pageable)
+            .map(PrayerRequestResponse::fromEntity);
     }
 
     /**
-     * Archive expired prayer requests
+     * Get answered prayer requests with testimonies
      */
-    public int archiveExpiredPrayerRequests() {
-        List<PrayerRequest> expired = prayerRequestRepository.findExpiredPrayerRequests(
-            LocalDateTime.now(), PrayerRequestStatus.ARCHIVED
-        );
+    public Page<PrayerRequestResponse> getAnsweredPrayerRequests(Long churchId, Pageable pageable) {
+        Church church = churchRepository.findById(churchId)
+            .orElseThrow(() -> new IllegalArgumentException("Church not found with id: " + churchId));
+        return prayerRequestRepository.findAnsweredPrayerRequests(church, pageable)
+            .map(PrayerRequestResponse::fromEntity);
+    }
 
-        for (PrayerRequest request : expired) {
-            request.setStatus(PrayerRequestStatus.ARCHIVED);
+    /**
+     * Get public prayer requests (for member portal)
+     */
+    public Page<PrayerRequestResponse> getPublicPrayerRequests(Long churchId, Pageable pageable) {
+        Church church = churchRepository.findById(churchId)
+            .orElseThrow(() -> new IllegalArgumentException("Church not found with id: " + churchId));
+        return prayerRequestRepository.findPublicPrayerRequests(church, pageable)
+            .map(PrayerRequestResponse::fromEntity);
+    }
+
+    /**
+     * Search prayer requests
+     */
+    public Page<PrayerRequestResponse> searchPrayerRequests(Long churchId, String search, Pageable pageable) {
+        Church church = churchRepository.findById(churchId)
+            .orElseThrow(() -> new IllegalArgumentException("Church not found with id: " + churchId));
+        return prayerRequestRepository.searchPrayerRequests(church, search, pageable)
+            .map(PrayerRequestResponse::fromEntity);
+    }
+
+    /**
+     * Get prayer request statistics for a church
+     */
+    public PrayerRequestStatsResponse getPrayerRequestStats(Long churchId) {
+        Church church = churchRepository.findById(churchId)
+            .orElseThrow(() -> new IllegalArgumentException("Church not found with id: " + churchId));
+
+        long total = prayerRequestRepository.countByChurch(church);
+        long pending = prayerRequestRepository.countByChurchAndStatus(church, PrayerRequestStatus.PENDING);
+        long active = prayerRequestRepository.countByChurchAndStatus(church, PrayerRequestStatus.ACTIVE);
+        long answered = prayerRequestRepository.countByChurchAndStatus(church, PrayerRequestStatus.ANSWERED);
+        long urgent = prayerRequestRepository.countUrgent(church);
+        long publicRequests = prayerRequestRepository.countActivePublic(church);
+
+        return new PrayerRequestStatsResponse(total, pending, active, answered, urgent, publicRequests);
+    }
+
+    /**
+     * Get prayer requests expiring soon
+     */
+    public List<PrayerRequestResponse> getExpiringSoon(Long churchId) {
+        Church church = churchRepository.findById(churchId)
+            .orElseThrow(() -> new IllegalArgumentException("Church not found with id: " + churchId));
+        LocalDate today = LocalDate.now();
+        LocalDate nextWeek = today.plusDays(7);
+        return prayerRequestRepository.findExpiringSoon(church, today, nextWeek).stream()
+            .map(PrayerRequestResponse::fromEntity)
+            .collect(Collectors.toList());
+    }
+
+    /**
+     * Auto-archive expired prayer requests
+     */
+    @Transactional
+    public int autoArchiveExpiredRequests(Long churchId) {
+        Church church = churchRepository.findById(churchId)
+            .orElseThrow(() -> new IllegalArgumentException("Church not found with id: " + churchId));
+        List<PrayerRequest> expired = prayerRequestRepository.findExpiredPrayerRequests(church, LocalDate.now());
+
+        for (PrayerRequest pr : expired) {
+            pr.setStatus(PrayerRequestStatus.ARCHIVED);
         }
 
         prayerRequestRepository.saveAll(expired);
-        log.info("Archived {} expired prayer requests", expired.size());
-
         return expired.size();
     }
 
     /**
-     * Delete prayer request (soft delete by archiving)
+     * Helper method to update prayer request from request DTO
      */
-    public void deletePrayerRequest(Long churchId, Long prayerRequestId, Long memberId) {
-        PrayerRequest prayerRequest = prayerRequestRepository.findById(prayerRequestId)
-            .orElseThrow(() -> new IllegalArgumentException("Prayer request not found"));
+    private void updatePrayerRequestFromRequest(PrayerRequest prayerRequest, PrayerRequestRequest request) {
+        prayerRequest.setTitle(request.getTitle());
+        prayerRequest.setDescription(request.getDescription());
+        prayerRequest.setCategory(request.getCategory());
+        prayerRequest.setPriority(request.getPriority() != null ? request.getPriority() : PrayerPriority.NORMAL);
+        prayerRequest.setIsAnonymous(request.getIsAnonymous() != null ? request.getIsAnonymous() : false);
+        prayerRequest.setIsUrgent(request.getIsUrgent() != null ? request.getIsUrgent() : false);
+        prayerRequest.setExpirationDate(request.getExpirationDate());
+        prayerRequest.setIsPublic(request.getIsPublic() != null ? request.getIsPublic() : true);
+        prayerRequest.setTags(request.getTags());
 
-        if (!prayerRequest.getChurchId().equals(churchId)) {
-            throw new IllegalArgumentException("Unauthorized access to prayer request");
+        // Handle status if provided
+        if (request.getStatus() != null) {
+            prayerRequest.setStatus(request.getStatus());
+        } else if (prayerRequest.getStatus() == null) {
+            prayerRequest.setStatus(PrayerRequestStatus.PENDING);
         }
-
-        // Only the member who submitted can delete
-        if (!prayerRequest.getMember().getId().equals(memberId)) {
-            throw new IllegalArgumentException("Only the prayer request owner can delete");
-        }
-
-        prayerRequest.setStatus(PrayerRequestStatus.ARCHIVED);
-        prayerRequestRepository.save(prayerRequest);
-        log.info("Prayer request archived: {}", prayerRequestId);
     }
 }

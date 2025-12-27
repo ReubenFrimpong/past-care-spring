@@ -1,22 +1,30 @@
 package com.reuben.pastcare_spring.models;
 
-/**
- * Types of care needs that can be tracked in the pastoral care system
- */
 public enum CareNeedType {
-    HOSPITAL_VISIT,      // Member hospitalized
-    BEREAVEMENT,         // Death in family
-    COUNSELING,          // General counseling need
-    PRAYER,              // Prayer request
-    FINANCIAL,           // Financial assistance
-    HOUSING,             // Housing issues
-    EMPLOYMENT,          // Job loss or employment issues
-    FAMILY_CRISIS,       // Family problems
-    SPIRITUAL,           // Spiritual struggles
-    HEALTH,              // Health concerns (non-hospital)
-    EMOTIONAL,           // Mental/emotional support
-    MARRIAGE,            // Marriage counseling
-    ADDICTION,           // Substance abuse
-    LEGAL,               // Legal issues
-    OTHER                // Other needs
+    HOSPITAL_VISIT("Hospital Visit"),
+    BEREAVEMENT("Bereavement Support"),
+    COUNSELING("Counseling"),
+    PRAYER("Prayer Request"),
+    FINANCIAL_ASSISTANCE("Financial Assistance"),
+    SPIRITUAL_GUIDANCE("Spiritual Guidance"),
+    MARRIAGE_SUPPORT("Marriage Support"),
+    FAMILY_CRISIS("Family Crisis"),
+    UNEMPLOYMENT("Unemployment Support"),
+    ADDICTION_RECOVERY("Addiction Recovery"),
+    MENTAL_HEALTH("Mental Health Support"),
+    ELDERLY_CARE("Elderly Care"),
+    CHILD_CARE("Child Care Assistance"),
+    MEDICAL_EMERGENCY("Medical Emergency"),
+    HOUSING_ASSISTANCE("Housing Assistance"),
+    OTHER("Other");
+
+    private final String displayName;
+
+    CareNeedType(String displayName) {
+        this.displayName = displayName;
+    }
+
+    public String getDisplayName() {
+        return displayName;
+    }
 }

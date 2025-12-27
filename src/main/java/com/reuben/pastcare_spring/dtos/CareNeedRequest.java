@@ -1,40 +1,142 @@
 package com.reuben.pastcare_spring.dtos;
 
 import com.reuben.pastcare_spring.models.CareNeedPriority;
+import com.reuben.pastcare_spring.models.CareNeedStatus;
 import com.reuben.pastcare_spring.models.CareNeedType;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-import java.time.LocalDateTime;
-import java.util.Set;
+import java.time.LocalDate;
 
-/**
- * Request DTO for creating or updating a care need
- */
-public record CareNeedRequest(
+public class CareNeedRequest {
+
     @NotNull(message = "Member ID is required")
-    Long memberId,
-
-    @NotBlank(message = "Title is required")
-    @Size(max = 200, message = "Title must not exceed 200 characters")
-    String title,
-
-    @Size(max = 2000, message = "Description must not exceed 2000 characters")
-    String description,
+    private Long memberId;
 
     @NotNull(message = "Type is required")
-    CareNeedType type,
+    private CareNeedType type;
 
-    CareNeedPriority priority,
+    @NotNull(message = "Priority is required")
+    private CareNeedPriority priority;
 
-    Long assignedToUserId,
+    private CareNeedStatus status;
 
-    LocalDateTime dueDate,
+    @NotNull(message = "Title is required")
+    @Size(min = 1, max = 255, message = "Title must be between 1 and 255 characters")
+    private String title;
 
-    Boolean followUpRequired,
+    private String description;
 
-    LocalDateTime followUpDate,
+    private Long assignedToId;
 
-    Set<String> tags
-) {}
+    private LocalDate dueDate;
+
+    private String notes;
+
+    private Boolean followUpRequired;
+
+    private LocalDate followUpDate;
+
+    private Boolean isConfidential;
+
+    // Constructors
+    public CareNeedRequest() {
+    }
+
+    // Getters and Setters
+    public Long getMemberId() {
+        return memberId;
+    }
+
+    public void setMemberId(Long memberId) {
+        this.memberId = memberId;
+    }
+
+    public CareNeedType getType() {
+        return type;
+    }
+
+    public void setType(CareNeedType type) {
+        this.type = type;
+    }
+
+    public CareNeedPriority getPriority() {
+        return priority;
+    }
+
+    public void setPriority(CareNeedPriority priority) {
+        this.priority = priority;
+    }
+
+    public CareNeedStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(CareNeedStatus status) {
+        this.status = status;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public Long getAssignedToId() {
+        return assignedToId;
+    }
+
+    public void setAssignedToId(Long assignedToId) {
+        this.assignedToId = assignedToId;
+    }
+
+    public LocalDate getDueDate() {
+        return dueDate;
+    }
+
+    public void setDueDate(LocalDate dueDate) {
+        this.dueDate = dueDate;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
+    }
+
+    public Boolean getFollowUpRequired() {
+        return followUpRequired;
+    }
+
+    public void setFollowUpRequired(Boolean followUpRequired) {
+        this.followUpRequired = followUpRequired;
+    }
+
+    public LocalDate getFollowUpDate() {
+        return followUpDate;
+    }
+
+    public void setFollowUpDate(LocalDate followUpDate) {
+        this.followUpDate = followUpDate;
+    }
+
+    public Boolean getIsConfidential() {
+        return isConfidential;
+    }
+
+    public void setIsConfidential(Boolean isConfidential) {
+        this.isConfidential = isConfidential;
+    }
+}

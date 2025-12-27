@@ -1,5 +1,6 @@
 package com.reuben.pastcare_spring.services;
 
+import com.reuben.pastcare_spring.security.TenantContext;
 import com.reuben.pastcare_spring.dtos.*;
 import com.reuben.pastcare_spring.models.*;
 import com.reuben.pastcare_spring.repositories.*;
@@ -11,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -22,6 +24,7 @@ public class CrisisService {
 
     private final CrisisRepository crisisRepository;
     private final CrisisAffectedMemberRepository crisisAffectedMemberRepository;
+    private final CrisisAffectedLocationRepository crisisAffectedLocationRepository;
     private final MemberRepository memberRepository;
     private final UserRepository userRepository;
     private final ChurchRepository churchRepository;
@@ -377,6 +380,33 @@ public class CrisisService {
         crisis.setSeverity(request.getSeverity());
         crisis.setIncidentDate(request.getIncidentDate());
         crisis.setLocation(request.getLocation());
+
+        // Set geographic fields for auto-detection (legacy single location support)
+        crisis.setAffectedSuburb(request.getAffectedSuburb());
+        crisis.setAffectedCity(request.getAffectedCity());
+        crisis.setAffectedDistrict(request.getAffectedDistrict());
+        crisis.setAffectedRegion(request.getAffectedRegion());
+        crisis.setAffectedCountryCode(request.getAffectedCountryCode());
+
+        // Handle multiple affected locations
+        if (request.getAffectedLocations() != null && !request.getAffectedLocations().isEmpty()) {
+            // Clear existing locations
+            crisis.clearAffectedLocations();
+
+            // Add new locations
+            for (AffectedLocationRequest locationReq : request.getAffectedLocations()) {
+                CrisisAffectedLocation location = new CrisisAffectedLocation(
+                    crisis,
+                    locationReq.getSuburb(),
+                    locationReq.getCity(),
+                    locationReq.getDistrict(),
+                    locationReq.getRegion(),
+                    locationReq.getCountryCode()
+                );
+                crisis.addAffectedLocation(location);
+            }
+        }
+
         crisis.setResponseTeamNotes(request.getResponseTeamNotes());
         crisis.setResolutionNotes(request.getResolutionNotes());
         crisis.setFollowUpRequired(request.getFollowUpRequired() != null ? request.getFollowUpRequired() : false);
@@ -417,6 +447,89 @@ public class CrisisService {
 
         response.setAffectedMembers(affectedMemberResponses);
 
+        // Load affected locations
+        List<CrisisAffectedLocation> affectedLocations = crisis.getAffectedLocationsList();
+        if (affectedLocations != null && !affectedLocations.isEmpty()) {
+            List<AffectedLocationResponse> locationResponses = affectedLocations.stream()
+                .map(AffectedLocationResponse::fromEntity)
+                .collect(Collectors.toList());
+            response.setAffectedLocations(locationResponses);
+        }
+
         return response;
+    }
+
+    /**
+     * Auto-detect members in the affected geographic area and add them to the crisis.
+     * Supports both legacy single location and new multi-location functionality.
+     */
+    @Transactional
+    public List<Member> autoDetectAffectedMembers(Long crisisId) {
+        Crisis crisis = crisisRepository.findById(crisisId)
+            .orElseThrow(() -> new IllegalArgumentException("Crisis not found"));
+
+        Church church = crisis.getChurch();
+
+        Set<Member> allAffectedMembers = new java.util.HashSet<>();
+
+        // Check if crisis has multiple locations defined
+        List<CrisisAffectedLocation> locations = crisis.getAffectedLocationsList();
+
+        if (locations != null && !locations.isEmpty()) {
+            // Multi-location: find members for each location
+            for (CrisisAffectedLocation location : locations) {
+                List<Member> membersInLocation = memberRepository.findByGeographicLocation(
+                    church,
+                    location.getSuburb(),
+                    location.getCity(),
+                    location.getDistrict(),
+                    location.getRegion(),
+                    location.getCountryCode()
+                );
+                allAffectedMembers.addAll(membersInLocation);
+            }
+        } else {
+            // Legacy single location: use the crisis's geographic fields
+            List<Member> membersInLocation = memberRepository.findByGeographicLocation(
+                church,
+                crisis.getAffectedSuburb(),
+                crisis.getAffectedCity(),
+                crisis.getAffectedDistrict(),
+                crisis.getAffectedRegion(),
+                crisis.getAffectedCountryCode()
+            );
+            allAffectedMembers.addAll(membersInLocation);
+        }
+
+        // Add them to the crisis (avoiding duplicates)
+        List<CrisisAffectedMember> existing = crisisAffectedMemberRepository.findByCrisis(crisis);
+        Set<Long> existingMemberIds = existing.stream()
+            .filter(cam -> cam.getMember() != null) // Filter out orphaned records
+            .map(cam -> cam.getMember().getId())
+            .collect(Collectors.toSet());
+
+        for (Member member : allAffectedMembers) {
+            if (!existingMemberIds.contains(member.getId())) {
+                CrisisAffectedMember affectedMember = new CrisisAffectedMember(crisis, member);
+                crisisAffectedMemberRepository.save(affectedMember);
+            }
+        }
+
+        // Update affected members count
+        Long count = crisisAffectedMemberRepository.countByCrisis(crisis);
+        crisis.setAffectedMembersCount(count != null ? count.intValue() : 0);
+        crisisRepository.save(crisis);
+
+        return new java.util.ArrayList<>(allAffectedMembers);
+    }
+
+    /**
+     * Get list of members that would be affected based on geographic criteria (preview mode)
+     */
+    public List<Member> previewAffectedMembers(String suburb, String city, String district, String region, String countryCode) {
+        Long churchId = TenantContext.getCurrentChurchId();
+        Church church = churchRepository.findById(churchId)
+            .orElseThrow(() -> new IllegalArgumentException("Church not found"));
+        return memberRepository.findByGeographicLocation(church, suburb, city, district, region, countryCode);
     }
 }

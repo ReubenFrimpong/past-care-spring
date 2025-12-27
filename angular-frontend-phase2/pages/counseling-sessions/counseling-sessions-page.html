@@ -1,0 +1,737 @@
+<div class="counseling-sessions-page">
+  <p-toast></p-toast>
+  <p-confirmDialog></p-confirmDialog>
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <h1>Counseling Sessions</h1>
+    <p class="subtitle">Manage and track counseling sessions</p>
+  </div>
+
+  <!-- Statistics Cards -->
+  <div class="stats-grid" *ngIf="stats()">
+    <div class="stat-card">
+      <div class="stat-icon total">
+        <i class="pi pi-calendar"></i>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value">{{ stats()!.totalSessions }}</div>
+        <div class="stat-label">Total Sessions</div>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon scheduled">
+        <i class="pi pi-clock"></i>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value">{{ stats()!.scheduledSessions }}</div>
+        <div class="stat-label">Scheduled</div>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon completed">
+        <i class="pi pi-check-circle"></i>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value">{{ stats()!.completedSessions }}</div>
+        <div class="stat-label">Completed</div>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon followup">
+        <i class="pi pi-replay"></i>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value">{{ stats()!.requiresFollowUp }}</div>
+        <div class="stat-label">Requires Follow-up</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters and Actions -->
+  <div class="filters-section">
+    <div class="filters">
+      <span class="p-input-icon-left">
+        <i class="pi pi-search"></i>
+        <input
+          type="text"
+          pInputText
+          placeholder="Search sessions..."
+          [(ngModel)]="searchTerm"
+          (ngModelChange)="searchTerm.set($event)"
+        />
+      </span>
+
+      <p-dropdown
+        [options]="statusOptions"
+        [(ngModel)]="selectedStatus"
+        (ngModelChange)="selectedStatus.set($event)"
+        placeholder="Filter by Status"
+        [showClear]="true"
+        optionLabel="label"
+        optionValue="value"
+      ></p-dropdown>
+
+      <p-dropdown
+        [options]="typeOptions"
+        [(ngModel)]="selectedType"
+        (ngModelChange)="selectedType.set($event)"
+        placeholder="Filter by Type"
+        [showClear]="true"
+        optionLabel="label"
+        optionValue="value"
+      ></p-dropdown>
+
+      <button
+        pButton
+        type="button"
+        label="Clear Filters"
+        icon="pi pi-filter-slash"
+        class="p-button-secondary p-button-outlined"
+        (click)="clearFilters()"
+      ></button>
+    </div>
+
+    <button
+      pButton
+      type="button"
+      label="New Session"
+      icon="pi pi-plus"
+      class="p-button-primary"
+      (click)="openAddDialog()"
+    ></button>
+  </div>
+
+  <!-- Sessions Grid -->
+  <div class="sessions-grid" *ngIf="!loading()">
+    <p-card *ngFor="let session of filteredSessions()" class="session-card">
+      <div class="card-header">
+        <div class="card-title">
+          <i class="pi pi-user"></i>
+          <span>{{ session.memberName }}</span>
+        </div>
+        <div class="card-actions">
+          <button
+            pButton
+            type="button"
+            icon="pi pi-eye"
+            class="p-button-text p-button-sm"
+            (click)="openViewDialog(session)"
+            pTooltip="View Details"
+          ></button>
+          <button
+            pButton
+            type="button"
+            icon="pi pi-pencil"
+            class="p-button-text p-button-sm"
+            (click)="openEditDialog(session)"
+            pTooltip="Edit"
+          ></button>
+          <button
+            pButton
+            type="button"
+            icon="pi pi-trash"
+            class="p-button-text p-button-sm p-button-danger"
+            (click)="deleteSession(session)"
+            pTooltip="Delete"
+          ></button>
+        </div>
+      </div>
+
+      <div class="card-content">
+        <div class="info-row">
+          <span class="label">Counselor:</span>
+          <span class="value">{{ session.counselorName }}</span>
+        </div>
+
+        <div class="info-row">
+          <span class="label">Session Date:</span>
+          <span class="value">{{ session.sessionDate | date: 'MMM d, y' }}</span>
+        </div>
+
+        <div class="info-row" *ngIf="session.startTime">
+          <span class="label">Time:</span>
+          <span class="value">{{ session.startTime }} - {{ session.endTime }}</span>
+        </div>
+
+        <div class="info-row">
+          <span class="label">Type:</span>
+          <span class="value">{{ CounselingTypeLabels[session.type] }}</span>
+        </div>
+
+        <div class="badges-row">
+          <span [class]="'status-badge ' + getStatusClass(session.status)">
+            {{ CounselingStatusLabels[session.status] }}
+          </span>
+          <span *ngIf="session.outcome" [class]="'outcome-badge ' + getOutcomeClass(session.outcome)">
+            {{ SessionOutcomeLabels[session.outcome] }}
+          </span>
+          <span *ngIf="session.isConfidential" class="badge confidential">
+            <i class="pi pi-lock"></i> Confidential
+          </span>
+          <span *ngIf="session.requiresFollowUp" class="badge followup">
+            <i class="pi pi-replay"></i> Follow-up Required
+          </span>
+          <span *ngIf="session.referredToProfessional" class="badge referral">
+            <i class="pi pi-user-plus"></i> Professional Referral
+          </span>
+        </div>
+
+        <div class="action-buttons" *ngIf="session.status !== CounselingStatus.COMPLETED">
+          <button
+            pButton
+            type="button"
+            label="Complete Session"
+            icon="pi pi-check"
+            class="p-button-success p-button-sm"
+            (click)="openCompleteDialog(session)"
+          ></button>
+          <button
+            pButton
+            type="button"
+            label="Schedule Follow-up"
+            icon="pi pi-replay"
+            class="p-button-secondary p-button-sm"
+            (click)="openFollowUpDialog(session)"
+          ></button>
+          <button
+            pButton
+            type="button"
+            label="Create Referral"
+            icon="pi pi-user-plus"
+            class="p-button-info p-button-sm"
+            (click)="openReferralDialog(session)"
+          ></button>
+        </div>
+      </div>
+    </p-card>
+
+    <div *ngIf="filteredSessions().length === 0" class="empty-state">
+      <i class="pi pi-calendar"></i>
+      <p>No counseling sessions found</p>
+      <button
+        pButton
+        type="button"
+        label="Create First Session"
+        icon="pi pi-plus"
+        (click)="openAddDialog()"
+      ></button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading()" class="loading-state">
+    <i class="pi pi-spin pi-spinner"></i>
+    <p>Loading sessions...</p>
+  </div>
+
+  <!-- Add/Edit Dialog -->
+  <p-dialog
+    [(visible)]="showAddDialog"
+    (visibleChange)="showAddDialog.set($event)"
+    [header]="'New Counseling Session'"
+    [modal]="true"
+    [style]="{ width: '600px' }"
+  >
+    <form [formGroup]="sessionForm">
+      <div class="form-grid">
+        <div class="form-field">
+          <label for="memberId">Member *</label>
+          <input
+            type="number"
+            id="memberId"
+            pInputText
+            formControlName="memberId"
+            placeholder="Enter member ID"
+          />
+        </div>
+
+        <div class="form-field">
+          <label for="counselorId">Counselor *</label>
+          <input
+            type="number"
+            id="counselorId"
+            pInputText
+            formControlName="counselorId"
+            placeholder="Enter counselor ID"
+          />
+        </div>
+
+        <div class="form-field">
+          <label for="careNeedId">Care Need ID</label>
+          <input
+            type="number"
+            id="careNeedId"
+            pInputText
+            formControlName="careNeedId"
+            placeholder="Optional"
+          />
+        </div>
+
+        <div class="form-field">
+          <label for="type">Session Type *</label>
+          <p-dropdown
+            id="type"
+            [options]="typeOptions"
+            formControlName="type"
+            placeholder="Select type"
+            optionLabel="label"
+            optionValue="value"
+          ></p-dropdown>
+        </div>
+
+        <div class="form-field">
+          <label for="sessionDate">Session Date *</label>
+          <p-calendar
+            id="sessionDate"
+            formControlName="sessionDate"
+            [showIcon]="true"
+            dateFormat="yy-mm-dd"
+          ></p-calendar>
+        </div>
+
+        <div class="form-field">
+          <label for="startTime">Start Time</label>
+          <input
+            type="time"
+            id="startTime"
+            pInputText
+            formControlName="startTime"
+          />
+        </div>
+
+        <div class="form-field">
+          <label for="endTime">End Time</label>
+          <input
+            type="time"
+            id="endTime"
+            pInputText
+            formControlName="endTime"
+          />
+        </div>
+
+        <div class="form-field">
+          <label for="status">Status *</label>
+          <p-dropdown
+            id="status"
+            [options]="statusOptions"
+            formControlName="status"
+            placeholder="Select status"
+            optionLabel="label"
+            optionValue="value"
+          ></p-dropdown>
+        </div>
+
+        <div class="form-field full-width">
+          <label for="purpose">Purpose</label>
+          <textarea
+            id="purpose"
+            pInputTextarea
+            formControlName="purpose"
+            rows="3"
+            placeholder="Session purpose"
+          ></textarea>
+        </div>
+
+        <div class="form-field full-width">
+          <label for="notes">Notes</label>
+          <textarea
+            id="notes"
+            pInputTextarea
+            formControlName="notes"
+            rows="3"
+            placeholder="Session notes"
+          ></textarea>
+        </div>
+
+        <div class="form-field checkbox-field">
+          <p-checkbox
+            formControlName="isConfidential"
+            [binary]="true"
+            inputId="isConfidential"
+          ></p-checkbox>
+          <label for="isConfidential">Confidential Session</label>
+        </div>
+
+        <div class="form-field checkbox-field">
+          <p-checkbox
+            formControlName="requiresFollowUp"
+            [binary]="true"
+            inputId="requiresFollowUp"
+          ></p-checkbox>
+          <label for="requiresFollowUp">Requires Follow-up</label>
+        </div>
+
+        <div class="form-field" *ngIf="sessionForm.value.requiresFollowUp">
+          <label for="followUpDate">Follow-up Date</label>
+          <p-calendar
+            id="followUpDate"
+            formControlName="followUpDate"
+            [showIcon]="true"
+            dateFormat="yy-mm-dd"
+          ></p-calendar>
+        </div>
+      </div>
+    </form>
+
+    <ng-template pTemplate="footer">
+      <button
+        pButton
+        type="button"
+        label="Cancel"
+        icon="pi pi-times"
+        class="p-button-secondary"
+        (click)="showAddDialog.set(false)"
+      ></button>
+      <button
+        pButton
+        type="button"
+        label="Save"
+        icon="pi pi-check"
+        (click)="saveSession()"
+        [disabled]="sessionForm.invalid"
+      ></button>
+    </ng-template>
+  </p-dialog>
+
+  <!-- Edit Dialog (similar structure) -->
+  <p-dialog
+    [(visible)]="showEditDialog"
+    (visibleChange)="showEditDialog.set($event)"
+    [header]="'Edit Counseling Session'"
+    [modal]="true"
+    [style]="{ width: '600px' }"
+  >
+    <form [formGroup]="sessionForm">
+      <!-- Same form fields as Add Dialog -->
+      <div class="form-grid">
+        <!-- Copy form fields from Add Dialog -->
+        <div class="form-field">
+          <label for="edit-memberId">Member *</label>
+          <input
+            type="number"
+            id="edit-memberId"
+            pInputText
+            formControlName="memberId"
+          />
+        </div>
+
+        <div class="form-field">
+          <label for="edit-counselorId">Counselor *</label>
+          <input
+            type="number"
+            id="edit-counselorId"
+            pInputText
+            formControlName="counselorId"
+          />
+        </div>
+
+        <div class="form-field">
+          <label for="edit-type">Session Type *</label>
+          <p-dropdown
+            id="edit-type"
+            [options]="typeOptions"
+            formControlName="type"
+            optionLabel="label"
+            optionValue="value"
+          ></p-dropdown>
+        </div>
+
+        <div class="form-field">
+          <label for="edit-sessionDate">Session Date *</label>
+          <p-calendar
+            id="edit-sessionDate"
+            formControlName="sessionDate"
+            [showIcon]="true"
+            dateFormat="yy-mm-dd"
+          ></p-calendar>
+        </div>
+
+        <div class="form-field">
+          <label for="edit-status">Status *</label>
+          <p-dropdown
+            id="edit-status"
+            [options]="statusOptions"
+            formControlName="status"
+            optionLabel="label"
+            optionValue="value"
+          ></p-dropdown>
+        </div>
+
+        <div class="form-field full-width">
+          <label for="edit-purpose">Purpose</label>
+          <textarea
+            id="edit-purpose"
+            pInputTextarea
+            formControlName="purpose"
+            rows="3"
+          ></textarea>
+        </div>
+      </div>
+    </form>
+
+    <ng-template pTemplate="footer">
+      <button
+        pButton
+        type="button"
+        label="Cancel"
+        icon="pi pi-times"
+        class="p-button-secondary"
+        (click)="showEditDialog.set(false)"
+      ></button>
+      <button
+        pButton
+        type="button"
+        label="Update"
+        icon="pi pi-check"
+        (click)="updateSession()"
+        [disabled]="sessionForm.invalid"
+      ></button>
+    </ng-template>
+  </p-dialog>
+
+  <!-- View Dialog -->
+  <p-dialog
+    [(visible)]="showViewDialog"
+    (visibleChange)="showViewDialog.set($event)"
+    [header]="'Session Details'"
+    [modal]="true"
+    [style]="{ width: '600px' }"
+  >
+    <div *ngIf="selectedSession()" class="view-content">
+      <div class="detail-row">
+        <span class="detail-label">Member:</span>
+        <span class="detail-value">{{ selectedSession()!.memberName }}</span>
+      </div>
+
+      <div class="detail-row">
+        <span class="detail-label">Counselor:</span>
+        <span class="detail-value">{{ selectedSession()!.counselorName }}</span>
+      </div>
+
+      <div class="detail-row">
+        <span class="detail-label">Session Date:</span>
+        <span class="detail-value">{{ selectedSession()!.sessionDate | date: 'full' }}</span>
+      </div>
+
+      <div class="detail-row">
+        <span class="detail-label">Type:</span>
+        <span class="detail-value">{{ CounselingTypeLabels[selectedSession()!.type] }}</span>
+      </div>
+
+      <div class="detail-row">
+        <span class="detail-label">Status:</span>
+        <span [class]="'status-badge ' + getStatusClass(selectedSession()!.status)">
+          {{ CounselingStatusLabels[selectedSession()!.status] }}
+        </span>
+      </div>
+
+      <div class="detail-row" *ngIf="selectedSession()!.outcome">
+        <span class="detail-label">Outcome:</span>
+        <span [class]="'outcome-badge ' + getOutcomeClass(selectedSession()!.outcome)">
+          {{ SessionOutcomeLabels[selectedSession()!.outcome!] }}
+        </span>
+      </div>
+
+      <div class="detail-row" *ngIf="selectedSession()!.purpose">
+        <span class="detail-label">Purpose:</span>
+        <span class="detail-value">{{ selectedSession()!.purpose }}</span>
+      </div>
+
+      <div class="detail-row" *ngIf="selectedSession()!.notes">
+        <span class="detail-label">Notes:</span>
+        <span class="detail-value">{{ selectedSession()!.notes }}</span>
+      </div>
+
+      <div class="detail-row" *ngIf="selectedSession()!.outcomes">
+        <span class="detail-label">Outcomes:</span>
+        <span class="detail-value">{{ selectedSession()!.outcomes }}</span>
+      </div>
+    </div>
+
+    <ng-template pTemplate="footer">
+      <button
+        pButton
+        type="button"
+        label="Close"
+        icon="pi pi-times"
+        (click)="showViewDialog.set(false)"
+      ></button>
+    </ng-template>
+  </p-dialog>
+
+  <!-- Complete Session Dialog -->
+  <p-dialog
+    [(visible)]="showCompleteDialog"
+    (visibleChange)="showCompleteDialog.set($event)"
+    [header]="'Complete Session'"
+    [modal]="true"
+    [style]="{ width: '500px' }"
+  >
+    <form [formGroup]="completeForm">
+      <div class="form-grid">
+        <div class="form-field full-width">
+          <label for="outcome">Session Outcome *</label>
+          <p-dropdown
+            id="outcome"
+            [options]="outcomeOptions"
+            formControlName="outcome"
+            placeholder="Select outcome"
+            optionLabel="label"
+            optionValue="value"
+          ></p-dropdown>
+        </div>
+
+        <div class="form-field full-width">
+          <label for="outcomes-text">Outcomes Description</label>
+          <textarea
+            id="outcomes-text"
+            pInputTextarea
+            formControlName="outcomes"
+            rows="4"
+            placeholder="Describe the session outcomes..."
+          ></textarea>
+        </div>
+
+        <div class="form-field checkbox-field">
+          <p-checkbox
+            formControlName="requiresFollowUp"
+            [binary]="true"
+            inputId="complete-requiresFollowUp"
+          ></p-checkbox>
+          <label for="complete-requiresFollowUp">Requires Follow-up</label>
+        </div>
+
+        <div class="form-field full-width" *ngIf="completeForm.value.requiresFollowUp">
+          <label for="complete-followUpDate">Follow-up Date</label>
+          <p-calendar
+            id="complete-followUpDate"
+            formControlName="followUpDate"
+            [showIcon]="true"
+            dateFormat="yy-mm-dd"
+          ></p-calendar>
+        </div>
+      </div>
+    </form>
+
+    <ng-template pTemplate="footer">
+      <button
+        pButton
+        type="button"
+        label="Cancel"
+        icon="pi pi-times"
+        class="p-button-secondary"
+        (click)="showCompleteDialog.set(false)"
+      ></button>
+      <button
+        pButton
+        type="button"
+        label="Complete Session"
+        icon="pi pi-check"
+        class="p-button-success"
+        (click)="completeSession()"
+        [disabled]="completeForm.invalid"
+      ></button>
+    </ng-template>
+  </p-dialog>
+
+  <!-- Schedule Follow-up Dialog -->
+  <p-dialog
+    [(visible)]="showFollowUpDialog"
+    (visibleChange)="showFollowUpDialog.set($event)"
+    [header]="'Schedule Follow-up'"
+    [modal]="true"
+    [style]="{ width: '500px' }"
+  >
+    <form [formGroup]="followUpForm">
+      <div class="form-grid">
+        <div class="form-field full-width">
+          <label for="followup-date">Follow-up Date *</label>
+          <p-calendar
+            id="followup-date"
+            formControlName="followUpDate"
+            [showIcon]="true"
+            dateFormat="yy-mm-dd"
+          ></p-calendar>
+        </div>
+
+        <div class="form-field full-width">
+          <label for="followup-notes">Notes</label>
+          <textarea
+            id="followup-notes"
+            pInputTextarea
+            formControlName="notes"
+            rows="4"
+            placeholder="Add notes for follow-up..."
+          ></textarea>
+        </div>
+      </div>
+    </form>
+
+    <ng-template pTemplate="footer">
+      <button
+        pButton
+        type="button"
+        label="Cancel"
+        icon="pi pi-times"
+        class="p-button-secondary"
+        (click)="showFollowUpDialog.set(false)"
+      ></button>
+      <button
+        pButton
+        type="button"
+        label="Schedule"
+        icon="pi pi-check"
+        (click)="scheduleFollowUp()"
+        [disabled]="followUpForm.invalid"
+      ></button>
+    </ng-template>
+  </p-dialog>
+
+  <!-- Create Referral Dialog -->
+  <p-dialog
+    [(visible)]="showReferralDialog"
+    (visibleChange)="showReferralDialog.set($event)"
+    [header]="'Create Professional Referral'"
+    [modal]="true"
+    [style]="{ width: '500px' }"
+  >
+    <form [formGroup]="referralForm">
+      <div class="form-grid">
+        <div class="form-field full-width">
+          <label for="referral-details">Referral Details *</label>
+          <textarea
+            id="referral-details"
+            pInputTextarea
+            formControlName="referralDetails"
+            rows="6"
+            placeholder="Enter details of the professional referral (name, contact, specialty, etc.)"
+          ></textarea>
+        </div>
+      </div>
+    </form>
+
+    <ng-template pTemplate="footer">
+      <button
+        pButton
+        type="button"
+        label="Cancel"
+        icon="pi pi-times"
+        class="p-button-secondary"
+        (click)="showReferralDialog.set(false)"
+      ></button>
+      <button
+        pButton
+        type="button"
+        label="Create Referral"
+        icon="pi pi-check"
+        class="p-button-info"
+        (click)="createReferral()"
+        [disabled]="referralForm.invalid"
+      ></button>
+    </ng-template>
+  </p-dialog>
+</div>
