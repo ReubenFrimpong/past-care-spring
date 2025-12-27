@@ -2,89 +2,200 @@ package com.reuben.pastcare_spring.controllers;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.reuben.pastcare_spring.services.PaystackService;
-import lombok.RequiredArgsConstructor;
+import com.reuben.pastcare_spring.models.*;
+import com.reuben.pastcare_spring.repositories.ChurchRepository;
+import com.reuben.pastcare_spring.repositories.UserRepository;
+import com.reuben.pastcare_spring.services.ChurchSmsCreditService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.HexFormat;
+
 /**
- * Controller for Paystack webhook events
+ * Controller for handling Paystack webhooks
+ * Processes payment confirmations and automatically adds SMS credits
+ *
+ * Configuration required in application.properties:
+ * - paystack.secret-key (for webhook signature verification)
+ *
+ * Webhook URL to configure in Paystack dashboard:
+ * https://your-domain.com/api/webhooks/paystack/events
  */
 @RestController
 @RequestMapping("/api/webhooks/paystack")
-@RequiredArgsConstructor
 @Slf4j
 public class PaystackWebhookController {
 
-    private final PaystackService paystackService;
+    private final ChurchSmsCreditService churchSmsCreditService;
+    private final ChurchRepository churchRepository;
+    private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
 
-    @PostMapping
-    public ResponseEntity<String> handleWebhook(
-            @RequestHeader("x-paystack-signature") String signature,
-            @RequestBody String payload) {
+    @Value("${paystack.secret-key:}")
+    private String paystackSecretKey;
 
+    public PaystackWebhookController(
+        ChurchSmsCreditService churchSmsCreditService,
+        ChurchRepository churchRepository,
+        UserRepository userRepository,
+        ObjectMapper objectMapper
+    ) {
+        this.churchSmsCreditService = churchSmsCreditService;
+        this.churchRepository = churchRepository;
+        this.userRepository = userRepository;
+        this.objectMapper = objectMapper;
+    }
+
+    /**
+     * Paystack webhook endpoint for payment events
+     */
+    @PostMapping("/events")
+    public ResponseEntity<String> handlePaystackWebhook(
+            @RequestBody String payload,
+            @RequestHeader(value = "X-Paystack-Signature", required = false) String signature
+    ) {
         log.info("Received Paystack webhook");
 
         try {
-            // Verify webhook signature
-            if (!paystackService.verifyWebhookSignature(signature, payload)) {
-                log.warn("Invalid webhook signature");
+            if (!verifyPaystackSignature(payload, signature)) {
+                log.warn("Invalid Paystack webhook signature");
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid signature");
             }
 
-            // Parse payload
-            JsonNode event = objectMapper.readTree(payload);
-            String eventType = event.get("event").asText();
+            JsonNode json = objectMapper.readTree(payload);
+            String event = json.get("event").asText();
 
-            log.info("Processing webhook event: {}", eventType);
+            log.info("Processing Paystack event: {}", event);
 
-            // Handle different event types
-            switch (eventType) {
-                case "charge.success":
-                    handleChargeSuccess(event);
-                    break;
-                case "charge.failed":
-                    handleChargeFailed(event);
-                    break;
-                case "subscription.create":
-                    handleSubscriptionCreate(event);
-                    break;
-                case "subscription.disable":
-                    handleSubscriptionDisable(event);
-                    break;
-                default:
-                    log.info("Unhandled event type: {}", eventType);
-            }
-
-            return ResponseEntity.ok("Webhook processed");
+            return switch (event) {
+                case "charge.success" -> handleChargeSuccess(json.get("data"));
+                case "charge.failed" -> handleChargeFailed(json.get("data"));
+                default -> {
+                    log.info("Unhandled Paystack event type: {}", event);
+                    yield ResponseEntity.ok("Event received but not processed");
+                }
+            };
 
         } catch (Exception e) {
-            log.error("Error processing webhook", e);
+            log.error("Error processing Paystack webhook: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error processing webhook");
         }
     }
 
-    private void handleChargeSuccess(JsonNode event) {
-        log.info("Handling charge success event");
-        // Implementation would update donation record, send receipts, etc.
-        // This would be called by RecurringDonationService.processRecurringDonation()
+    private ResponseEntity<String> handleChargeSuccess(JsonNode data) {
+        try {
+            String reference = data.get("reference").asText();
+            String status = data.get("status").asText();
+
+            if (!"success".equals(status)) {
+                log.warn("Charge status is not success: {}", status);
+                return ResponseEntity.ok("Charge not successful - ignoring");
+            }
+
+            JsonNode metadata = data.get("metadata");
+            if (metadata == null || metadata.isNull()) {
+                log.warn("No metadata in Paystack webhook");
+                return ResponseEntity.ok("No metadata - ignoring");
+            }
+
+            Long churchId = metadata.has("church_id") ? metadata.get("church_id").asLong() : null;
+            Long userId = metadata.has("user_id") ? metadata.get("user_id").asLong() : null;
+            String creditAmountStr = metadata.has("credit_amount") ? metadata.get("credit_amount").asText() : null;
+
+            if (churchId == null || creditAmountStr == null) {
+                log.warn("Missing required metadata fields");
+                return ResponseEntity.ok("Incomplete metadata - ignoring");
+            }
+
+            BigDecimal creditAmount = new BigDecimal(creditAmountStr);
+
+            Church church = churchRepository.findById(churchId).orElse(null);
+            if (church == null) {
+                log.warn("Church not found: {}", churchId);
+                return ResponseEntity.ok("Church not found - ignoring");
+            }
+
+            SmsTransaction transaction = churchSmsCreditService.purchaseCredits(
+                churchId, userId, creditAmount, reference
+            );
+
+            log.info("Successfully added {} credits to church {} via Paystack. Transaction ID: {}",
+                creditAmount, churchId, transaction.getId());
+
+            return ResponseEntity.ok("Credits added successfully");
+
+        } catch (Exception e) {
+            log.error("Error handling Paystack charge.success: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error processing charge");
+        }
     }
 
-    private void handleChargeFailed(JsonNode event) {
-        log.info("Handling charge failed event");
-        // Implementation would retry payment or notify admin
+    private ResponseEntity<String> handleChargeFailed(JsonNode data) {
+        try {
+            String reference = data.get("reference").asText();
+            String message = data.has("gateway_response") ? data.get("gateway_response").asText() : "Unknown error";
+
+            log.warn("Paystack charge failed - Reference: {}, Message: {}", reference, message);
+
+            return ResponseEntity.ok("Failure recorded");
+
+        } catch (Exception e) {
+            log.error("Error handling Paystack charge.failed: {}", e.getMessage(), e);
+            return ResponseEntity.ok("Error logged");
+        }
     }
 
-    private void handleSubscriptionCreate(JsonNode event) {
-        log.info("Handling subscription create event");
-        // Implementation would create RecurringDonation record
+    private boolean verifyPaystackSignature(String payload, String signature) {
+        if (paystackSecretKey == null || paystackSecretKey.isEmpty()) {
+            log.warn("Paystack secret key not configured - skipping signature verification");
+            return true;
+        }
+
+        if (signature == null || signature.isEmpty()) {
+            log.warn("No signature provided in Paystack webhook");
+            return false;
+        }
+
+        try {
+            Mac mac = Mac.getInstance("HmacSHA512");
+            SecretKeySpec secretKeySpec = new SecretKeySpec(
+                paystackSecretKey.getBytes(StandardCharsets.UTF_8), "HmacSHA512"
+            );
+            mac.init(secretKeySpec);
+            byte[] hash = mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
+
+            String computedSignature = HexFormat.of().formatHex(hash);
+
+            boolean isValid = MessageDigest.isEqual(
+                computedSignature.getBytes(StandardCharsets.UTF_8),
+                signature.getBytes(StandardCharsets.UTF_8)
+            );
+
+            if (!isValid) {
+                log.warn("Paystack signature mismatch");
+            }
+
+            return isValid;
+
+        } catch (Exception e) {
+            log.error("Error verifying Paystack signature: {}", e.getMessage(), e);
+            return false;
+        }
     }
 
-    private void handleSubscriptionDisable(JsonNode event) {
-        log.info("Handling subscription disable event");
-        // Implementation would update RecurringDonation status
+    @GetMapping("/health")
+    public ResponseEntity<String> healthCheck() {
+        boolean configured = paystackSecretKey != null && !paystackSecretKey.isEmpty();
+        return ResponseEntity.ok(String.format(
+            "Paystack Webhook Handler - Status: healthy, Secret Key Configured: %s", configured
+        ));
     }
 }
