@@ -3,7 +3,9 @@ package com.reuben.pastcare_spring.services;
 import com.reuben.pastcare_spring.models.*;
 import com.reuben.pastcare_spring.repositories.ChurchSmsCreditRepository;
 import com.reuben.pastcare_spring.repositories.ChurchRepository;
+import com.reuben.pastcare_spring.repositories.SmsRateRepository;
 import com.reuben.pastcare_spring.repositories.SmsTransactionRepository;
+import com.reuben.pastcare_spring.security.TenantContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,15 +28,21 @@ public class ChurchSmsCreditService {
     private final ChurchSmsCreditRepository churchSmsCreditRepository;
     private final SmsTransactionRepository smsTransactionRepository;
     private final ChurchRepository churchRepository;
+    private final SmsRateRepository smsRateRepository;
+    private final PhoneNumberService phoneNumberService;
 
     public ChurchSmsCreditService(
         ChurchSmsCreditRepository churchSmsCreditRepository,
         SmsTransactionRepository smsTransactionRepository,
-        ChurchRepository churchRepository
+        ChurchRepository churchRepository,
+        SmsRateRepository smsRateRepository,
+        PhoneNumberService phoneNumberService
     ) {
         this.churchSmsCreditRepository = churchSmsCreditRepository;
         this.smsTransactionRepository = smsTransactionRepository;
         this.churchRepository = churchRepository;
+        this.smsRateRepository = smsRateRepository;
+        this.phoneNumberService = phoneNumberService;
     }
 
     /**
@@ -295,6 +303,27 @@ public class ChurchSmsCreditService {
         long churchesWithZeroBalance = churchSmsCreditRepository.countChurchesWithZeroBalance();
 
         return new ChurchSmsCreditStats(totalCredits, totalPurchased, totalUsed, churchesWithZeroBalance);
+    }
+
+    /**
+     * Calculate SMS cost based on phone number and message
+     */
+    public BigDecimal calculateSmsCost(String phoneNumber, String message) {
+        // Get country code
+        String countryCode = phoneNumberService.extractCountryCode(phoneNumber);
+
+        // Get rate for country
+        Long churchId = TenantContext.getCurrentChurchId();
+        SmsRate rate = smsRateRepository.findRateForChurchAndCountry(churchId, countryCode)
+            .or(() -> smsRateRepository.findByCountryCodeAndIsActive(countryCode, true))
+            .or(() -> smsRateRepository.findDefaultRate())
+            .orElseThrow(() -> new IllegalStateException("No SMS rate found for country: " + countryCode));
+
+        // Calculate message count
+        int messageCount = phoneNumberService.calculateMessageCount(message);
+
+        // Calculate total cost
+        return rate.getRatePerSms().multiply(BigDecimal.valueOf(messageCount));
     }
 
     /**

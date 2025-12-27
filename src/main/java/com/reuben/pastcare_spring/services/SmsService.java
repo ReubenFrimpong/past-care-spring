@@ -25,7 +25,6 @@ public class SmsService {
 
     private final SmsMessageRepository smsMessageRepository;
     private final SmsTemplateRepository smsTemplateRepository;
-    private final SmsCreditService smsCreditService;
     private final ChurchSmsCreditService churchSmsCreditService;
     private final SmsGatewayRouter smsGatewayRouter;
     private final PhoneNumberService phoneNumberService;
@@ -36,7 +35,6 @@ public class SmsService {
     public SmsService(
         SmsMessageRepository smsMessageRepository,
         SmsTemplateRepository smsTemplateRepository,
-        SmsCreditService smsCreditService,
         ChurchSmsCreditService churchSmsCreditService,
         SmsGatewayRouter smsGatewayRouter,
         PhoneNumberService phoneNumberService,
@@ -46,7 +44,6 @@ public class SmsService {
     ) {
         this.smsMessageRepository = smsMessageRepository;
         this.smsTemplateRepository = smsTemplateRepository;
-        this.smsCreditService = smsCreditService;
         this.churchSmsCreditService = churchSmsCreditService;
         this.smsGatewayRouter = smsGatewayRouter;
         this.phoneNumberService = phoneNumberService;
@@ -76,7 +73,7 @@ public class SmsService {
         String normalizedPhone = phoneNumberService.normalizePhoneNumber(recipientPhone);
 
         // Calculate cost
-        BigDecimal cost = smsCreditService.calculateSmsCost(normalizedPhone, message);
+        BigDecimal cost = churchSmsCreditService.calculateSmsCost(normalizedPhone, message);
         int messageCount = phoneNumberService.calculateMessageCount(message);
 
         // Check credits (church-level)
@@ -192,13 +189,13 @@ public class SmsService {
         // Calculate total cost
         BigDecimal totalCost = recipientPhones.stream()
             .filter(phoneNumberService::isValidPhoneNumber)
-            .map(phone -> smsCreditService.calculateSmsCost(phone, message))
+            .map(phone -> churchSmsCreditService.calculateSmsCost(phone, message))
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // Check credits
-        if (!smsCreditService.hasSufficientCredits(sender.getId(), church.getId(), totalCost)) {
+        // Check credits (church-level)
+        if (!churchSmsCreditService.hasSufficientCredits(church.getId(), totalCost)) {
             throw new IllegalStateException("Insufficient SMS credits. Required: " + totalCost +
-                ", Current balance: " + smsCreditService.getBalance(sender.getId(), church.getId()));
+                ", Current balance: " + churchSmsCreditService.getBalance(church.getId()));
         }
 
         // Send to each recipient
@@ -400,7 +397,7 @@ public class SmsService {
             "delivered", delivered,
             "failed", failed,
             "totalCost", totalCost != null ? totalCost : 0.0,
-            "currentBalance", smsCreditService.getBalance(senderId, churchId)
+            "currentBalance", churchSmsCreditService.getBalance(churchId)
         );
     }
 
