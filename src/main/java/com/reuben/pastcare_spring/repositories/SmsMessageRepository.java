@@ -38,4 +38,18 @@ public interface SmsMessageRepository extends JpaRepository<SmsMessage, Long> {
         @Param("senderId") Long senderId,
         @Param("churchId") Long churchId,
         @Param("statuses") List<SmsStatus> statuses);
+
+    /**
+     * Find failed messages eligible for retry
+     * Criteria:
+     * - Status = FAILED
+     * - Retry count < maxRetries
+     * - Last retry was before the threshold (or never retried)
+     */
+    @Query("SELECT m FROM SmsMessage m WHERE m.status = 'FAILED' " +
+           "AND m.retryCount < :maxRetries " +
+           "AND (m.lastRetryAt IS NULL OR m.lastRetryAt < :retryThreshold)")
+    List<SmsMessage> findFailedMessagesForRetry(
+        @Param("maxRetries") int maxRetries,
+        @Param("retryThreshold") LocalDateTime retryThreshold);
 }

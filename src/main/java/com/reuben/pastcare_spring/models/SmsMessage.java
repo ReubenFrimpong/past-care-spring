@@ -78,10 +78,19 @@ public class SmsMessage {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Column(name = "retry_count", nullable = false)
+    private Integer retryCount = 0;
+
+    @Column(name = "last_retry_at")
+    private LocalDateTime lastRetryAt;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
+        if (retryCount == null) {
+            retryCount = 0;
+        }
     }
 
     @PreUpdate
