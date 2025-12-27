@@ -21,6 +21,9 @@ public class ImageService {
     @Value("${app.upload.fellowship-dir:uploads/fellowship-images}")
     private String fellowshipUploadDir;
 
+    @Value("${app.upload.event-dir:uploads/event-images}")
+    private String eventUploadDir;
+
     @Value("${app.upload.max-size-kb:100}")
     private int maxSizeKb;
 
@@ -167,5 +170,51 @@ public class ImageService {
 
         // Return relative path
         return fellowshipUploadDir + "/" + filename;
+    }
+
+    /**
+     * Upload and compress an event image
+     * @param file The image file to upload
+     * @param oldImagePath The path to the old image (to delete)
+     * @return The relative path to the saved image
+     */
+    public String uploadEventImage(MultipartFile file, String oldImagePath) throws IOException {
+        // Validate file
+        if (file.isEmpty()) {
+            throw new IllegalArgumentException("File is empty");
+        }
+
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new IllegalArgumentException("File must be an image");
+        }
+
+        // Create upload directory if it doesn't exist
+        Path uploadPath = Paths.get(eventUploadDir);
+        if (!Files.exists(uploadPath)) {
+            Files.createDirectories(uploadPath);
+        }
+
+        // Generate unique filename
+        String originalFilename = file.getOriginalFilename();
+        String extension = originalFilename != null && originalFilename.contains(".")
+                ? originalFilename.substring(originalFilename.lastIndexOf("."))
+                : ".jpg";
+        String filename = UUID.randomUUID().toString() + extension;
+        Path filePath = uploadPath.resolve(filename);
+
+        // Compress image to target size (allow larger size for event images - 500KB)
+        byte[] compressedImage = compressImage(file.getBytes(), 500);
+
+        // Save compressed image
+        Files.write(filePath, compressedImage);
+
+        // Delete old image if exists
+        if (oldImagePath != null && !oldImagePath.isEmpty()) {
+            deleteImage(oldImagePath);
+        }
+
+        // Return relative path
+        return eventUploadDir + "/" + filename;
     }
 }
