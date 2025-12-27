@@ -26,6 +26,7 @@ public class SmsService {
     private final SmsMessageRepository smsMessageRepository;
     private final SmsTemplateRepository smsTemplateRepository;
     private final SmsCreditService smsCreditService;
+    private final ChurchSmsCreditService churchSmsCreditService;
     private final SmsGatewayRouter smsGatewayRouter;
     private final PhoneNumberService phoneNumberService;
     private final MemberRepository memberRepository;
@@ -36,6 +37,7 @@ public class SmsService {
         SmsMessageRepository smsMessageRepository,
         SmsTemplateRepository smsTemplateRepository,
         SmsCreditService smsCreditService,
+        ChurchSmsCreditService churchSmsCreditService,
         SmsGatewayRouter smsGatewayRouter,
         PhoneNumberService phoneNumberService,
         MemberRepository memberRepository,
@@ -45,6 +47,7 @@ public class SmsService {
         this.smsMessageRepository = smsMessageRepository;
         this.smsTemplateRepository = smsTemplateRepository;
         this.smsCreditService = smsCreditService;
+        this.churchSmsCreditService = churchSmsCreditService;
         this.smsGatewayRouter = smsGatewayRouter;
         this.phoneNumberService = phoneNumberService;
         this.memberRepository = memberRepository;
@@ -76,10 +79,10 @@ public class SmsService {
         BigDecimal cost = smsCreditService.calculateSmsCost(normalizedPhone, message);
         int messageCount = phoneNumberService.calculateMessageCount(message);
 
-        // Check credits
-        if (!smsCreditService.hasSufficientCredits(sender.getId(), church.getId(), cost)) {
+        // Check credits (church-level)
+        if (!churchSmsCreditService.hasSufficientCredits(church.getId(), cost)) {
             throw new IllegalStateException("Insufficient SMS credits. Required: " + cost +
-                ", Current balance: " + smsCreditService.getBalance(sender.getId(), church.getId()));
+                ", Current balance: " + churchSmsCreditService.getBalance(church.getId()));
         }
 
         // Create SMS message record
@@ -115,11 +118,11 @@ public class SmsService {
             smsMessage.setStatus(SmsStatus.SENDING);
             smsMessageRepository.save(smsMessage);
 
-            // Deduct credits
+            // Deduct credits (church-level)
             String referenceId = "SMS-" + smsMessage.getId();
-            smsCreditService.deductCredits(
-                sender,
-                church,
+            churchSmsCreditService.deductCredits(
+                church.getId(),
+                sender.getId(),
                 smsMessage.getCost(),
                 "SMS to " + smsMessage.getRecipientPhone(),
                 referenceId
@@ -139,10 +142,10 @@ public class SmsService {
                 smsMessage.setSentAt(LocalDateTime.now());
             } else {
                 smsMessage.setStatus(SmsStatus.FAILED);
-                // Refund credits on failure
-                smsCreditService.refundCredits(
-                    sender,
-                    church,
+                // Refund credits on failure (church-level)
+                churchSmsCreditService.refundCredits(
+                    church.getId(),
+                    sender.getId(),
                     smsMessage.getCost(),
                     "Refund for failed SMS",
                     referenceId
@@ -160,11 +163,11 @@ public class SmsService {
             smsMessage.setGatewayResponse(e.getMessage());
             smsMessageRepository.save(smsMessage);
 
-            // Refund credits on exception
+            // Refund credits on exception (church-level)
             try {
-                smsCreditService.refundCredits(
-                    sender,
-                    church,
+                churchSmsCreditService.refundCredits(
+                    church.getId(),
+                    sender.getId(),
                     smsMessage.getCost(),
                     "Refund for failed SMS",
                     "SMS-" + smsMessage.getId()
