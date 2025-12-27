@@ -1,0 +1,601 @@
+package com.reuben.pastcare_spring.controllers;
+
+import com.reuben.pastcare_spring.dtos.*;
+import com.reuben.pastcare_spring.models.*;
+import com.reuben.pastcare_spring.services.*;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * REST controller for event management.
+ * Handles CRUD operations, filtering, search, and event-related operations.
+ */
+@RestController
+@RequestMapping("/api/events")
+@RequiredArgsConstructor
+public class EventController {
+
+    private final EventService eventService;
+    private final EventOrganizerService organizerService;
+    private final EventTagService tagService;
+    private final ImageService imageService;
+    private final CalendarExportService calendarExportService;
+    private final EventReminderService reminderService;
+    private final EventAnalyticsService analyticsService;
+    private final com.reuben.pastcare_spring.repositories.UserRepository userRepository;
+
+    /**
+     * Create a new event
+     */
+    @PostMapping
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR')")
+    public ResponseEntity<EventResponse> createEvent(
+        @Valid @RequestBody EventRequest request,
+        Authentication authentication
+    ) {
+        Long userId = getUserIdFromAuth(authentication);
+        EventResponse response = eventService.createEvent(request, userId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * Update an event
+     */
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR')")
+    public ResponseEntity<EventResponse> updateEvent(
+        @PathVariable Long id,
+        @Valid @RequestBody EventRequest request,
+        Authentication authentication
+    ) {
+        Long userId = getUserIdFromAuth(authentication);
+        EventResponse response = eventService.updateEvent(id, request, userId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Get event by ID
+     */
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    public ResponseEntity<EventResponse> getEvent(@PathVariable Long id) {
+        EventResponse response = eventService.getEvent(id);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Get all events (paginated)
+     */
+    @GetMapping
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    public ResponseEntity<Page<EventResponse>> getAllEvents(
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "10") int size,
+        @RequestParam(defaultValue = "startDate") String sortBy,
+        @RequestParam(defaultValue = "DESC") String sortDir
+    ) {
+        Sort sort = sortDir.equalsIgnoreCase("ASC") ?
+            Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+        Page<EventResponse> response = eventService.getAllEvents(pageable);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Get upcoming events
+     */
+    @GetMapping("/upcoming")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    public ResponseEntity<Page<EventResponse>> getUpcomingEvents(
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "10") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("startDate").ascending());
+        Page<EventResponse> response = eventService.getUpcomingEvents(pageable);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Get ongoing events
+     */
+    @GetMapping("/ongoing")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    public ResponseEntity<List<EventResponse>> getOngoingEvents() {
+        List<EventResponse> response = eventService.getOngoingEvents();
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Get past events
+     */
+    @GetMapping("/past")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    public ResponseEntity<Page<EventResponse>> getPastEvents(
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "10") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("startDate").descending());
+        Page<EventResponse> response = eventService.getPastEvents(pageable);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Search events
+     */
+    @GetMapping("/search")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    public ResponseEntity<Page<EventResponse>> searchEvents(
+        @RequestParam String q,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "10") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("startDate").descending());
+        Page<EventResponse> response = eventService.searchEvents(q, pageable);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Filter events
+     */
+    @GetMapping("/filter")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    public ResponseEntity<Page<EventResponse>> filterEvents(
+        @RequestParam(required = false) EventType eventType,
+        @RequestParam(required = false) EventVisibility visibility,
+        @RequestParam(required = false) Long locationId,
+        @RequestParam(required = false) Boolean requiresRegistration,
+        @RequestParam(required = false) Boolean isCancelled,
+        @RequestParam(required = false) String search,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "10") int size,
+        @RequestParam(defaultValue = "startDate") String sortBy,
+        @RequestParam(defaultValue = "DESC") String sortDir
+    ) {
+        Sort sort = sortDir.equalsIgnoreCase("ASC") ?
+            Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Page<EventResponse> response = eventService.filterEvents(
+            eventType, visibility, locationId, requiresRegistration, isCancelled, search, pageable
+        );
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Cancel event
+     */
+    @PostMapping("/{id}/cancel")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR')")
+    public ResponseEntity<EventResponse> cancelEvent(
+        @PathVariable Long id,
+        @RequestParam String reason,
+        Authentication authentication
+    ) {
+        Long userId = getUserIdFromAuth(authentication);
+        EventResponse response = eventService.cancelEvent(id, reason, userId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Delete event
+     */
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    public ResponseEntity<Void> deleteEvent(@PathVariable Long id) {
+        eventService.deleteEvent(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Get event statistics
+     */
+    @GetMapping("/stats")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF')")
+    public ResponseEntity<EventStatsResponse> getEventStats() {
+        EventStatsResponse response = eventService.getEventStats();
+        return ResponseEntity.ok(response);
+    }
+
+    // ==================== Organizer Operations ====================
+
+    /**
+     * Add organizer to event
+     */
+    @PostMapping("/{eventId}/organizers")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR')")
+    public ResponseEntity<EventOrganizerResponse> addOrganizer(
+        @PathVariable Long eventId,
+        @Valid @RequestBody EventOrganizerRequest request,
+        Authentication authentication
+    ) {
+        Long userId = getUserIdFromAuth(authentication);
+        EventOrganizerResponse response = organizerService.addOrganizer(eventId, request, userId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * Get event organizers
+     */
+    @GetMapping("/{eventId}/organizers")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    public ResponseEntity<List<EventOrganizerResponse>> getEventOrganizers(@PathVariable Long eventId) {
+        List<EventOrganizerResponse> response = organizerService.getEventOrganizers(eventId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Update organizer
+     */
+    @PutMapping("/organizers/{organizerId}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR')")
+    public ResponseEntity<EventOrganizerResponse> updateOrganizer(
+        @PathVariable Long organizerId,
+        @Valid @RequestBody EventOrganizerRequest request
+    ) {
+        EventOrganizerResponse response = organizerService.updateOrganizer(organizerId, request);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Remove organizer
+     */
+    @DeleteMapping("/organizers/{organizerId}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR')")
+    public ResponseEntity<Void> removeOrganizer(@PathVariable Long organizerId) {
+        organizerService.removeOrganizer(organizerId);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Set as primary organizer
+     */
+    @PostMapping("/organizers/{organizerId}/set-primary")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR')")
+    public ResponseEntity<EventOrganizerResponse> setAsPrimaryOrganizer(@PathVariable Long organizerId) {
+        EventOrganizerResponse response = organizerService.setAsPrimary(organizerId);
+        return ResponseEntity.ok(response);
+    }
+
+    // ==================== Tag Operations ====================
+
+    /**
+     * Add tag to event
+     */
+    @PostMapping("/{eventId}/tags")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR')")
+    public ResponseEntity<Void> addTag(
+        @PathVariable Long eventId,
+        @Valid @RequestBody EventTagRequest request,
+        Authentication authentication
+    ) {
+        Long userId = getUserIdFromAuth(authentication);
+        tagService.addTag(eventId, request.getTag(), request.getTagColor(), userId);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    /**
+     * Get event tags
+     */
+    @GetMapping("/{eventId}/tags")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    public ResponseEntity<List<String>> getEventTags(@PathVariable Long eventId) {
+        List<String> response = tagService.getEventTags(eventId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Remove tag from event
+     */
+    @DeleteMapping("/{eventId}/tags/{tag}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR')")
+    public ResponseEntity<Void> removeTag(
+        @PathVariable Long eventId,
+        @PathVariable String tag
+    ) {
+        tagService.removeTag(eventId, tag);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Get all tags
+     */
+    @GetMapping("/tags/all")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    public ResponseEntity<List<String>> getAllTags() {
+        List<String> response = tagService.getAllTags();
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Search tags (autocomplete)
+     */
+    @GetMapping("/tags/search")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    public ResponseEntity<List<String>> searchTags(@RequestParam String q) {
+        List<String> response = tagService.searchTags(q);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Find events by tag
+     */
+    @GetMapping("/tags/{tag}/events")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    public ResponseEntity<List<EventResponse>> findEventsByTag(@PathVariable String tag) {
+        List<EventResponse> response = tagService.findEventsByTag(tag);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Upload event image
+     */
+    @PostMapping("/{id}/upload-image")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR')")
+    public ResponseEntity<Map<String, String>> uploadEventImage(
+        @PathVariable Long id,
+        @RequestParam("image") MultipartFile image,
+        Authentication authentication
+    ) {
+        try {
+            // Get event
+            EventResponse event = eventService.getEvent(id);
+
+            // Upload image
+            String imageUrl = imageService.uploadEventImage(image, event.getImageUrl());
+
+            // Update event with image URL
+            EventRequest updateRequest = EventRequest.builder()
+                .name(event.getName())
+                .description(event.getDescription())
+                .eventType(event.getEventType())
+                .startDate(event.getStartDate())
+                .endDate(event.getEndDate())
+                .timezone(event.getTimezone())
+                .locationType(event.getLocationType())
+                .physicalLocation(event.getPhysicalLocation())
+                .virtualLink(event.getVirtualLink())
+                .virtualPlatform(event.getVirtualPlatform())
+                .locationId(event.getLocationId())
+                .requiresRegistration(event.getRequiresRegistration())
+                .registrationDeadline(event.getRegistrationDeadline())
+                .maxCapacity(event.getMaxCapacity())
+                .allowWaitlist(event.getAllowWaitlist())
+                .autoApproveRegistrations(event.getAutoApproveRegistrations())
+                .visibility(event.getVisibility())
+                .isRecurring(event.getIsRecurring())
+                .recurrencePattern(event.getRecurrencePattern())
+                .recurrenceEndDate(event.getRecurrenceEndDate())
+                .parentEventId(event.getParentEventId())
+                .primaryOrganizerId(event.getPrimaryOrganizerId())
+                .notes(event.getNotes())
+                .imageUrl(imageUrl)
+                .reminderDaysBefore(event.getReminderDaysBefore())
+                .build();
+
+            Long userId = getUserIdFromAuth(authentication);
+            eventService.updateEvent(id, updateRequest, userId);
+
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Event image uploaded successfully");
+            response.put("imageUrl", imageUrl);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Failed to upload image: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    // ==================== Calendar Export ====================
+
+    /**
+     * Export single event to iCal format
+     */
+    @GetMapping("/{id}/ical")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    public ResponseEntity<String> exportEventToICal(@PathVariable Long id) {
+        EventResponse eventResponse = eventService.getEvent(id);
+        Event event = eventService.getEventEntity(id);
+
+        String icalContent = calendarExportService.generateICalForEvent(event);
+
+        return ResponseEntity.ok()
+            .header("Content-Type", "text/calendar; charset=utf-8")
+            .header("Content-Disposition", "attachment; filename=\"event-" + id + ".ics\"")
+            .body(icalContent);
+    }
+
+    /**
+     * Export all church events to iCal format
+     */
+    @GetMapping("/ical")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    public ResponseEntity<String> exportAllEventsToICal(Authentication authentication) {
+        Long userId = getUserIdFromAuth(authentication);
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new IllegalStateException("User not found"));
+
+        List<Event> events = eventService.getAllEventsForExport();
+        String calendarName = user.getChurch().getName() + " Events";
+
+        String icalContent = calendarExportService.generateICalForEvents(events, calendarName);
+
+        return ResponseEntity.ok()
+            .header("Content-Type", "text/calendar; charset=utf-8")
+            .header("Content-Disposition", "attachment; filename=\"church-events.ics\"")
+            .body(icalContent);
+    }
+
+    /**
+     * Get Google Calendar export URL for an event
+     */
+    @GetMapping("/{id}/google-calendar-url")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    public ResponseEntity<Map<String, String>> getGoogleCalendarUrl(@PathVariable Long id) {
+        Event event = eventService.getEventEntity(id);
+        String googleCalendarUrl = calendarExportService.generateGoogleCalendarUrl(event);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("url", googleCalendarUrl);
+        response.put("eventName", event.getName());
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Get embed code for public calendar
+     */
+    @GetMapping("/embed-code")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR')")
+    public ResponseEntity<Map<String, String>> getEmbedCode(
+        @RequestParam(defaultValue = "800") int width,
+        @RequestParam(defaultValue = "600") int height,
+        Authentication authentication
+    ) {
+        Long userId = getUserIdFromAuth(authentication);
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new IllegalStateException("User not found"));
+
+        String embedCode = calendarExportService.generateEmbedCode(user.getChurch().getId(), width, height);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("embedCode", embedCode);
+        response.put("width", String.valueOf(width));
+        response.put("height", String.valueOf(height));
+
+        return ResponseEntity.ok(response);
+    }
+
+    // ==================== Communication & Reminders ====================
+
+    /**
+     * Send reminders for a specific event
+     */
+    @PostMapping("/{id}/send-reminders")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF')")
+    public ResponseEntity<Map<String, String>> sendEventReminders(@PathVariable Long id) {
+        Event event = eventService.getEventEntity(id);
+        reminderService.sendEventReminders(event);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Reminders sent successfully");
+        response.put("eventName", event.getName());
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Send invitations to specific members
+     */
+    @PostMapping("/{id}/send-invitations")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR')")
+    public ResponseEntity<Map<String, Object>> sendInvitations(
+        @PathVariable Long id,
+        @RequestBody Map<String, Object> request
+    ) {
+        @SuppressWarnings("unchecked")
+        List<Long> memberIds = (List<Long>) request.get("memberIds");
+        String personalMessage = (String) request.get("personalMessage");
+
+        int sent = reminderService.sendEventInvitations(id, memberIds, personalMessage);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Invitations sent successfully");
+        response.put("invitationsSent", sent);
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Send invitations to all members
+     */
+    @PostMapping("/{id}/send-invitations-all")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR')")
+    public ResponseEntity<Map<String, Object>> sendInvitationsToAll(
+        @PathVariable Long id,
+        @RequestBody(required = false) Map<String, String> request
+    ) {
+        String personalMessage = request != null ? request.get("personalMessage") : null;
+
+        int sent = reminderService.sendEventInvitationsToAll(id, personalMessage);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Invitations sent to all members");
+        response.put("invitationsSent", sent);
+
+        return ResponseEntity.ok(response);
+    }
+
+    // ==================== Analytics ====================
+
+    /**
+     * Get detailed analytics for all events
+     */
+    @GetMapping("/analytics/overview")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF')")
+    public ResponseEntity<Map<String, Object>> getAnalyticsOverview() {
+        Map<String, Object> stats = analyticsService.getEventStats();
+        return ResponseEntity.ok(stats);
+    }
+
+    /**
+     * Get detailed analytics for a specific event
+     */
+    @GetMapping("/{id}/analytics")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF')")
+    public ResponseEntity<Map<String, Object>> getEventAnalytics(@PathVariable Long id) {
+        Map<String, Object> stats = analyticsService.getEventStats(id);
+        return ResponseEntity.ok(stats);
+    }
+
+    /**
+     * Get attendance analytics
+     */
+    @GetMapping("/analytics/attendance")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR')")
+    public ResponseEntity<Map<String, Object>> getAttendanceAnalytics(
+        @RequestParam String startDate,
+        @RequestParam String endDate
+    ) {
+        java.time.LocalDateTime start = java.time.LocalDateTime.parse(startDate);
+        java.time.LocalDateTime end = java.time.LocalDateTime.parse(endDate);
+
+        Map<String, Object> analytics = analyticsService.getAttendanceAnalytics(start, end);
+        return ResponseEntity.ok(analytics);
+    }
+
+    /**
+     * Get event trends
+     */
+    @GetMapping("/analytics/trends")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR')")
+    public ResponseEntity<Map<String, Object>> getEventTrends(
+        @RequestParam(defaultValue = "6") int months
+    ) {
+        Map<String, Object> trends = analyticsService.getEventTrends(months);
+        return ResponseEntity.ok(trends);
+    }
+
+    // ==================== Helper Methods ====================
+
+    private Long getUserIdFromAuth(Authentication authentication) {
+        String username = authentication.getName();
+        User user = userRepository.findByEmail(username)
+            .orElseThrow(() -> new IllegalStateException("User not found"));
+        return user.getId();
+    }
+}
