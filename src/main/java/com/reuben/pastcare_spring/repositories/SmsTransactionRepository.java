@@ -14,14 +14,27 @@ import java.util.Optional;
 @Repository
 public interface SmsTransactionRepository extends JpaRepository<SmsTransaction, Long> {
 
-    Page<SmsTransaction> findByUserIdAndChurchId(Long userId, Long churchId, Pageable pageable);
+    // Legacy user-based methods (deprecated - will be removed after full migration)
+    Page<SmsTransaction> findByPerformedByIdAndChurchId(Long userId, Long churchId, Pageable pageable);
 
-    List<SmsTransaction> findByUserIdAndChurchIdAndCreatedAtBetween(
+    List<SmsTransaction> findByPerformedByIdAndChurchIdAndCreatedAtBetween(
         Long userId, Long churchId, LocalDateTime start, LocalDateTime end);
 
+    // Church-level transaction methods
+    Page<SmsTransaction> findByChurchId(Long churchId, Pageable pageable);
+
+    List<SmsTransaction> findByChurchIdOrderByCreatedAtDesc(Long churchId);
+
+    List<SmsTransaction> findByChurchIdAndCreatedAtBetween(
+        Long churchId, LocalDateTime start, LocalDateTime end);
+
+    // Reference lookups
     Optional<SmsTransaction> findByReferenceId(String referenceId);
 
     Optional<SmsTransaction> findByPaymentReference(String paymentReference);
 
+    // Type-based queries
     Page<SmsTransaction> findByChurchIdAndType(Long churchId, TransactionType type, Pageable pageable);
+
+    List<SmsTransaction> findByChurchIdAndTypeOrderByCreatedAtDesc(Long churchId, TransactionType type);
 }

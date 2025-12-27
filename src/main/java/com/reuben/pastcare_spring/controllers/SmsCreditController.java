@@ -192,8 +192,8 @@ public class SmsCreditController {
     private SmsTransactionResponse mapTransactionToResponse(SmsTransaction transaction) {
         SmsTransactionResponse response = new SmsTransactionResponse();
         response.setId(transaction.getId());
-        response.setUserId(transaction.getUser().getId());
-        response.setUserName(transaction.getUser().getName());
+        response.setUserId(transaction.getPerformedBy() != null ? transaction.getPerformedBy().getId() : null);
+        response.setUserName(transaction.getPerformedBy() != null ? transaction.getPerformedBy().getName() : "System");
         response.setType(transaction.getType());
         response.setAmount(transaction.getAmount());
         response.setBalanceBefore(transaction.getBalanceBefore());

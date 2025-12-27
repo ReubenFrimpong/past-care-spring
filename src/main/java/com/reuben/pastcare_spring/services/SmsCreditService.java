@@ -84,7 +84,7 @@ public class SmsCreditService {
 
         // Create transaction record
         SmsTransaction transaction = new SmsTransaction();
-        transaction.setUser(user);
+        transaction.setPerformedBy(user);
         transaction.setChurch(church);
         transaction.setType(TransactionType.PURCHASE);
         transaction.setAmount(amount);
@@ -127,7 +127,7 @@ public class SmsCreditService {
 
         // Create transaction record
         SmsTransaction transaction = new SmsTransaction();
-        transaction.setUser(user);
+        transaction.setPerformedBy(user);
         transaction.setChurch(church);
         transaction.setType(TransactionType.DEDUCTION);
         transaction.setAmount(amount);
@@ -163,7 +163,7 @@ public class SmsCreditService {
 
         // Create transaction record
         SmsTransaction transaction = new SmsTransaction();
-        transaction.setUser(user);
+        transaction.setPerformedBy(user);
         transaction.setChurch(church);
         transaction.setType(TransactionType.REFUND);
         transaction.setAmount(amount);
@@ -209,7 +209,7 @@ public class SmsCreditService {
      * Get transaction history
      */
     public Page<SmsTransaction> getTransactionHistory(Long userId, Long churchId, Pageable pageable) {
-        return smsTransactionRepository.findByUserIdAndChurchId(userId, churchId, pageable);
+        return smsTransactionRepository.findByPerformedByIdAndChurchId(userId, churchId, pageable);
     }
 
     /**

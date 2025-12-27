@@ -21,14 +21,14 @@ public class SmsTransaction {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    @JsonIgnore
-    private User user;
-
-    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "church_id", nullable = false)
     @JsonIgnore
     private Church church;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "performed_by_user_id")
+    @JsonIgnore
+    private User performedBy;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
