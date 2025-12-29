@@ -507,19 +507,26 @@ public void retryFailedPayments() {
    - Manually trigger renewal
    - Verify charge and updates
 
+4. **Add pricing to landing page** (1-2 hours)
+   - Create pricing section component
+   - Display all 3 plans (STARTER, PROFESSIONAL, ENTERPRISE)
+   - Show features comparison
+   - Add "Start Free Trial" / "Get Started" buttons
+   - Link to signup/billing page
+
 ### **Short-term (This Month)**
 
-4. **Add Paystack webhooks** (2-3 hours)
+5. **Add Paystack webhooks** (2-3 hours)
    - Handle automatic updates from Paystack
    - Verify webhook signatures
    - Update subscription status
 
-5. **Implement email notifications** (3-4 hours)
+6. **Implement email notifications** (3-4 hours)
    - Payment success/failure
    - Trial ending soon
    - Past due reminders
 
-6. **Add payment retry logic** (2 hours)
+7. **Add payment retry logic** (2 hours)
    - 3 retry attempts over 7 days
    - Smart retry intervals
 
@@ -543,6 +550,8 @@ public void retryFailedPayments() {
 - ❌ Payment retry logic
 - ❌ Email notifications
 
-**Time to Production-Ready**: 4-6 hours of development + testing
+**Time to Production-Ready**: 4-6 hours of development + testing (excluding landing page)
 
-The foundation is solid and 90% of the hard work is done. The remaining 10% is mainly implementing the actual charging logic using the already-built infrastructure.
+**Time Including Landing Page**: 6-8 hours total
+
+The foundation is solid and 90% of the hard work is done. The remaining 10% is mainly implementing the actual charging logic using the already-built infrastructure, plus adding the pricing section to the landing page for public visibility.
