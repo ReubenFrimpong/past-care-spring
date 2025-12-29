@@ -48,6 +48,9 @@ public class MemberService {
   private MemberRepository memberRepository;
 
   @Autowired
+  private TenantValidationService tenantValidationService;
+
+  @Autowired
   private FellowshipRepository fellowshipRepository;
 
   @Autowired
@@ -127,6 +130,10 @@ public class MemberService {
   public MemberResponse getMemberById(Long id) {
     Member member = memberRepository.findById(id)
         .orElseThrow(() -> new IllegalArgumentException("Member not found"));
+
+    // CRITICAL SECURITY: Validate member belongs to current church
+    tenantValidationService.validateMemberAccess(member);
+
     return MemberMapper.toMemberResponse(member);
   }
 
@@ -195,6 +202,10 @@ public class MemberService {
   public MemberResponse updateMember(Long id, MemberRequest memberRequest){
 
     var member = memberRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Member not found"));
+
+    // CRITICAL SECURITY: Validate member belongs to current church
+    tenantValidationService.validateMemberAccess(member);
+
     member.setFirstName(memberRequest.firstName());
     member.setOtherName(memberRequest.otherName());
     member.setLastName(memberRequest.lastName());
@@ -280,6 +291,10 @@ public class MemberService {
 
   public void deleteMember(Long id) {
     var member = memberRepository.findById(id).orElseThrow( ()-> new IllegalArgumentException("Member not found"));
+
+    // CRITICAL SECURITY: Validate member belongs to current church
+    tenantValidationService.validateMemberAccess(member);
+
     memberRepository.delete(member);
   }
 

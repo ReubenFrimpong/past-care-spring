@@ -1,5 +1,8 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
+import com.reuben.pastcare_spring.enums.Permission;
+
 import com.reuben.pastcare_spring.dtos.LifecycleEventRequest;
 import com.reuben.pastcare_spring.dtos.LifecycleEventResponse;
 import com.reuben.pastcare_spring.models.LifecycleEventType;
@@ -43,6 +46,7 @@ public class LifecycleEventController {
     /**
      * Create a new lifecycle event.
      */
+    @RequirePermission(Permission.MEMBER_EDIT_ALL)
     @PostMapping
     public ResponseEntity<LifecycleEventResponse> createLifecycleEvent(
             @Valid @RequestBody LifecycleEventRequest request,
@@ -58,6 +62,7 @@ public class LifecycleEventController {
     /**
      * Update an existing lifecycle event.
      */
+    @RequirePermission(Permission.MEMBER_EDIT_ALL)
     @PutMapping("/{eventId}")
     public ResponseEntity<LifecycleEventResponse> updateLifecycleEvent(
             @PathVariable Long eventId,
@@ -74,6 +79,7 @@ public class LifecycleEventController {
     /**
      * Get all lifecycle events for a member.
      */
+    @RequirePermission(Permission.MEMBER_VIEW_ALL)
     @GetMapping("/member/{memberId}")
     public ResponseEntity<List<LifecycleEventResponse>> getMemberLifecycleEvents(
             @PathVariable Long memberId,
@@ -87,6 +93,7 @@ public class LifecycleEventController {
     /**
      * Get all lifecycle events for the church with pagination.
      */
+    @RequirePermission(Permission.MEMBER_VIEW_ALL)
     @GetMapping
     public ResponseEntity<Page<LifecycleEventResponse>> getChurchLifecycleEvents(
             @RequestParam(defaultValue = "0") int page,
@@ -106,6 +113,7 @@ public class LifecycleEventController {
     /**
      * Get lifecycle events by type.
      */
+    @RequirePermission(Permission.MEMBER_VIEW_ALL)
     @GetMapping("/type/{eventType}")
     public ResponseEntity<Page<LifecycleEventResponse>> getLifecycleEventsByType(
             @PathVariable LifecycleEventType eventType,
@@ -123,6 +131,7 @@ public class LifecycleEventController {
     /**
      * Get lifecycle events within a date range.
      */
+    @RequirePermission(Permission.MEMBER_VIEW_ALL)
     @GetMapping("/date-range")
     public ResponseEntity<List<LifecycleEventResponse>> getLifecycleEventsByDateRange(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -137,6 +146,7 @@ public class LifecycleEventController {
     /**
      * Verify a lifecycle event.
      */
+    @RequirePermission(Permission.MEMBER_EDIT_ALL)
     @PatchMapping("/{eventId}/verify")
     public ResponseEntity<LifecycleEventResponse> verifyLifecycleEvent(
             @PathVariable Long eventId,
@@ -152,6 +162,7 @@ public class LifecycleEventController {
     /**
      * Delete a lifecycle event.
      */
+    @RequirePermission(Permission.MEMBER_EDIT_ALL)
     @DeleteMapping("/{eventId}")
     public ResponseEntity<Void> deleteLifecycleEvent(
             @PathVariable Long eventId,
@@ -165,6 +176,7 @@ public class LifecycleEventController {
     /**
      * Check if a member has a specific lifecycle event type.
      */
+    @RequirePermission(Permission.MEMBER_VIEW_ALL)
     @GetMapping("/member/{memberId}/has-event/{eventType}")
     public ResponseEntity<Boolean> memberHasLifecycleEvent(
             @PathVariable Long memberId,
@@ -179,6 +191,7 @@ public class LifecycleEventController {
     /**
      * Verify a lifecycle event
      */
+    @RequirePermission(Permission.MEMBER_EDIT_ALL)
     @PutMapping("/{eventId}/verify")
     public ResponseEntity<LifecycleEventResponse> verifyLifeCycleEvent(@PathVariable Long eventId, HttpServletRequest request) {
       Long churchId = requestContextUtil.extractChurchId(request);

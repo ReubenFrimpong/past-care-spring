@@ -48,8 +48,29 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
+
+                // Set tenant context from JWT
+                Long churchId = jwtUtil.extractChurchId(jwt);
+                Long userId = jwtUtil.extractUserId(jwt);
+                String role = jwtUtil.extractRole(jwt);
+
+                if (churchId != null) {
+                    TenantContext.setCurrentChurchId(churchId);
+                }
+                if (userId != null) {
+                    TenantContext.setCurrentUserId(userId);
+                }
+                if (role != null) {
+                    TenantContext.setCurrentUserRole(role);
+                }
             }
         }
-        chain.doFilter(request, response);
+
+        try {
+            chain.doFilter(request, response);
+        } finally {
+            // Clear tenant context after request
+            TenantContext.clear();
+        }
     }
 }

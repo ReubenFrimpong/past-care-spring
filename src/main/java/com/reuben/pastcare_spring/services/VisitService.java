@@ -28,6 +28,7 @@ public class VisitService {
     private final LocationRepository locationRepository;
     private final UserRepository userRepository;
     private final ChurchRepository churchRepository;
+    private final TenantValidationService tenantValidationService;
 
     /**
      * Create a new visit
@@ -56,6 +57,10 @@ public class VisitService {
     public VisitResponse getVisitById(Long id) {
         Visit visit = visitRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Visit not found with id: " + id));
+
+        // CRITICAL SECURITY: Validate visit belongs to current church
+        tenantValidationService.validateVisitAccess(visit);
+
         return VisitResponse.fromEntity(visit);
     }
 
@@ -79,6 +84,9 @@ public class VisitService {
         Visit visit = visitRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Visit not found with id: " + id));
 
+        // CRITICAL SECURITY: Validate visit belongs to current church
+        tenantValidationService.validateVisitAccess(visit);
+
         updateVisitFromRequest(visit, request);
 
         Visit updated = visitRepository.save(visit);
@@ -92,6 +100,10 @@ public class VisitService {
     public void deleteVisit(Long id) {
         Visit visit = visitRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Visit not found with id: " + id));
+
+        // CRITICAL SECURITY: Validate visit belongs to current church
+        tenantValidationService.validateVisitAccess(visit);
+
         visitRepository.delete(visit);
     }
 
@@ -193,6 +205,9 @@ public class VisitService {
     public VisitResponse markAsCompleted(Long id, String outcomes) {
         Visit visit = visitRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Visit not found with id: " + id));
+
+        // CRITICAL SECURITY: Validate visit belongs to current church
+        tenantValidationService.validateVisitAccess(visit);
 
         visit.setIsCompleted(true);
         if (outcomes != null && !outcomes.isEmpty()) {

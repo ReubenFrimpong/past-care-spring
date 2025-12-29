@@ -32,6 +32,7 @@ public class EventService {
     private final LocationRepository locationRepository;
     private final MemberRepository memberRepository;
     private final UserRepository userRepository;
+    private final TenantValidationService tenantValidationService;
 
     /**
      * Create a new event
@@ -129,6 +130,9 @@ public class EventService {
         Event event = eventRepository.findByIdAndChurchIdAndDeletedAtIsNull(eventId, churchId)
             .orElseThrow(() -> new IllegalArgumentException("Event not found"));
 
+        // CRITICAL SECURITY: Validate event belongs to current church
+        tenantValidationService.validateEventAccess(event);
+
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
@@ -189,6 +193,9 @@ public class EventService {
         Long churchId = TenantContext.getCurrentChurchId();
         Event event = eventRepository.findByIdAndChurchIdAndDeletedAtIsNull(eventId, churchId)
             .orElseThrow(() -> new IllegalArgumentException("Event not found"));
+
+        // CRITICAL SECURITY: Validate event belongs to current church
+        tenantValidationService.validateEventAccess(event);
 
         // Get statistics
         Long totalRegistrations = registrationRepository.countByEventId(eventId);
@@ -285,6 +292,9 @@ public class EventService {
         Event event = eventRepository.findByIdAndChurchIdAndDeletedAtIsNull(eventId, churchId)
             .orElseThrow(() -> new IllegalArgumentException("Event not found"));
 
+        // CRITICAL SECURITY: Validate event belongs to current church
+        tenantValidationService.validateEventAccess(event);
+
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
@@ -305,6 +315,9 @@ public class EventService {
 
         Event event = eventRepository.findByIdAndChurchIdAndDeletedAtIsNull(eventId, churchId)
             .orElseThrow(() -> new IllegalArgumentException("Event not found"));
+
+        // CRITICAL SECURITY: Validate event belongs to current church
+        tenantValidationService.validateEventAccess(event);
 
         eventRepository.delete(event);
         log.info("Event {} deleted successfully", eventId);

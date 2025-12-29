@@ -1,5 +1,8 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
+import com.reuben.pastcare_spring.enums.Permission;
+
 import com.reuben.pastcare_spring.dtos.CounselingSessionRequest;
 import com.reuben.pastcare_spring.dtos.CounselingSessionResponse;
 import com.reuben.pastcare_spring.dtos.CounselingSessionStatsResponse;
@@ -18,7 +21,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -41,7 +43,7 @@ public class CounselingSessionController {
      * Create a new counseling session
      */
     @PostMapping
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_CREATE)
     @Operation(summary = "Create counseling session", description = "Creates a new counseling session")
     public ResponseEntity<CounselingSessionResponse> createSession(
             @Valid @RequestBody CounselingSessionRequest request,
@@ -55,7 +57,7 @@ public class CounselingSessionController {
      * Get counseling session by ID
      */
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @Operation(summary = "Get session by ID", description = "Returns a single counseling session by ID")
     public ResponseEntity<CounselingSessionResponse> getSessionById(@PathVariable Long id) {
         CounselingSessionResponse session = counselingSessionService.getSessionById(id);
@@ -66,7 +68,7 @@ public class CounselingSessionController {
      * Get all counseling sessions with pagination
      */
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @Operation(summary = "Get all sessions", description = "Returns paginated list of counseling sessions")
     public ResponseEntity<Page<CounselingSessionResponse>> getSessions(
             @RequestParam(defaultValue = "0") int page,
@@ -85,7 +87,7 @@ public class CounselingSessionController {
      * Update an existing counseling session
      */
     @PutMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_EDIT)
     @Operation(summary = "Update session", description = "Updates an existing counseling session")
     public ResponseEntity<CounselingSessionResponse> updateSession(
             @PathVariable Long id,
@@ -98,7 +100,7 @@ public class CounselingSessionController {
      * Delete a counseling session
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_EDIT)
     @Operation(summary = "Delete session", description = "Deletes a counseling session")
     public ResponseEntity<Void> deleteSession(@PathVariable Long id) {
         counselingSessionService.deleteSession(id);
@@ -109,7 +111,7 @@ public class CounselingSessionController {
      * Complete a counseling session
      */
     @PostMapping("/{id}/complete")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_CREATE)
     @Operation(summary = "Complete session", description = "Marks a counseling session as completed with outcome")
     public ResponseEntity<CounselingSessionResponse> completeSession(
             @PathVariable Long id,
@@ -126,7 +128,7 @@ public class CounselingSessionController {
      * Schedule follow-up for a session
      */
     @PostMapping("/{id}/follow-up")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_CREATE)
     @Operation(summary = "Schedule follow-up", description = "Schedules a follow-up for a counseling session")
     public ResponseEntity<CounselingSessionResponse> scheduleFollowUp(
             @PathVariable Long id,
@@ -141,7 +143,7 @@ public class CounselingSessionController {
      * Create referral for a session
      */
     @PostMapping("/{id}/referral")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_CREATE)
     @Operation(summary = "Create referral", description = "Creates a professional referral for a counseling session")
     public ResponseEntity<CounselingSessionResponse> createReferral(
             @PathVariable Long id,
@@ -159,7 +161,7 @@ public class CounselingSessionController {
      * Get counseling sessions for the current user (counselor)
      */
     @GetMapping("/my-sessions")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @Operation(summary = "Get my sessions", description = "Returns counseling sessions for the current user as counselor")
     public ResponseEntity<Page<CounselingSessionResponse>> getMySessions(
             @RequestParam(defaultValue = "0") int page,
@@ -176,7 +178,7 @@ public class CounselingSessionController {
      * Get sessions by counselor
      */
     @GetMapping("/counselor/{counselorId}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @Operation(summary = "Get by counselor", description = "Returns sessions for a specific counselor")
     public ResponseEntity<Page<CounselingSessionResponse>> getSessionsByCounselor(
             @PathVariable Long counselorId,
@@ -193,7 +195,7 @@ public class CounselingSessionController {
      * Get sessions by status
      */
     @GetMapping("/status/{status}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @Operation(summary = "Get by status", description = "Returns sessions filtered by status")
     public ResponseEntity<Page<CounselingSessionResponse>> getSessionsByStatus(
             @PathVariable CounselingStatus status,
@@ -210,7 +212,7 @@ public class CounselingSessionController {
      * Get sessions by type
      */
     @GetMapping("/type/{type}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @Operation(summary = "Get by type", description = "Returns sessions filtered by type")
     public ResponseEntity<Page<CounselingSessionResponse>> getSessionsByType(
             @PathVariable CounselingType type,
@@ -227,7 +229,7 @@ public class CounselingSessionController {
      * Get upcoming sessions
      */
     @GetMapping("/upcoming")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @Operation(summary = "Get upcoming sessions", description = "Returns upcoming scheduled sessions")
     public ResponseEntity<List<CounselingSessionResponse>> getUpcomingSessions(HttpServletRequest httpRequest) {
         Long churchId = requestContextUtil.extractChurchId(httpRequest);
@@ -239,7 +241,7 @@ public class CounselingSessionController {
      * Get upcoming sessions for current user (counselor)
      */
     @GetMapping("/my-upcoming")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @Operation(summary = "Get my upcoming sessions", description = "Returns upcoming sessions for the current counselor")
     public ResponseEntity<List<CounselingSessionResponse>> getMyUpcomingSessions(HttpServletRequest httpRequest) {
         Long userId = requestContextUtil.extractUserId(httpRequest);
@@ -251,7 +253,7 @@ public class CounselingSessionController {
      * Get sessions requiring follow-up
      */
     @GetMapping("/follow-ups")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @Operation(summary = "Get follow-ups needed", description = "Returns sessions requiring follow-up")
     public ResponseEntity<List<CounselingSessionResponse>> getSessionsRequiringFollowUp(HttpServletRequest httpRequest) {
         Long churchId = requestContextUtil.extractChurchId(httpRequest);
@@ -263,7 +265,7 @@ public class CounselingSessionController {
      * Get sessions by member
      */
     @GetMapping("/member/{memberId}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @Operation(summary = "Get by member", description = "Returns sessions for a specific member")
     public ResponseEntity<List<CounselingSessionResponse>> getSessionsByMember(
             @PathVariable Long memberId,
@@ -277,7 +279,7 @@ public class CounselingSessionController {
      * Get sessions by care need
      */
     @GetMapping("/care-need/{careNeedId}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @Operation(summary = "Get by care need", description = "Returns sessions for a specific care need")
     public ResponseEntity<List<CounselingSessionResponse>> getSessionsByCareNeed(
             @PathVariable Long careNeedId,
@@ -291,7 +293,7 @@ public class CounselingSessionController {
      * Search sessions
      */
     @GetMapping("/search")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @Operation(summary = "Search sessions", description = "Searches sessions by title or notes")
     public ResponseEntity<Page<CounselingSessionResponse>> searchSessions(
             @RequestParam String search,
@@ -308,7 +310,7 @@ public class CounselingSessionController {
      * Get session statistics
      */
     @GetMapping("/stats")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @Operation(summary = "Get statistics", description = "Returns counseling session statistics")
     public ResponseEntity<CounselingSessionStatsResponse> getSessionStats(HttpServletRequest httpRequest) {
         Long churchId = requestContextUtil.extractChurchId(httpRequest);

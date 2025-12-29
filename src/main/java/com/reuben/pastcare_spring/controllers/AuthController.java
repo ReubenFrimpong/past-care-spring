@@ -1,5 +1,8 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
+import com.reuben.pastcare_spring.enums.Permission;
+
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -111,6 +114,7 @@ public class AuthController {
     return ResponseEntity.ok(new AuthResponse(tokenData.user()));
   }
 
+    @RequirePermission(Permission.MEMBER_VIEW_ALL)
   @PostMapping("/logout")
   public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
     // Get refresh token from cookie
@@ -124,6 +128,7 @@ public class AuthController {
     return ResponseEntity.ok().build();
   }
 
+    @RequirePermission(Permission.MEMBER_VIEW_ALL)
   @PostMapping("/refresh")
   public ResponseEntity<AuthResponse> refreshToken(
       HttpServletRequest request,

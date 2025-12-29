@@ -1,6 +1,8 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
 import com.reuben.pastcare_spring.dtos.*;
+import com.reuben.pastcare_spring.enums.Permission;
 import com.reuben.pastcare_spring.models.*;
 import com.reuben.pastcare_spring.repositories.UserRepository;
 import com.reuben.pastcare_spring.security.TenantContext;
@@ -13,7 +15,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -45,7 +46,7 @@ public class ChurchSmsCreditController {
      * Get church SMS credit balance
      */
     @GetMapping("/balance")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF')")
+    @RequirePermission(Permission.CHURCH_SETTINGS_VIEW)
     public ResponseEntity<ChurchSmsCreditResponse> getBalance() {
         Long churchId = TenantContext.getCurrentChurchId();
         ChurchSmsCredit credit = churchSmsCreditService.getOrCreateWallet(churchId);
@@ -56,7 +57,7 @@ public class ChurchSmsCreditController {
      * Purchase SMS credits
      */
     @PostMapping("/purchase")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    @RequirePermission(Permission.CHURCH_SETTINGS_EDIT)
     public ResponseEntity<SmsTransactionResponse> purchaseCredits(
         @RequestBody PurchaseCreditsRequest request,
         @AuthenticationPrincipal UserDetails userDetails
@@ -79,7 +80,7 @@ public class ChurchSmsCreditController {
      * Get transaction history for church
      */
     @GetMapping("/transactions")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF')")
+    @RequirePermission(Permission.CHURCH_SETTINGS_VIEW)
     public ResponseEntity<Page<SmsTransactionResponse>> getTransactions(
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "20") int size
@@ -97,7 +98,7 @@ public class ChurchSmsCreditController {
      * Get all transactions (no pagination) for export
      */
     @GetMapping("/transactions/all")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    @RequirePermission(Permission.CHURCH_SETTINGS_VIEW)
     public ResponseEntity<List<SmsTransactionResponse>> getAllTransactions() {
         Long churchId = TenantContext.getCurrentChurchId();
         List<SmsTransaction> transactions = churchSmsCreditService.getAllTransactions(churchId);
@@ -112,7 +113,7 @@ public class ChurchSmsCreditController {
      * Update low balance threshold
      */
     @PutMapping("/threshold")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    @RequirePermission(Permission.CHURCH_SETTINGS_EDIT)
     public ResponseEntity<ChurchSmsCreditResponse> updateThreshold(
         @RequestParam BigDecimal threshold
     ) {
@@ -127,7 +128,7 @@ public class ChurchSmsCreditController {
      * Check if church has sufficient credits
      */
     @GetMapping("/check-balance")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF')")
+    @RequirePermission(Permission.CHURCH_SETTINGS_VIEW)
     public ResponseEntity<BalanceCheckResponse> checkBalance(
         @RequestParam BigDecimal requiredAmount
     ) {
@@ -148,7 +149,7 @@ public class ChurchSmsCreditController {
      * Get churches with low balance (Super Admin only)
      */
     @GetMapping("/low-balance")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @RequirePermission(Permission.PLATFORM_ACCESS)
     public ResponseEntity<List<ChurchSmsCreditResponse>> getChurchesWithLowBalance() {
         List<ChurchSmsCredit> churches = churchSmsCreditService.getChurchesWithLowBalance();
         List<ChurchSmsCreditResponse> response = churches.stream()
@@ -162,7 +163,7 @@ public class ChurchSmsCreditController {
      * Get global SMS credit statistics (Super Admin only)
      */
     @GetMapping("/stats/global")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @RequirePermission(Permission.PLATFORM_ACCESS)
     public ResponseEntity<ChurchSmsCreditService.ChurchSmsCreditStats> getGlobalStats() {
         return ResponseEntity.ok(churchSmsCreditService.getGlobalStats());
     }
@@ -171,7 +172,7 @@ public class ChurchSmsCreditController {
      * Mark low balance alert as sent (internal use)
      */
     @PostMapping("/alert-sent")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @RequirePermission(Permission.PLATFORM_ACCESS)
     public ResponseEntity<Void> markAlertSent(@RequestParam Long churchId) {
         churchSmsCreditService.markLowBalanceAlertSent(churchId);
         return ResponseEntity.ok().build();

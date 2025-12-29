@@ -1,8 +1,10 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
 import com.reuben.pastcare_spring.dtos.CampaignRequest;
 import com.reuben.pastcare_spring.dtos.CampaignResponse;
 import com.reuben.pastcare_spring.dtos.CampaignStatsResponse;
+import com.reuben.pastcare_spring.enums.Permission;
 import com.reuben.pastcare_spring.models.CampaignStatus;
 import com.reuben.pastcare_spring.services.CampaignService;
 import com.reuben.pastcare_spring.util.RequestContextUtil;
@@ -35,7 +37,7 @@ public class CampaignController {
    * Get all campaigns for the current church
    */
   @GetMapping
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.CAMPAIGN_VIEW)
   @Operation(summary = "Get all campaigns", description = "Returns all campaigns for the current church")
   public ResponseEntity<List<CampaignResponse>> getAllCampaigns(HttpServletRequest request) {
     Long churchId = requestContextUtil.extractChurchId(request);
@@ -47,7 +49,7 @@ public class CampaignController {
    * Get campaign by ID
    */
   @GetMapping("/{id}")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.CAMPAIGN_VIEW)
   @Operation(summary = "Get campaign by ID", description = "Returns a single campaign by ID")
   public ResponseEntity<CampaignResponse> getCampaignById(
       @PathVariable Long id,
@@ -62,7 +64,7 @@ public class CampaignController {
    * Create a new campaign
    */
   @PostMapping
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.CAMPAIGN_MANAGE)
   @Operation(summary = "Create campaign", description = "Creates a new fundraising campaign")
   public ResponseEntity<CampaignResponse> createCampaign(
       @Valid @RequestBody CampaignRequest request,
@@ -78,7 +80,7 @@ public class CampaignController {
    * Update an existing campaign
    */
   @PutMapping("/{id}")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.CAMPAIGN_MANAGE)
   @Operation(summary = "Update campaign", description = "Updates an existing campaign")
   public ResponseEntity<CampaignResponse> updateCampaign(
       @PathVariable Long id,
@@ -94,7 +96,7 @@ public class CampaignController {
    * Delete a campaign
    */
   @DeleteMapping("/{id}")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.CAMPAIGN_MANAGE)
   @Operation(summary = "Delete campaign", description = "Deletes a campaign")
   public ResponseEntity<Void> deleteCampaign(
       @PathVariable Long id,
@@ -109,7 +111,7 @@ public class CampaignController {
    * Get campaigns by status
    */
   @GetMapping("/status/{status}")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.CAMPAIGN_VIEW)
   @Operation(summary = "Get campaigns by status", description = "Returns campaigns filtered by status")
   public ResponseEntity<List<CampaignResponse>> getCampaignsByStatus(
       @PathVariable CampaignStatus status,
@@ -124,7 +126,7 @@ public class CampaignController {
    * Get active campaigns
    */
   @GetMapping("/active")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.CAMPAIGN_VIEW)
   @Operation(summary = "Get active campaigns", description = "Returns all active campaigns")
   public ResponseEntity<List<CampaignResponse>> getActiveCampaigns(HttpServletRequest request) {
     Long churchId = requestContextUtil.extractChurchId(request);
@@ -136,7 +138,7 @@ public class CampaignController {
    * Get featured campaigns
    */
   @GetMapping("/featured")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.CAMPAIGN_VIEW)
   @Operation(summary = "Get featured campaigns", description = "Returns featured campaigns for dashboard")
   public ResponseEntity<List<CampaignResponse>> getFeaturedCampaigns(HttpServletRequest request) {
     Long churchId = requestContextUtil.extractChurchId(request);
@@ -148,7 +150,7 @@ public class CampaignController {
    * Get public campaigns (for member portal)
    */
   @GetMapping("/public")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.CAMPAIGN_VIEW)
   @Operation(summary = "Get public campaigns", description = "Returns public campaigns visible in member portal")
   public ResponseEntity<List<CampaignResponse>> getPublicCampaigns(HttpServletRequest request) {
     Long churchId = requestContextUtil.extractChurchId(request);
@@ -160,7 +162,7 @@ public class CampaignController {
    * Get ongoing campaigns
    */
   @GetMapping("/ongoing")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.CAMPAIGN_VIEW)
   @Operation(summary = "Get ongoing campaigns", description = "Returns ongoing campaigns (active with future or no end date)")
   public ResponseEntity<List<CampaignResponse>> getOngoingCampaigns(HttpServletRequest request) {
     Long churchId = requestContextUtil.extractChurchId(request);
@@ -172,7 +174,7 @@ public class CampaignController {
    * Search campaigns by name
    */
   @GetMapping("/search")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.CAMPAIGN_VIEW)
   @Operation(summary = "Search campaigns", description = "Search campaigns by name")
   public ResponseEntity<List<CampaignResponse>> searchCampaigns(
       @RequestParam String name,
@@ -187,7 +189,7 @@ public class CampaignController {
    * Pause a campaign
    */
   @PostMapping("/{id}/pause")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.CAMPAIGN_MANAGE)
   @Operation(summary = "Pause campaign", description = "Pauses an active campaign")
   public ResponseEntity<CampaignResponse> pauseCampaign(
       @PathVariable Long id,
@@ -202,7 +204,7 @@ public class CampaignController {
    * Resume a paused campaign
    */
   @PostMapping("/{id}/resume")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.CAMPAIGN_MANAGE)
   @Operation(summary = "Resume campaign", description = "Resumes a paused campaign")
   public ResponseEntity<CampaignResponse> resumeCampaign(
       @PathVariable Long id,
@@ -217,7 +219,7 @@ public class CampaignController {
    * Complete a campaign
    */
   @PostMapping("/{id}/complete")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.CAMPAIGN_MANAGE)
   @Operation(summary = "Complete campaign", description = "Marks a campaign as completed")
   public ResponseEntity<CampaignResponse> completeCampaign(
       @PathVariable Long id,
@@ -232,7 +234,7 @@ public class CampaignController {
    * Cancel a campaign
    */
   @PostMapping("/{id}/cancel")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.CAMPAIGN_MANAGE)
   @Operation(summary = "Cancel campaign", description = "Cancels a campaign")
   public ResponseEntity<CampaignResponse> cancelCampaign(
       @PathVariable Long id,
@@ -247,7 +249,7 @@ public class CampaignController {
    * Get campaign statistics
    */
   @GetMapping("/stats")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.CAMPAIGN_VIEW)
   @Operation(summary = "Get campaign statistics", description = "Returns campaign statistics for the church")
   public ResponseEntity<CampaignStatsResponse> getCampaignStats(HttpServletRequest request) {
     Long churchId = requestContextUtil.extractChurchId(request);
@@ -259,7 +261,7 @@ public class CampaignController {
    * Update campaign progress (manual trigger)
    */
   @PostMapping("/{id}/update-progress")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.CAMPAIGN_MANAGE)
   @Operation(summary = "Update campaign progress", description = "Manually triggers campaign progress update")
   public ResponseEntity<Void> updateCampaignProgress(@PathVariable Long id) {
     campaignService.updateCampaignProgress(id);

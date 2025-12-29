@@ -25,6 +25,7 @@ public class EventReminderService {
     private final EventRegistrationRepository registrationRepository;
     private final MemberRepository memberRepository;
     private final EmailService emailService;
+    private final SmsService smsService;
 
     /**
      * Send reminders for upcoming events
@@ -73,12 +74,18 @@ public class EventReminderService {
             .findByEventIdAndStatus(event.getId(), RegistrationStatus.APPROVED);
 
         int emailsSent = 0;
+        int smsSent = 0;
 
         for (EventRegistration registration : registrations) {
             try {
                 // Send email reminder
                 if (sendEmailReminder(event, registration)) {
                     emailsSent++;
+                }
+
+                // Send SMS reminder (if member has phone number)
+                if (sendSmsReminder(event, registration)) {
+                    smsSent++;
                 }
 
                 // Mark reminder as sent for this registration
@@ -95,7 +102,7 @@ public class EventReminderService {
         event.setReminderSent(true);
         eventRepository.save(event);
 
-        log.info("Sent {} email reminders for event {}", emailsSent, event.getId());
+        log.info("Sent {} email and {} SMS reminders for event {}", emailsSent, smsSent, event.getId());
     }
 
     /**
@@ -125,6 +132,62 @@ public class EventReminderService {
         emailService.sendEmail(recipientEmail, subject, body);
         log.info("Email reminder sent to {}", recipientEmail);
         return true;
+    }
+
+    /**
+     * Send SMS reminder for an event registration
+     */
+    private boolean sendSmsReminder(Event event, EventRegistration registration) {
+        // Only send SMS to members (not guests) who have phone numbers
+        if (registration.getIsGuest()) {
+            return false;
+        }
+
+        Member member = registration.getMember();
+        if (member.getPhoneNumber() == null || member.getPhoneNumber().trim().isEmpty()) {
+            return false;
+        }
+
+        String recipientName = member.getFirstName() + " " + member.getLastName();
+        String message = buildReminderSmsBody(recipientName, event);
+
+        try {
+            smsService.sendSms(
+                null, // sender (system-generated)
+                event.getChurch(),
+                member.getPhoneNumber(),
+                recipientName,
+                message,
+                member,
+                null // send immediately
+            );
+            log.info("SMS reminder sent to {} for event {}", member.getPhoneNumber(), event.getId());
+            return true;
+        } catch (Exception e) {
+            log.error("Failed to send SMS reminder: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Build SMS body for event reminder (max 160 chars for single SMS)
+     */
+    private String buildReminderSmsBody(String recipientName, Event event) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMM d, h:mm a");
+
+        StringBuilder sms = new StringBuilder();
+        sms.append("Hi ").append(recipientName.split(" ")[0]).append("! ");
+        sms.append("Reminder: ").append(event.getName()).append(" on ");
+        sms.append(event.getStartDate().format(formatter));
+
+        if (event.getLocationType() == EventLocationType.PHYSICAL &&
+            event.getPhysicalLocation() != null && !event.getPhysicalLocation().isEmpty()) {
+            sms.append(" at ").append(event.getPhysicalLocation());
+        }
+
+        sms.append(". See you there!");
+
+        return sms.toString();
     }
 
 

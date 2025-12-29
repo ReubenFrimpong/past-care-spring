@@ -1,5 +1,8 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
+import com.reuben.pastcare_spring.enums.Permission;
+
 import com.reuben.pastcare_spring.dtos.MinistryRequest;
 import com.reuben.pastcare_spring.enums.MinistryStatus;
 import com.reuben.pastcare_spring.models.Ministry;
@@ -22,6 +25,7 @@ public class MinistryController {
     private final MinistryService ministryService;
     private final RequestContextUtil requestContextUtil;
 
+    @RequirePermission(Permission.MEMBER_EDIT_ALL)
     @PostMapping
     public ResponseEntity<Ministry> createMinistry(
             @Valid @RequestBody MinistryRequest request,
@@ -31,6 +35,7 @@ public class MinistryController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ministry);
     }
 
+    @RequirePermission(Permission.MEMBER_EDIT_ALL)
     @PutMapping("/{id}")
     public ResponseEntity<Ministry> updateMinistry(
             @PathVariable Long id,
@@ -41,6 +46,7 @@ public class MinistryController {
         return ResponseEntity.ok(ministry);
     }
 
+    @RequirePermission(Permission.MEMBER_VIEW_ALL)
     @GetMapping("/{id}")
     public ResponseEntity<Ministry> getMinistryById(
             @PathVariable Long id,
@@ -50,6 +56,7 @@ public class MinistryController {
         return ResponseEntity.ok(ministry);
     }
 
+    @RequirePermission(Permission.MEMBER_VIEW_ALL)
     @GetMapping
     public ResponseEntity<List<Ministry>> getAllMinistries(HttpServletRequest httpRequest) {
         Long churchId = requestContextUtil.extractChurchId(httpRequest);
@@ -57,6 +64,7 @@ public class MinistryController {
         return ResponseEntity.ok(ministries);
     }
 
+    @RequirePermission(Permission.MEMBER_VIEW_ALL)
     @GetMapping("/status/{status}")
     public ResponseEntity<List<Ministry>> getMinistriesByStatus(
             @PathVariable MinistryStatus status,
@@ -66,6 +74,7 @@ public class MinistryController {
         return ResponseEntity.ok(ministries);
     }
 
+    @RequirePermission(Permission.MEMBER_VIEW_ALL)
     @GetMapping("/search")
     public ResponseEntity<List<Ministry>> searchMinistries(
             @RequestParam String query,
@@ -75,6 +84,7 @@ public class MinistryController {
         return ResponseEntity.ok(ministries);
     }
 
+    @RequirePermission(Permission.MEMBER_VIEW_ALL)
     @GetMapping("/leader/{leaderId}")
     public ResponseEntity<List<Ministry>> getMinistriesByLeader(
             @PathVariable Long leaderId,
@@ -84,6 +94,7 @@ public class MinistryController {
         return ResponseEntity.ok(ministries);
     }
 
+    @RequirePermission(Permission.MEMBER_VIEW_ALL)
     @GetMapping("/member/{memberId}")
     public ResponseEntity<List<Ministry>> getMinistriesByMember(
             @PathVariable Long memberId,
@@ -93,6 +104,7 @@ public class MinistryController {
         return ResponseEntity.ok(ministries);
     }
 
+    @RequirePermission(Permission.MEMBER_EDIT_ALL)
     @PostMapping("/{id}/members/{memberId}")
     public ResponseEntity<Ministry> addMemberToMinistry(
             @PathVariable Long id,
@@ -103,6 +115,7 @@ public class MinistryController {
         return ResponseEntity.ok(ministry);
     }
 
+    @RequirePermission(Permission.MEMBER_EDIT_ALL)
     @DeleteMapping("/{id}/members/{memberId}")
     public ResponseEntity<Ministry> removeMemberFromMinistry(
             @PathVariable Long id,
@@ -113,6 +126,7 @@ public class MinistryController {
         return ResponseEntity.ok(ministry);
     }
 
+    @RequirePermission(Permission.MEMBER_EDIT_ALL)
     @PostMapping("/{id}/skills/{skillId}")
     public ResponseEntity<Ministry> addRequiredSkill(
             @PathVariable Long id,
@@ -123,6 +137,7 @@ public class MinistryController {
         return ResponseEntity.ok(ministry);
     }
 
+    @RequirePermission(Permission.MEMBER_EDIT_ALL)
     @DeleteMapping("/{id}/skills/{skillId}")
     public ResponseEntity<Ministry> removeRequiredSkill(
             @PathVariable Long id,
@@ -133,6 +148,7 @@ public class MinistryController {
         return ResponseEntity.ok(ministry);
     }
 
+    @RequirePermission(Permission.MEMBER_EDIT_ALL)
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteMinistry(
             @PathVariable Long id,
@@ -142,6 +158,7 @@ public class MinistryController {
         return ResponseEntity.noContent().build();
     }
 
+    @RequirePermission(Permission.MEMBER_VIEW_ALL)
     @GetMapping("/stats/count")
     public ResponseEntity<Long> getActiveMinistriesCount(HttpServletRequest httpRequest) {
         Long churchId = requestContextUtil.extractChurchId(httpRequest);

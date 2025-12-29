@@ -1,15 +1,45 @@
 package com.reuben.pastcare_spring.services;
 
 import com.reuben.pastcare_spring.dtos.*;
+import com.reuben.pastcare_spring.models.AttendanceSession;
+import com.reuben.pastcare_spring.models.CareNeed;
+import com.reuben.pastcare_spring.models.CareNeedPriority;
+import com.reuben.pastcare_spring.models.CareNeedStatus;
+import com.reuben.pastcare_spring.models.CounselingSession;
+import com.reuben.pastcare_spring.models.CounselingStatus;
+import com.reuben.pastcare_spring.models.Crisis;
+import com.reuben.pastcare_spring.models.CrisisStatus;
+import com.reuben.pastcare_spring.models.Donation;
+import com.reuben.pastcare_spring.models.Event;
+import com.reuben.pastcare_spring.models.Member;
+import com.reuben.pastcare_spring.models.PrayerRequest;
+import com.reuben.pastcare_spring.models.PrayerRequestStatus;
 import com.reuben.pastcare_spring.models.User;
+import com.reuben.pastcare_spring.repositories.AttendanceSessionRepository;
+import com.reuben.pastcare_spring.repositories.CareNeedRepository;
+import com.reuben.pastcare_spring.repositories.CounselingSessionRepository;
+import com.reuben.pastcare_spring.repositories.CrisisRepository;
+import com.reuben.pastcare_spring.repositories.DonationRepository;
+import com.reuben.pastcare_spring.repositories.EventRepository;
 import com.reuben.pastcare_spring.repositories.MemberRepository;
+import com.reuben.pastcare_spring.repositories.PrayerRequestRepository;
 import com.reuben.pastcare_spring.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Stream;
 
 /**
  * Dashboard service providing aggregated data for church management dashboard.
@@ -21,6 +51,13 @@ public class DashboardService {
 
   private final UserRepository userRepository;
   private final MemberRepository memberRepository;
+  private final CareNeedRepository careNeedRepository;
+  private final EventRepository eventRepository;
+  private final PrayerRequestRepository prayerRequestRepository;
+  private final DonationRepository donationRepository;
+  private final AttendanceSessionRepository attendanceSessionRepository;
+  private final CrisisRepository crisisRepository;
+  private final CounselingSessionRepository counselingSessionRepository;
   private final AttendanceAnalyticsService attendanceAnalyticsService;
   private final FellowshipService fellowshipService;
 
@@ -60,9 +97,24 @@ public class DashboardService {
     // Get real member count
     long activeMembers = memberRepository.countByChurch(user.getChurch());
 
+    // Get events count for this week (from today to end of week)
+    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime endOfWeek = now.toLocalDate().plusDays(7 - now.getDayOfWeek().getValue()).atTime(23, 59, 59);
+    List<Event> eventsThisWeekList = eventRepository.findEventsByDateRange(
+        user.getChurch().getId(),
+        now,
+        endOfWeek
+    );
+    int eventsThisWeek = eventsThisWeekList.size();
+
+    // Get prayer requests count (PENDING + ACTIVE statuses)
+    List<PrayerRequestStatus> activeStatuses = Arrays.asList(
+        PrayerRequestStatus.PENDING,
+        PrayerRequestStatus.ACTIVE
+    );
+    int needPrayer = prayerRequestRepository.findByChurchAndStatusIn(user.getChurch(), activeStatuses).size();
+
     // TODO: Implement real queries for these stats when features are added
-    int needPrayer = 0; // Will be implemented with Prayer Requests module
-    int eventsThisWeek = 0; // Will be implemented with Events module
     String attendanceRate = "0%"; // Will be implemented with attendance statistics
 
     return new DashboardStatsResponse(
@@ -75,38 +127,226 @@ public class DashboardService {
 
   /**
    * Get pastoral care needs (real data from database).
-   * TODO: Implement when Prayer Requests/Pastoral Care module is added.
+   * Returns urgent and high priority active care needs for dashboard display.
    *
    * @param userId Current user ID from JWT
-   * @return List of pastoral care needs
+   * @return List of pastoral care needs (max 10)
    */
   private List<PastoralCareNeedResponse> getPastoralCareNeeds(Long userId) {
-    // Return empty list - will be implemented with Pastoral Care module
-    return new ArrayList<>();
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new RuntimeException("User not found"));
+
+    if (user.getChurch() == null) {
+      return new ArrayList<>();
+    }
+
+    // Get urgent and high priority care needs
+    List<CareNeedStatus> activeStatuses = Arrays.asList(
+        CareNeedStatus.OPEN,
+        CareNeedStatus.IN_PROGRESS,
+        CareNeedStatus.PENDING
+    );
+
+    List<CareNeed> urgentNeeds = careNeedRepository.findByChurchAndPriorityAndStatusIn(
+        user.getChurch(), CareNeedPriority.URGENT, activeStatuses);
+
+    List<CareNeed> highNeeds = careNeedRepository.findByChurchAndPriorityAndStatusIn(
+        user.getChurch(), CareNeedPriority.HIGH, activeStatuses);
+
+    // Combine and sort by priority (urgent first) then by created date
+    List<CareNeed> allNeeds = Stream.concat(urgentNeeds.stream(), highNeeds.stream())
+        .sorted(Comparator
+            .comparing(CareNeed::getPriority)
+            .thenComparing(CareNeed::getCreatedAt, Comparator.reverseOrder()))
+        .limit(10)
+        .toList();
+
+    // Map to response DTOs
+    return allNeeds.stream()
+        .map(need -> new PastoralCareNeedResponse(
+            need.getId(),
+            need.getMember().getFirstName() + " " + need.getMember().getLastName(),
+            need.getTitle(),
+            formatPriorityBadge(need)
+        ))
+        .toList();
+  }
+
+  /**
+   * Format priority badge for pastoral care needs.
+   * Returns "Urgent", "Today", or "This Week" based on priority and due date.
+   */
+  private String formatPriorityBadge(CareNeed need) {
+    if (need.getPriority() == CareNeedPriority.URGENT) {
+      return "Urgent";
+    }
+
+    if (need.getDueDate() != null) {
+      LocalDate today = LocalDate.now();
+      if (need.getDueDate().equals(today)) {
+        return "Today";
+      } else if (need.getDueDate().isBefore(today.plusDays(7))) {
+        return "This Week";
+      }
+    }
+
+    return need.getPriority().toString();
   }
 
   /**
    * Get upcoming events (real data from database).
-   * TODO: Implement when Events module is added.
+   * Returns next 5-10 upcoming events for dashboard display.
    *
    * @param userId Current user ID from JWT
-   * @return List of upcoming events
+   * @return List of upcoming events (max 10)
    */
   private List<UpcomingEventResponse> getUpcomingEvents(Long userId) {
-    // Return empty list - will be implemented with Events module
-    return new ArrayList<>();
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new RuntimeException("User not found"));
+
+    if (user.getChurch() == null) {
+      return new ArrayList<>();
+    }
+
+    // Get upcoming events (not cancelled, future events only)
+    PageRequest pageRequest = PageRequest.of(0, 10);
+    List<Event> upcomingEvents = eventRepository.findUpcomingEvents(
+        user.getChurch().getId(),
+        LocalDateTime.now(),
+        pageRequest
+    ).getContent();
+
+    // Map to response DTOs
+    return upcomingEvents.stream()
+        .map(event -> new UpcomingEventResponse(
+            event.getId(),
+            event.getName(),
+            event.getDescription(),
+            event.getStartDate(),
+            formatEventBadge(event.getStartDate())
+        ))
+        .toList();
+  }
+
+  /**
+   * Format event badge based on start date.
+   * Returns "Today", "Tomorrow", "This Week", etc.
+   */
+  private String formatEventBadge(LocalDateTime eventDate) {
+    LocalDateTime now = LocalDateTime.now();
+    LocalDate today = now.toLocalDate();
+    LocalDate eventDateLocal = eventDate.toLocalDate();
+
+    if (eventDateLocal.equals(today)) {
+      return "Today";
+    } else if (eventDateLocal.equals(today.plusDays(1))) {
+      return "Tomorrow";
+    } else if (eventDateLocal.isBefore(today.plusDays(7))) {
+      return "This Week";
+    } else if (eventDateLocal.isBefore(today.plusDays(14))) {
+      return "Next Week";
+    } else if (eventDateLocal.isBefore(today.plusDays(30))) {
+      return "This Month";
+    } else {
+      return "Upcoming";
+    }
   }
 
   /**
    * Get recent activities (real data from database).
-   * TODO: Implement when Activity Log module is added.
+   * Uses lightweight aggregated queries from multiple sources.
    *
    * @param userId Current user ID from JWT
-   * @return List of recent activities
+   * @return List of recent activities (max 10)
    */
   private List<RecentActivityResponse> getRecentActivities(Long userId) {
-    // Return empty list - will be implemented with Activity Log module
-    return new ArrayList<>();
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new RuntimeException("User not found"));
+
+    if (user.getChurch() == null) {
+      return new ArrayList<>();
+    }
+
+    List<ActivityItem> activities = new ArrayList<>();
+    PageRequest topFive = PageRequest.of(0, 5);
+
+    // Get recent members (5 most recent)
+    List<Member> recentMembers = memberRepository.findByChurchOrderByCreatedAtDesc(
+        user.getChurch(), topFive).getContent();
+    recentMembers.forEach(member -> activities.add(new ActivityItem(
+        member.getId(),
+        "NEW_MEMBER",
+        "New Member Joined",
+        member.getFirstName() + " " + member.getLastName() + " joined the church",
+        member.getCreatedAt()
+    )));
+
+    // Get recent donations (5 most recent)
+    PageRequest donationPageRequest = PageRequest.of(0, 5);
+    List<Donation> recentDonations = donationRepository.findByChurchOrderByDonationDateDesc(
+        user.getChurch(), donationPageRequest).getContent();
+    recentDonations.forEach(donation -> activities.add(new ActivityItem(
+        donation.getId(),
+        "DONATION_RECEIVED",
+        "Donation Received",
+        String.format("$%.2f donation from %s",
+            donation.getAmount(),
+            donation.getMember() != null ? donation.getMember().getFirstName() + " " + donation.getMember().getLastName() : "Anonymous"),
+        donation.getCreatedAt()
+    )));
+
+    // Get recent attendance sessions (5 most recent)
+    List<AttendanceSession> recentSessions = attendanceSessionRepository
+        .findByChurchOrderByCreatedAtDesc(user.getChurch(), topFive).getContent();
+    recentSessions.forEach(session -> activities.add(new ActivityItem(
+        session.getId(),
+        "ATTENDANCE_RECORDED",
+        "Attendance Recorded",
+        String.format("Attendance session on %s", formatDate(session.getSessionDate())),
+        session.getCreatedAt()
+    )));
+
+    // Get recent prayer requests (5 most recent)
+    List<PrayerRequest> recentPrayers = prayerRequestRepository
+        .findByChurchOrderByCreatedAtDesc(user.getChurch(), topFive).getContent();
+    recentPrayers.forEach(prayer -> activities.add(new ActivityItem(
+        prayer.getId(),
+        "PRAYER_REQUEST",
+        "Prayer Request Submitted",
+        prayer.getTitle(),
+        prayer.getCreatedAt()
+    )));
+
+    // Sort all activities by timestamp (most recent first) and take top 10
+    return activities.stream()
+        .sorted(Comparator.comparing(ActivityItem::timestamp).reversed())
+        .limit(10)
+        .map(item -> new RecentActivityResponse(
+            item.id(),
+            item.activityType(),
+            item.title(),
+            item.description()
+        ))
+        .toList();
+  }
+
+  /**
+   * Helper record to hold activity items from different sources before sorting.
+   */
+  private record ActivityItem(
+      Long id,
+      String activityType,
+      String title,
+      String description,
+      Instant timestamp
+  ) {}
+
+  /**
+   * Format LocalDate for activity description.
+   */
+  private String formatDate(LocalDate date) {
+    if (date == null) return "Unknown";
+    return date.format(DateTimeFormatter.ofPattern("MMM d, yyyy"));
   }
 
   /**
@@ -119,22 +359,60 @@ public class DashboardService {
 
   /**
    * Get pastoral care needs only.
+   * Note: This method uses TenantContext to get the current church.
    */
   public List<PastoralCareNeedResponse> getPastoralCareNeeds() {
-    return new ArrayList<>();
+    // Get urgent and high priority care needs for current tenant
+    List<CareNeedStatus> activeStatuses = Arrays.asList(
+        CareNeedStatus.OPEN,
+        CareNeedStatus.IN_PROGRESS,
+        CareNeedStatus.PENDING
+    );
+
+    // Note: Repository methods will use TenantContext automatically
+    List<CareNeed> urgentNeeds = careNeedRepository.findByPriorityOrderByCreatedAtDesc(CareNeedPriority.URGENT);
+    List<CareNeed> highNeeds = careNeedRepository.findByPriorityOrderByCreatedAtDesc(CareNeedPriority.HIGH);
+
+    // Filter by active status and combine
+    List<CareNeed> allNeeds = Stream.concat(
+        urgentNeeds.stream().filter(need -> activeStatuses.contains(need.getStatus())),
+        highNeeds.stream().filter(need -> activeStatuses.contains(need.getStatus()))
+    )
+        .sorted(Comparator
+            .comparing(CareNeed::getPriority)
+            .thenComparing(CareNeed::getCreatedAt, Comparator.reverseOrder()))
+        .limit(10)
+        .toList();
+
+    // Map to response DTOs
+    return allNeeds.stream()
+        .map(need -> new PastoralCareNeedResponse(
+            need.getId(),
+            need.getMember().getFirstName() + " " + need.getMember().getLastName(),
+            need.getTitle(),
+            formatPriorityBadge(need)
+        ))
+        .toList();
   }
 
   /**
    * Get upcoming events only.
+   * Note: This method uses TenantContext to get the current church.
    */
   public List<UpcomingEventResponse> getUpcomingEvents() {
+    // Note: EventRepository methods will use TenantContext automatically via church.id
+    // For now, return empty list as we need churchId from context
+    // This will be populated when called through authenticated endpoints
     return new ArrayList<>();
   }
 
   /**
    * Get recent activities only.
+   * Note: This method uses TenantContext to get the current church.
    */
   public List<RecentActivityResponse> getRecentActivities() {
+    // For now, return empty list as this requires church context from authenticated user
+    // The main getRecentActivities(userId) method will be called through authenticated endpoints
     return new ArrayList<>();
   }
 
@@ -313,5 +591,141 @@ public class DashboardService {
     }
 
     return fellowshipService.getFellowshipComparison();
+  }
+
+  /**
+   * Get donation statistics for dashboard.
+   * Dashboard Phase 3: Donations Widget
+   *
+   * @param userId Current user ID from JWT
+   * @return Donation statistics
+   */
+  public DonationStatsResponse getDonationStats(Long userId) {
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new RuntimeException("User not found"));
+
+    if (user.getChurch() == null) {
+      return new DonationStatsResponse(0, BigDecimal.ZERO, 0, BigDecimal.ZERO, 0, BigDecimal.ZERO);
+    }
+
+    // Get all-time totals
+    long totalDonations = donationRepository.countByChurch(user.getChurch());
+    BigDecimal totalAmount = donationRepository.getTotalDonations(user.getChurch());
+    if (totalAmount == null) {
+      totalAmount = BigDecimal.ZERO;
+    }
+
+    // Get this week's data (Monday to Sunday)
+    LocalDate now = LocalDate.now();
+    LocalDate startOfWeek = now.minusDays(now.getDayOfWeek().getValue() - 1);
+    LocalDate endOfWeek = startOfWeek.plusDays(6);
+
+    long thisWeekCount = donationRepository.countByChurchAndDateRange(user.getChurch(), startOfWeek, endOfWeek);
+    BigDecimal thisWeekAmount = donationRepository.getTotalDonationsByDateRange(user.getChurch(), startOfWeek, endOfWeek);
+    if (thisWeekAmount == null) {
+      thisWeekAmount = BigDecimal.ZERO;
+    }
+
+    // Get this month's data
+    LocalDate startOfMonth = now.withDayOfMonth(1);
+    LocalDate endOfMonth = now.withDayOfMonth(now.lengthOfMonth());
+
+    long thisMonthCount = donationRepository.countByChurchAndDateRange(user.getChurch(), startOfMonth, endOfMonth);
+    BigDecimal thisMonthAmount = donationRepository.getTotalDonationsByDateRange(user.getChurch(), startOfMonth, endOfMonth);
+    if (thisMonthAmount == null) {
+      thisMonthAmount = BigDecimal.ZERO;
+    }
+
+    return new DonationStatsResponse(
+        (int) totalDonations,
+        totalAmount,
+        (int) thisWeekCount,
+        thisWeekAmount,
+        (int) thisMonthCount,
+        thisMonthAmount
+    );
+  }
+
+  /**
+   * Get crisis statistics for dashboard.
+   * Dashboard Phase 3: Crisis Management Widget
+   *
+   * @param userId Current user ID from JWT
+   * @return Crisis statistics
+   */
+  public CrisisStatsResponse getCrisisStats(Long userId) {
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new RuntimeException("User not found"));
+
+    if (user.getChurch() == null) {
+      return new CrisisStatsResponse(0L, 0L, 0L, 0L, 0L, 0L, 0L);
+    }
+
+    // Count active crises (ACTIVE, IN_RESPONSE statuses)
+    long activeCrises = crisisRepository.countByChurchAndStatus(user.getChurch(), CrisisStatus.ACTIVE);
+    long inResponseCrises = crisisRepository.countByChurchAndStatus(user.getChurch(), CrisisStatus.IN_RESPONSE);
+
+    // Count resolved this month using date range query
+    LocalDate startOfMonth = LocalDate.now().withDayOfMonth(1);
+    LocalDate endOfMonth = LocalDate.now().withDayOfMonth(LocalDate.now().lengthOfMonth());
+    List<Crisis> resolvedList = crisisRepository.findByIncidentDateRange(
+        user.getChurch(),
+        startOfMonth.atStartOfDay(),
+        endOfMonth.atTime(23, 59, 59)
+    ).stream()
+        .filter(c -> c.getStatus() == CrisisStatus.RESOLVED)
+        .toList();
+    long resolvedThisMonth = resolvedList.size();
+
+    // Calculate urgent crises (active + in_response)
+    long urgentCrises = activeCrises + inResponseCrises;
+
+    // Total crises
+    long totalCrises = crisisRepository.countByChurch(user.getChurch());
+
+    return new CrisisStatsResponse(
+        totalCrises,
+        activeCrises,
+        inResponseCrises,
+        resolvedThisMonth,
+        urgentCrises, // criticalCrises - using urgent count
+        0L, // highSeverityCrises - placeholder
+        0L  // totalAffectedMembers - placeholder
+    );
+  }
+
+  /**
+   * Get upcoming counseling sessions for dashboard.
+   * Dashboard Phase 3: Counseling Sessions Widget
+   *
+   * @param userId Current user ID from JWT
+   * @return List of upcoming counseling sessions this week
+   */
+  public List<CounselingSessionResponse> getUpcomingCounselingSessions(Long userId) {
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new RuntimeException("User not found"));
+
+    if (user.getChurch() == null) {
+      return new ArrayList<>();
+    }
+
+    // Get sessions this week (use existing findUpcomingSessions method)
+    LocalDateTime now = LocalDateTime.now();
+
+    List<CounselingSession> sessions = counselingSessionRepository.findUpcomingSessions(
+        user.getChurch(),
+        now
+    ).stream()
+        .filter(s -> {
+          LocalDateTime endOfWeek = now.toLocalDate().plusDays(7 - now.getDayOfWeek().getValue()).atTime(23, 59, 59);
+          return s.getSessionDate().isBefore(endOfWeek) || s.getSessionDate().isEqual(endOfWeek);
+        })
+        .toList();
+
+    return sessions.stream()
+        .sorted(Comparator.comparing(CounselingSession::getSessionDate))
+        .limit(10)
+        .map(CounselingSessionResponse::fromEntity)
+        .toList();
   }
 }

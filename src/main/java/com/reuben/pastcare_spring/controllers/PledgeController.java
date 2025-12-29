@@ -1,9 +1,11 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
 import com.reuben.pastcare_spring.dtos.PledgePaymentRequest;
 import com.reuben.pastcare_spring.dtos.PledgeRequest;
 import com.reuben.pastcare_spring.dtos.PledgeResponse;
 import com.reuben.pastcare_spring.dtos.PledgeStatsResponse;
+import com.reuben.pastcare_spring.enums.Permission;
 import com.reuben.pastcare_spring.services.PledgeService;
 import com.reuben.pastcare_spring.util.RequestContextUtil;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,7 +15,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -35,7 +36,7 @@ public class PledgeController {
    * Get all pledges for the current church
    */
   @GetMapping
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.PLEDGE_VIEW_ALL)
   @Operation(summary = "Get all pledges", description = "Returns all pledges for the current church")
   public ResponseEntity<List<PledgeResponse>> getAllPledges(HttpServletRequest request) {
     Long churchId = requestContextUtil.extractChurchId(request);
@@ -47,7 +48,7 @@ public class PledgeController {
    * Get pledge by ID
    */
   @GetMapping("/{id}")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.PLEDGE_VIEW_ALL)
   @Operation(summary = "Get pledge by ID", description = "Returns a single pledge by ID")
   public ResponseEntity<PledgeResponse> getPledgeById(
       @PathVariable Long id,
@@ -62,7 +63,7 @@ public class PledgeController {
    * Create a new pledge
    */
   @PostMapping
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.PLEDGE_MANAGE)
   @Operation(summary = "Create pledge", description = "Creates a new member pledge")
   public ResponseEntity<PledgeResponse> createPledge(
       @Valid @RequestBody PledgeRequest request,
@@ -77,7 +78,7 @@ public class PledgeController {
    * Update an existing pledge
    */
   @PutMapping("/{id}")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.PLEDGE_MANAGE)
   @Operation(summary = "Update pledge", description = "Updates an existing pledge")
   public ResponseEntity<PledgeResponse> updatePledge(
       @PathVariable Long id,
@@ -93,7 +94,7 @@ public class PledgeController {
    * Delete a pledge
    */
   @DeleteMapping("/{id}")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.PLEDGE_MANAGE)
   @Operation(summary = "Delete pledge", description = "Deletes a pledge")
   public ResponseEntity<Void> deletePledge(
       @PathVariable Long id,
@@ -108,7 +109,7 @@ public class PledgeController {
    * Get pledges by member
    */
   @GetMapping("/member/{memberId}")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.PLEDGE_VIEW_ALL)
   @Operation(summary = "Get pledges by member", description = "Returns all pledges for a specific member")
   public ResponseEntity<List<PledgeResponse>> getPledgesByMember(
       @PathVariable Long memberId,
@@ -123,7 +124,7 @@ public class PledgeController {
    * Get pledges by campaign
    */
   @GetMapping("/campaign/{campaignId}")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.PLEDGE_VIEW_ALL)
   @Operation(summary = "Get pledges by campaign", description = "Returns all pledges for a specific campaign")
   public ResponseEntity<List<PledgeResponse>> getPledgesByCampaign(
       @PathVariable Long campaignId,
@@ -138,7 +139,7 @@ public class PledgeController {
    * Get active pledges
    */
   @GetMapping("/active")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.PLEDGE_VIEW_ALL)
   @Operation(summary = "Get active pledges", description = "Returns all active pledges")
   public ResponseEntity<List<PledgeResponse>> getActivePledges(HttpServletRequest request) {
     Long churchId = requestContextUtil.extractChurchId(request);
@@ -150,7 +151,7 @@ public class PledgeController {
    * Get overdue pledges
    */
   @GetMapping("/overdue")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.PLEDGE_VIEW_ALL)
   @Operation(summary = "Get overdue pledges", description = "Returns pledges with overdue payments")
   public ResponseEntity<List<PledgeResponse>> getOverduePledges(HttpServletRequest request) {
     Long churchId = requestContextUtil.extractChurchId(request);
@@ -162,7 +163,7 @@ public class PledgeController {
    * Record a pledge payment
    */
   @PostMapping("/payment")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.PLEDGE_MANAGE)
   @Operation(summary = "Record pledge payment", description = "Records a payment toward a pledge")
   public ResponseEntity<PledgeResponse> recordPayment(
       @Valid @RequestBody PledgePaymentRequest request,
@@ -177,7 +178,7 @@ public class PledgeController {
    * Cancel a pledge
    */
   @PostMapping("/{id}/cancel")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.PLEDGE_MANAGE)
   @Operation(summary = "Cancel pledge", description = "Cancels a pledge")
   public ResponseEntity<PledgeResponse> cancelPledge(
       @PathVariable Long id,
@@ -192,7 +193,7 @@ public class PledgeController {
    * Get pledge statistics
    */
   @GetMapping("/stats")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.PLEDGE_VIEW_ALL)
   @Operation(summary = "Get pledge statistics", description = "Returns pledge statistics for the church")
   public ResponseEntity<PledgeStatsResponse> getPledgeStats(HttpServletRequest request) {
     Long churchId = requestContextUtil.extractChurchId(request);

@@ -1,5 +1,8 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
+import com.reuben.pastcare_spring.enums.Permission;
+
 import java.util.List;
 import java.util.Map;
 
@@ -53,6 +56,7 @@ public class CheckInController {
    * @param request The check-in request
    * @return CheckInResponse with attendance details
    */
+    @RequirePermission(Permission.ATTENDANCE_MARK)
   @PostMapping
   public ResponseEntity<CheckInResponse> checkIn(@Valid @RequestBody CheckInRequest request) {
     return ResponseEntity.ok(checkInService.checkIn(request));
@@ -69,6 +73,7 @@ public class CheckInController {
    * @param maxDistanceMeters Maximum search distance in meters (default 5000m)
    * @return List of nearby sessions with distance information
    */
+    @RequirePermission(Permission.ATTENDANCE_VIEW)
   @GetMapping("/nearby-sessions")
   public ResponseEntity<List<NearbySessionResponse>> findNearbySessions(
       @RequestParam double latitude,
@@ -85,6 +90,7 @@ public class CheckInController {
    * @param request Map containing sessionId, phoneNumber, checkInMethod, qrCodeData, deviceInfo
    * @return CheckInResponse with attendance details
    */
+    @RequirePermission(Permission.ATTENDANCE_MARK)
   @PostMapping("/by-phone")
   public ResponseEntity<CheckInResponse> checkInByPhone(@RequestBody Map<String, Object> request) {
     Long sessionId = ((Number) request.get("sessionId")).longValue();
@@ -102,6 +108,7 @@ public class CheckInController {
    * @param request Map containing sessionId, firstName, lastName, phoneNumber, email, qrCodeData, deviceInfo
    * @return CheckInResponse with attendance details
    */
+    @RequirePermission(Permission.ATTENDANCE_MARK)
   @PostMapping("/visitor")
   public ResponseEntity<CheckInResponse> checkInVisitor(@RequestBody Map<String, Object> request) {
     Long sessionId = ((Number) request.get("sessionId")).longValue();

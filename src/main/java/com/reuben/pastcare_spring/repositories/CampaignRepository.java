@@ -18,6 +18,7 @@ import java.util.Optional;
  */
 @Repository
 public interface CampaignRepository extends JpaRepository<Campaign, Long> {
+    java.util.List<Campaign> findByChurch_Id(Long churchId);
 
   /**
    * Find all campaigns for a church
@@ -96,4 +97,9 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
    */
   @Query("SELECT COUNT(c) FROM Campaign c WHERE c.church = :church AND c.status = 'ACTIVE'")
   long countActiveCampaigns(@Param("church") Church church);
+
+  /**
+   * Count campaigns by church ID
+   */
+  Long countByChurch_Id(Long churchId);
 }

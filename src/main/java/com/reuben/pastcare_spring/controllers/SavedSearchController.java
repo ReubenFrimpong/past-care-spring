@@ -1,5 +1,8 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
+import com.reuben.pastcare_spring.enums.Permission;
+
 import com.reuben.pastcare_spring.dtos.AdvancedSearchResponse;
 import com.reuben.pastcare_spring.dtos.SavedSearchRequest;
 import com.reuben.pastcare_spring.dtos.SavedSearchResponse;
@@ -38,6 +41,7 @@ public class SavedSearchController {
      * @param size        Page size (default: 20)
      * @return Page of saved search responses
      */
+    @RequirePermission(Permission.MEMBER_VIEW_ALL)
     @GetMapping
     public ResponseEntity<Page<SavedSearchResponse>> getAccessibleSearches(
             HttpServletRequest httpRequest,
@@ -59,6 +63,7 @@ public class SavedSearchController {
      * @param httpRequest HTTP request to extract church and user IDs
      * @return Saved search response
      */
+    @RequirePermission(Permission.MEMBER_VIEW_ALL)
     @GetMapping("/{id}")
     public ResponseEntity<SavedSearchResponse> getSavedSearchById(
             @PathVariable Long id,
@@ -77,6 +82,7 @@ public class SavedSearchController {
      * @param httpRequest HTTP request to extract church and user IDs
      * @return Created saved search response
      */
+    @RequirePermission(Permission.MEMBER_EDIT_ALL)
     @PostMapping
     public ResponseEntity<SavedSearchResponse> createSavedSearch(
             @Valid @RequestBody SavedSearchRequest request,
@@ -96,6 +102,7 @@ public class SavedSearchController {
      * @param httpRequest HTTP request to extract church and user IDs
      * @return Updated saved search response
      */
+    @RequirePermission(Permission.MEMBER_EDIT_ALL)
     @PutMapping("/{id}")
     public ResponseEntity<SavedSearchResponse> updateSavedSearch(
             @PathVariable Long id,
@@ -115,6 +122,7 @@ public class SavedSearchController {
      * @param httpRequest HTTP request to extract church and user IDs
      * @return No content response
      */
+    @RequirePermission(Permission.MEMBER_EDIT_ALL)
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteSavedSearch(
             @PathVariable Long id,
@@ -137,6 +145,7 @@ public class SavedSearchController {
      * @param size        Page size (default: 20)
      * @return Advanced search response with member results
      */
+    @RequirePermission(Permission.MEMBER_EDIT_ALL)
     @PostMapping("/{id}/execute")
     public ResponseEntity<AdvancedSearchResponse> executeSavedSearch(
             @PathVariable Long id,
@@ -159,6 +168,7 @@ public class SavedSearchController {
      * @param httpRequest HTTP request to extract church and user IDs
      * @return Duplicated saved search response
      */
+    @RequirePermission(Permission.MEMBER_EDIT_ALL)
     @PostMapping("/{id}/duplicate")
     public ResponseEntity<SavedSearchResponse> duplicateSavedSearch(
             @PathVariable Long id,

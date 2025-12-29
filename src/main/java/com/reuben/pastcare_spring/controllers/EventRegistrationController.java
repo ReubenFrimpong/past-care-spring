@@ -1,5 +1,8 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
+import com.reuben.pastcare_spring.enums.Permission;
+
 import com.reuben.pastcare_spring.dtos.*;
 import com.reuben.pastcare_spring.models.*;
 import com.reuben.pastcare_spring.services.*;
@@ -11,7 +14,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -34,7 +36,7 @@ public class EventRegistrationController {
      * Register for an event
      */
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    @RequirePermission(Permission.EVENT_CREATE)
     public ResponseEntity<EventRegistrationResponse> registerForEvent(
         @Valid @RequestBody EventRegistrationRequest request,
         Authentication authentication
@@ -48,7 +50,7 @@ public class EventRegistrationController {
      * Get registration by ID
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
     public ResponseEntity<EventRegistrationResponse> getRegistration(@PathVariable Long id) {
         EventRegistrationResponse response = registrationService.getRegistration(id);
         return ResponseEntity.ok(response);
@@ -58,7 +60,7 @@ public class EventRegistrationController {
      * Get all registrations for an event
      */
     @GetMapping("/event/{eventId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF')")
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
     public ResponseEntity<Page<EventRegistrationResponse>> getEventRegistrations(
         @PathVariable Long eventId,
         @RequestParam(defaultValue = "0") int page,
@@ -77,7 +79,7 @@ public class EventRegistrationController {
      * Get registrations for a member
      */
     @GetMapping("/member/{memberId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
     public ResponseEntity<Page<EventRegistrationResponse>> getMemberRegistrations(
         @PathVariable Long memberId,
         @RequestParam(defaultValue = "0") int page,
@@ -92,7 +94,7 @@ public class EventRegistrationController {
      * Get pending approvals
      */
     @GetMapping("/pending")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF')")
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
     public ResponseEntity<Page<EventRegistrationResponse>> getPendingApprovals(
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "10") int size
@@ -106,7 +108,7 @@ public class EventRegistrationController {
      * Get waitlist for an event
      */
     @GetMapping("/event/{eventId}/waitlist")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF')")
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
     public ResponseEntity<List<EventRegistrationResponse>> getEventWaitlist(@PathVariable Long eventId) {
         List<EventRegistrationResponse> response = registrationService.getEventWaitlist(eventId);
         return ResponseEntity.ok(response);
@@ -116,7 +118,7 @@ public class EventRegistrationController {
      * Get attendees for an event
      */
     @GetMapping("/event/{eventId}/attendees")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF')")
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
     public ResponseEntity<List<EventRegistrationResponse>> getEventAttendees(@PathVariable Long eventId) {
         List<EventRegistrationResponse> response = registrationService.getEventAttendees(eventId);
         return ResponseEntity.ok(response);
@@ -126,7 +128,7 @@ public class EventRegistrationController {
      * Filter registrations
      */
     @GetMapping("/filter")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF')")
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
     public ResponseEntity<Page<EventRegistrationResponse>> filterRegistrations(
         @RequestParam(required = false) Long eventId,
         @RequestParam(required = false) Long memberId,
@@ -152,7 +154,7 @@ public class EventRegistrationController {
      * Approve a registration
      */
     @PostMapping("/{id}/approve")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF')")
+    @RequirePermission(Permission.EVENT_CREATE)
     public ResponseEntity<EventRegistrationResponse> approveRegistration(
         @PathVariable Long id,
         Authentication authentication
@@ -166,7 +168,7 @@ public class EventRegistrationController {
      * Reject a registration
      */
     @PostMapping("/{id}/reject")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF')")
+    @RequirePermission(Permission.EVENT_CREATE)
     public ResponseEntity<EventRegistrationResponse> rejectRegistration(
         @PathVariable Long id,
         @RequestParam String reason,
@@ -182,7 +184,7 @@ public class EventRegistrationController {
      * Mark registration as attended
      */
     @PostMapping("/{id}/attended")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF')")
+    @RequirePermission(Permission.EVENT_CREATE)
     public ResponseEntity<EventRegistrationResponse> markAsAttended(@PathVariable Long id) {
         EventRegistrationResponse response = registrationService.markAsAttended(id);
         return ResponseEntity.ok(response);
@@ -192,7 +194,7 @@ public class EventRegistrationController {
      * Mark registration as no-show
      */
     @PostMapping("/{id}/no-show")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF')")
+    @RequirePermission(Permission.EVENT_CREATE)
     public ResponseEntity<EventRegistrationResponse> markAsNoShow(@PathVariable Long id) {
         EventRegistrationResponse response = registrationService.markAsNoShow(id);
         return ResponseEntity.ok(response);
@@ -202,7 +204,7 @@ public class EventRegistrationController {
      * Generate QR code ticket for registration
      */
     @GetMapping("/{id}/qr-ticket")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
     public ResponseEntity<QRCodeResponse> generateQRTicket(@PathVariable Long id) {
         EventRegistrationResponse registration = registrationService.getRegistration(id);
 
@@ -232,7 +234,7 @@ public class EventRegistrationController {
      * Send confirmation email for registration
      */
     @PostMapping("/{id}/send-confirmation")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF')")
+    @RequirePermission(Permission.EVENT_CREATE)
     public ResponseEntity<String> sendConfirmationEmail(@PathVariable Long id) {
         registrationService.sendConfirmationEmail(id);
         return ResponseEntity.ok("Confirmation email sent successfully");
@@ -242,7 +244,7 @@ public class EventRegistrationController {
      * Cancel registration by attendee
      */
     @PostMapping("/{id}/cancel")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    @RequirePermission(Permission.EVENT_CREATE)
     public ResponseEntity<EventRegistrationResponse> cancelRegistration(
         @PathVariable Long id,
         @RequestBody(required = false) CancellationRequest request

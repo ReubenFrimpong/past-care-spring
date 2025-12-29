@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -24,17 +25,22 @@ import com.reuben.pastcare_spring.exceptions.DuplicateChurchException;
 import com.reuben.pastcare_spring.exceptions.DuplicateResourceException;
 import com.reuben.pastcare_spring.exceptions.DuplicateUserException;
 import com.reuben.pastcare_spring.exceptions.FileUploadException;
+import com.reuben.pastcare_spring.exceptions.InsufficientPermissionException;
 import com.reuben.pastcare_spring.exceptions.InvalidCredentialsException;
 import com.reuben.pastcare_spring.exceptions.ResourceNotFoundException;
+import com.reuben.pastcare_spring.exceptions.TenantViolationException;
 import com.reuben.pastcare_spring.exceptions.TooManyRequestsException;
 import com.reuben.pastcare_spring.exceptions.UnauthorizedException;
+import com.reuben.pastcare_spring.services.SecurityMonitoringService;
 
 import java.time.format.DateTimeFormatter;
 
 @ControllerAdvice
+@RequiredArgsConstructor
 public class GlobalExceptionHandler {
 
   private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+  private final SecurityMonitoringService securityMonitoringService;
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<ErrorResponse> handleMethodArgumentNotValidException(
@@ -116,6 +122,50 @@ public class GlobalExceptionHandler {
       HttpStatus.FORBIDDEN.value(),
       "Access Denied",
       exp.getMessage(),
+      request.getDescription(false).replace("uri=", "")
+    );
+
+    return new ResponseEntity<>(errorResponse, HttpStatus.FORBIDDEN);
+  }
+
+  @ExceptionHandler(InsufficientPermissionException.class)
+  public ResponseEntity<ErrorResponse> handleInsufficientPermissionException(
+      InsufficientPermissionException exp,
+      WebRequest request) {
+    logger.warn("Insufficient permissions for request {}: {} - Role: {}, Required: {}",
+        request.getDescription(false),
+        exp.getMessage(),
+        exp.getUserRole(),
+        java.util.Arrays.toString(exp.getRequiredPermissions()));
+
+    ErrorResponse errorResponse = new ErrorResponse(
+      HttpStatus.FORBIDDEN.value(),
+      "Insufficient Permissions",
+      exp.getMessage(),
+      request.getDescription(false).replace("uri=", "")
+    );
+
+    return new ResponseEntity<>(errorResponse, HttpStatus.FORBIDDEN);
+  }
+
+  @ExceptionHandler(TenantViolationException.class)
+  public ResponseEntity<ErrorResponse> handleTenantViolationException(
+      TenantViolationException exp,
+      WebRequest request) {
+    logger.error("SECURITY VIOLATION - Cross-tenant access attempt: {} - User: {}, Attempted Church: {}, Actual Church: {}, Resource: {}",
+        exp.getMessage(),
+        exp.getUserId(),
+        exp.getAttemptedChurchId(),
+        exp.getActualChurchId(),
+        exp.getResourceType());
+
+    // Log to security monitoring service for audit trail and alerting
+    securityMonitoringService.logTenantViolation(exp);
+
+    ErrorResponse errorResponse = new ErrorResponse(
+      HttpStatus.FORBIDDEN.value(),
+      "Access Denied",
+      "You do not have permission to access this resource.",
       request.getDescription(false).replace("uri=", "")
     );
 

@@ -1,9 +1,11 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
 import com.reuben.pastcare_spring.dtos.PaymentInitializationRequest;
 import com.reuben.pastcare_spring.dtos.PaymentInitializationResponse;
 import com.reuben.pastcare_spring.dtos.RecurringDonationRequest;
 import com.reuben.pastcare_spring.dtos.RecurringDonationResponse;
+import com.reuben.pastcare_spring.enums.Permission;
 import com.reuben.pastcare_spring.services.PaystackService;
 import com.reuben.pastcare_spring.services.RecurringDonationService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,6 +31,7 @@ public class RecurringDonationController {
     private final PaystackService paystackService;
 
     @PostMapping
+    @RequirePermission(Permission.DONATION_CREATE)
     @Operation(summary = "Create recurring donation")
     public ResponseEntity<RecurringDonationResponse> createRecurringDonation(
             @Valid @RequestBody RecurringDonationRequest request) {
@@ -37,6 +40,7 @@ public class RecurringDonationController {
     }
 
     @GetMapping
+    @RequirePermission(Permission.DONATION_VIEW_ALL)
     @Operation(summary = "Get all recurring donations")
     public ResponseEntity<Page<RecurringDonationResponse>> getRecurringDonations(Pageable pageable) {
         Page<RecurringDonationResponse> response = recurringDonationService.getRecurringDonations(pageable);
@@ -44,6 +48,7 @@ public class RecurringDonationController {
     }
 
     @GetMapping("/member/{memberId}")
+    @RequirePermission(Permission.DONATION_VIEW_ALL)
     @Operation(summary = "Get recurring donations by member")
     public ResponseEntity<Page<RecurringDonationResponse>> getRecurringDonationsByMember(
             @PathVariable Long memberId, Pageable pageable) {
@@ -52,6 +57,7 @@ public class RecurringDonationController {
     }
 
     @GetMapping("/{id}")
+    @RequirePermission(Permission.DONATION_VIEW_ALL)
     @Operation(summary = "Get recurring donation by ID")
     public ResponseEntity<RecurringDonationResponse> getRecurringDonation(@PathVariable Long id) {
         RecurringDonationResponse response = recurringDonationService.getRecurringDonation(id);
@@ -59,6 +65,7 @@ public class RecurringDonationController {
     }
 
     @PutMapping("/{id}")
+    @RequirePermission(Permission.DONATION_EDIT)
     @Operation(summary = "Update recurring donation")
     public ResponseEntity<RecurringDonationResponse> updateRecurringDonation(
             @PathVariable Long id,
@@ -68,6 +75,7 @@ public class RecurringDonationController {
     }
 
     @PostMapping("/{id}/pause")
+    @RequirePermission(Permission.DONATION_EDIT)
     @Operation(summary = "Pause recurring donation")
     public ResponseEntity<Void> pauseRecurringDonation(@PathVariable Long id) {
         recurringDonationService.pauseRecurringDonation(id);
@@ -75,6 +83,7 @@ public class RecurringDonationController {
     }
 
     @PostMapping("/{id}/resume")
+    @RequirePermission(Permission.DONATION_EDIT)
     @Operation(summary = "Resume paused recurring donation")
     public ResponseEntity<Void> resumeRecurringDonation(@PathVariable Long id) {
         recurringDonationService.resumeRecurringDonation(id);
@@ -82,6 +91,7 @@ public class RecurringDonationController {
     }
 
     @PostMapping("/{id}/cancel")
+    @RequirePermission(Permission.DONATION_EDIT)
     @Operation(summary = "Cancel recurring donation")
     public ResponseEntity<Void> cancelRecurringDonation(@PathVariable Long id) {
         recurringDonationService.cancelRecurringDonation(id);
@@ -89,6 +99,7 @@ public class RecurringDonationController {
     }
 
     @DeleteMapping("/{id}")
+    @RequirePermission(Permission.DONATION_DELETE)
     @Operation(summary = "Delete recurring donation")
     public ResponseEntity<Void> deleteRecurringDonation(@PathVariable Long id) {
         recurringDonationService.deleteRecurringDonation(id);
@@ -96,6 +107,7 @@ public class RecurringDonationController {
     }
 
     @PostMapping("/initialize-payment")
+    @RequirePermission(Permission.DONATION_CREATE)
     @Operation(summary = "Initialize one-time or recurring payment with Paystack")
     public ResponseEntity<PaymentInitializationResponse> initializePayment(
             @Valid @RequestBody PaymentInitializationRequest request) {

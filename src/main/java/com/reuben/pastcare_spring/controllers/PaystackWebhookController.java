@@ -1,5 +1,8 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
+import com.reuben.pastcare_spring.enums.Permission;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.reuben.pastcare_spring.models.*;
@@ -57,6 +60,7 @@ public class PaystackWebhookController {
     /**
      * Paystack webhook endpoint for payment events
      */
+    @RequirePermission(Permission.DONATION_VIEW_ALL)
     @PostMapping("/events")
     public ResponseEntity<String> handlePaystackWebhook(
             @RequestBody String payload,
@@ -191,6 +195,7 @@ public class PaystackWebhookController {
         }
     }
 
+    @RequirePermission(Permission.DONATION_VIEW_ALL)
     @GetMapping("/health")
     public ResponseEntity<String> healthCheck() {
         boolean configured = paystackSecretKey != null && !paystackSecretKey.isEmpty();

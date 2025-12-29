@@ -154,6 +154,7 @@ public interface MemberRepository extends JpaRepository<Member, Long>, JpaSpecif
   /**
    * Find irregular attenders (members who haven't attended in N weeks).
    * Uses attendance data to identify members absent for threshold weeks.
+   * Excludes members who were recently added (created within threshold period).
    */
   @Query(value = "SELECT m.id as memberId, m.first_name as firstName, m.last_name as lastName, " +
                  "m.phone_number as phoneNumber, " +
@@ -162,6 +163,7 @@ public interface MemberRepository extends JpaRepository<Member, Long>, JpaSpecif
                  "FROM member m " +
                  "LEFT JOIN attendance a ON m.id = a.member_id " +
                  "WHERE m.church_id = :#{#church.id} " +
+                 "AND TIMESTAMPDIFF(WEEK, m.created_at, CURDATE()) >= :weeksThreshold " +
                  "GROUP BY m.id " +
                  "HAVING weeksAbsent >= :weeksThreshold OR lastAttendanceDate IS NULL " +
                  "ORDER BY weeksAbsent DESC " +
@@ -202,5 +204,15 @@ public interface MemberRepository extends JpaRepository<Member, Long>, JpaSpecif
       @Param("district") String district,
       @Param("region") String region,
       @Param("countryCode") String countryCode);
+
+  // Recent activities - for dashboard
+  Page<Member> findByChurchOrderByCreatedAtDesc(Church church, Pageable pageable);
+
+  /**
+   * Count active/verified members (for goal tracking)
+   * Dashboard Phase 2.3: Goal Tracking
+   */
+  @Query("SELECT COUNT(m) FROM Member m WHERE m.isVerified = true")
+  Long countActiveMembers();
 
 }

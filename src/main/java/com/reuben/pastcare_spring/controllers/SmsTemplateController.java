@@ -1,7 +1,9 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
 import com.reuben.pastcare_spring.dtos.SmsTemplateRequest;
 import com.reuben.pastcare_spring.dtos.SmsTemplateResponse;
+import com.reuben.pastcare_spring.enums.Permission;
 import com.reuben.pastcare_spring.models.Church;
 import com.reuben.pastcare_spring.models.SmsTemplate;
 import com.reuben.pastcare_spring.models.User;
@@ -41,6 +43,7 @@ public class SmsTemplateController {
      * Create template
      */
     @PostMapping
+    @RequirePermission(Permission.SMS_SEND)
     public ResponseEntity<SmsTemplateResponse> createTemplate(
         @Valid @RequestBody SmsTemplateRequest request,
         Authentication authentication
@@ -72,6 +75,7 @@ public class SmsTemplateController {
      * Update template
      */
     @PutMapping("/{id}")
+    @RequirePermission(Permission.SMS_SEND)
     public ResponseEntity<SmsTemplateResponse> updateTemplate(
         @PathVariable Long id,
         @Valid @RequestBody SmsTemplateRequest request
@@ -99,6 +103,7 @@ public class SmsTemplateController {
      * Delete template
      */
     @DeleteMapping("/{id}")
+    @RequirePermission(Permission.SMS_SEND)
     public ResponseEntity<Void> deleteTemplate(@PathVariable Long id) {
         try {
             smsService.deleteTemplate(id);
@@ -114,6 +119,7 @@ public class SmsTemplateController {
      * Get all templates
      */
     @GetMapping
+    @RequirePermission(Permission.SMS_SEND)
     public ResponseEntity<Page<SmsTemplateResponse>> getTemplates(
         @RequestParam(required = false, defaultValue = "true") Boolean isActive,
         Pageable pageable
@@ -135,6 +141,7 @@ public class SmsTemplateController {
      * Get template by ID
      */
     @GetMapping("/{id}")
+    @RequirePermission(Permission.SMS_SEND)
     public ResponseEntity<SmsTemplateResponse> getTemplateById(@PathVariable Long id) {
         try {
             Long churchId = TenantContext.getCurrentChurchId();

@@ -38,6 +38,9 @@ public class HouseholdService {
     @Autowired
     private LocationRepository locationRepository;
 
+    @Autowired
+    private TenantValidationService tenantValidationService;
+
     /**
      * Create a new household
      */
@@ -97,6 +100,9 @@ public class HouseholdService {
         Household household = householdRepository.findByIdAndChurch(householdId, church)
             .orElseThrow(() -> new EntityNotFoundException("Household not found with id: " + householdId));
 
+        // CRITICAL SECURITY: Validate household belongs to current church
+        tenantValidationService.validateHouseholdAccess(household);
+
         // Check name uniqueness if name changed
         if (!household.getHouseholdName().equalsIgnoreCase(request.householdName())) {
             if (householdRepository.existsByChurchAndHouseholdNameIgnoreCase(church, request.householdName())) {
@@ -155,6 +161,9 @@ public class HouseholdService {
         Household household = householdRepository.findByIdAndChurch(householdId, church)
             .orElseThrow(() -> new EntityNotFoundException("Household not found with id: " + householdId));
 
+        // CRITICAL SECURITY: Validate household belongs to current church
+        tenantValidationService.validateHouseholdAccess(household);
+
         return mapToResponse(household);
     }
 
@@ -194,6 +203,9 @@ public class HouseholdService {
         Household household = householdRepository.findByIdAndChurch(householdId, church)
             .orElseThrow(() -> new EntityNotFoundException("Household not found with id: " + householdId));
 
+        // CRITICAL SECURITY: Validate household belongs to current church
+        tenantValidationService.validateHouseholdAccess(household);
+
         // Remove household association from all members before deleting
         // This prevents foreign key constraint violations
         List<Member> members = new ArrayList<>(household.getMembers());
@@ -216,6 +228,9 @@ public class HouseholdService {
         Household household = householdRepository.findByIdAndChurch(householdId, church)
             .orElseThrow(() -> new EntityNotFoundException("Household not found with id: " + householdId));
 
+        // CRITICAL SECURITY: Validate household belongs to current church
+        tenantValidationService.validateHouseholdAccess(household);
+
         Member member = memberRepository.findByIdAndChurch(memberId, church)
             .orElseThrow(() -> new EntityNotFoundException("Member not found with id: " + memberId));
 
@@ -234,6 +249,9 @@ public class HouseholdService {
 
         Household household = householdRepository.findByIdAndChurch(householdId, church)
             .orElseThrow(() -> new EntityNotFoundException("Household not found with id: " + householdId));
+
+        // CRITICAL SECURITY: Validate household belongs to current church
+        tenantValidationService.validateHouseholdAccess(household);
 
         Member member = memberRepository.findByIdAndChurch(memberId, church)
             .orElseThrow(() -> new EntityNotFoundException("Member not found with id: " + memberId));

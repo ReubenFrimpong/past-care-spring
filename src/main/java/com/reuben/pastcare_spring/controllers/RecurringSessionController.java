@@ -1,5 +1,8 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
+import com.reuben.pastcare_spring.enums.Permission;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -37,6 +40,7 @@ public class RecurringSessionController {
    *
    * @return Success message with count
    */
+    @RequirePermission(Permission.EVENT_CREATE)
   @PostMapping("/generate-all")
   public ResponseEntity<String> generateAllRecurringSessions() {
     recurringSessionService.generateRecurringSessions();
@@ -50,6 +54,7 @@ public class RecurringSessionController {
    * @param daysAhead Number of days to generate ahead (default: 7)
    * @return Success message with count
    */
+    @RequirePermission(Permission.EVENT_CREATE)
   @PostMapping("/{templateId}/generate")
   public ResponseEntity<String> generateSessionsForTemplate(
       @PathVariable Long templateId,

@@ -1,6 +1,8 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
 import com.reuben.pastcare_spring.dtos.*;
+import com.reuben.pastcare_spring.enums.Permission;
 import com.reuben.pastcare_spring.models.*;
 import com.reuben.pastcare_spring.repositories.ChurchRepository;
 import com.reuben.pastcare_spring.repositories.MemberRepository;
@@ -45,6 +47,7 @@ public class SmsController {
      * Send single SMS
      */
     @PostMapping("/send")
+    @RequirePermission(Permission.SMS_SEND)
     public ResponseEntity<SmsMessageResponse> sendSms(
         @Valid @RequestBody SendSmsRequest request,
         Authentication authentication
@@ -84,6 +87,7 @@ public class SmsController {
      * Send bulk SMS
      */
     @PostMapping("/send-bulk")
+    @RequirePermission(Permission.SMS_SEND)
     public ResponseEntity<List<SmsMessageResponse>> sendBulkSms(
         @Valid @RequestBody SendBulkSmsRequest request,
         Authentication authentication
@@ -119,6 +123,7 @@ public class SmsController {
      * Send SMS to members
      */
     @PostMapping("/send-to-members")
+    @RequirePermission(Permission.SMS_SEND)
     public ResponseEntity<List<SmsMessageResponse>> sendToMembers(
         @Valid @RequestBody SendToMembersRequest request,
         Authentication authentication
@@ -154,6 +159,7 @@ public class SmsController {
      * Send SMS to visitors
      */
     @PostMapping("/send-to-visitors")
+    @RequirePermission(Permission.SMS_SEND)
     public ResponseEntity<List<SmsMessageResponse>> sendToVisitors(
         @Valid @RequestBody SendToVisitorsRequest request,
         Authentication authentication
@@ -189,6 +195,7 @@ public class SmsController {
      * Send SMS to fellowship
      */
     @PostMapping("/send-to-fellowship")
+    @RequirePermission(Permission.SMS_SEND)
     public ResponseEntity<List<SmsMessageResponse>> sendToFellowship(
         @Valid @RequestBody SendToFellowshipRequest request,
         Authentication authentication
@@ -227,6 +234,7 @@ public class SmsController {
      * Send SMS to all members in the church
      */
     @PostMapping("/send-to-all-members")
+    @RequirePermission(Permission.SMS_SEND)
     public ResponseEntity<List<SmsMessageResponse>> sendToAllMembers(
         @Valid @RequestBody SendToAllMembersRequest request,
         Authentication authentication
@@ -261,6 +269,7 @@ public class SmsController {
      * Get SMS history
      */
     @GetMapping("/history")
+    @RequirePermission(Permission.SMS_SEND)
     public ResponseEntity<Page<SmsMessageResponse>> getSmsHistory(
         Authentication authentication,
         Pageable pageable
@@ -284,6 +293,7 @@ public class SmsController {
      * Get SMS by ID
      */
     @GetMapping("/{id}")
+    @RequirePermission(Permission.SMS_SEND)
     public ResponseEntity<SmsMessageResponse> getSmsById(@PathVariable Long id) {
         try {
             SmsMessage smsMessage = smsService.getSmsById(id);
@@ -301,6 +311,7 @@ public class SmsController {
      * Cancel scheduled SMS
      */
     @PostMapping("/{id}/cancel")
+    @RequirePermission(Permission.SMS_SEND)
     public ResponseEntity<Void> cancelScheduledSms(
         @PathVariable Long id,
         Authentication authentication
@@ -324,6 +335,7 @@ public class SmsController {
      * Get SMS statistics
      */
     @GetMapping("/stats")
+    @RequirePermission(Permission.SMS_SEND)
     public ResponseEntity<Map<String, Object>> getSmsStats(Authentication authentication) {
         try {
             User user = getUserFromAuth(authentication);

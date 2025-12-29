@@ -1,5 +1,8 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
+import com.reuben.pastcare_spring.enums.Permission;
+
 import com.reuben.pastcare_spring.dtos.HouseholdRequest;
 import com.reuben.pastcare_spring.dtos.HouseholdResponse;
 import com.reuben.pastcare_spring.dtos.HouseholdStatsResponse;
@@ -35,6 +38,7 @@ public class HouseholdController {
      * Create a new household
      * POST /api/households
      */
+    @RequirePermission(Permission.HOUSEHOLD_MANAGE)
     @PostMapping
     public ResponseEntity<HouseholdResponse> createHousehold(
             @Valid @RequestBody HouseholdRequest request,
@@ -48,6 +52,7 @@ public class HouseholdController {
      * Update an existing household
      * PUT /api/households/{id}
      */
+    @RequirePermission(Permission.HOUSEHOLD_MANAGE)
     @PutMapping("/{id}")
     public ResponseEntity<HouseholdResponse> updateHousehold(
             @PathVariable Long id,
@@ -62,6 +67,7 @@ public class HouseholdController {
      * Get household by ID
      * GET /api/households/{id}
      */
+    @RequirePermission(Permission.HOUSEHOLD_VIEW)
     @GetMapping("/{id}")
     public ResponseEntity<HouseholdResponse> getHouseholdById(
             @PathVariable Long id,
@@ -80,6 +86,7 @@ public class HouseholdController {
      * - sort (default: householdName,asc)
      * - search (optional)
      */
+    @RequirePermission(Permission.HOUSEHOLD_VIEW)
     @GetMapping
     public ResponseEntity<Page<HouseholdSummaryResponse>> getAllHouseholds(
             @RequestParam(defaultValue = "0") int page,
@@ -109,6 +116,7 @@ public class HouseholdController {
      * Delete household
      * DELETE /api/households/{id}
      */
+    @RequirePermission(Permission.HOUSEHOLD_MANAGE)
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteHousehold(
             @PathVariable Long id,
@@ -122,6 +130,7 @@ public class HouseholdController {
      * Add member to household
      * POST /api/households/{id}/members/{memberId}
      */
+    @RequirePermission(Permission.HOUSEHOLD_MANAGE)
     @PostMapping("/{id}/members/{memberId}")
     public ResponseEntity<HouseholdResponse> addMemberToHousehold(
             @PathVariable Long id,
@@ -136,6 +145,7 @@ public class HouseholdController {
      * Remove member from household
      * DELETE /api/households/{id}/members/{memberId}
      */
+    @RequirePermission(Permission.HOUSEHOLD_MANAGE)
     @DeleteMapping("/{id}/members/{memberId}")
     public ResponseEntity<HouseholdResponse> removeMemberFromHousehold(
             @PathVariable Long id,
@@ -150,6 +160,7 @@ public class HouseholdController {
      * Get household statistics for the church
      * GET /api/households/stats
      */
+    @RequirePermission(Permission.HOUSEHOLD_VIEW)
     @GetMapping("/stats")
     public ResponseEntity<HouseholdStatsResponse> getHouseholdStats(
             HttpServletRequest httpRequest) {

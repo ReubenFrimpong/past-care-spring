@@ -1,5 +1,8 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
+import com.reuben.pastcare_spring.enums.Permission;
+
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
@@ -55,6 +58,7 @@ public class VisitorController {
   /**
    * Create a new visitor.
    */
+    @RequirePermission(Permission.VISITOR_MANAGE)
   @PostMapping
   public ResponseEntity<VisitorResponse> createVisitor(@Valid @RequestBody VisitorRequest request) {
     return ResponseEntity.ok(visitorService.createVisitor(request));
@@ -63,6 +67,7 @@ public class VisitorController {
   /**
    * Get all visitors.
    */
+    @RequirePermission(Permission.VISITOR_VIEW)
   @GetMapping
   public ResponseEntity<List<VisitorResponse>> getAllVisitors() {
     return ResponseEntity.ok(visitorService.getAllVisitors());
@@ -71,6 +76,7 @@ public class VisitorController {
   /**
    * Get visitor by ID.
    */
+    @RequirePermission(Permission.VISITOR_VIEW)
   @GetMapping("/{id}")
   public ResponseEntity<VisitorResponse> getVisitorById(@PathVariable Long id) {
     return ResponseEntity.ok(visitorService.getVisitorById(id));
@@ -79,6 +85,7 @@ public class VisitorController {
   /**
    * Update visitor information.
    */
+    @RequirePermission(Permission.VISITOR_MANAGE)
   @PutMapping("/{id}")
   public ResponseEntity<VisitorResponse> updateVisitor(
       @PathVariable Long id,
@@ -89,6 +96,7 @@ public class VisitorController {
   /**
    * Delete a visitor.
    */
+    @RequirePermission(Permission.VISITOR_MANAGE)
   @DeleteMapping("/{id}")
   public ResponseEntity<?> deleteVisitor(@PathVariable Long id) {
     visitorService.deleteVisitor(id);
@@ -98,6 +106,7 @@ public class VisitorController {
   /**
    * Record a visit for a visitor (increments visit count).
    */
+    @RequirePermission(Permission.VISITOR_MANAGE)
   @PostMapping("/{id}/record-visit")
   public ResponseEntity<VisitorResponse> recordVisit(@PathVariable Long id) {
     return ResponseEntity.ok(visitorService.recordVisit(id));
@@ -106,6 +115,7 @@ public class VisitorController {
   /**
    * Get all first-time visitors.
    */
+    @RequirePermission(Permission.VISITOR_VIEW)
   @GetMapping("/first-time")
   public ResponseEntity<List<VisitorResponse>> getFirstTimeVisitors() {
     return ResponseEntity.ok(visitorService.getFirstTimeVisitors());
@@ -114,6 +124,7 @@ public class VisitorController {
   /**
    * Get all visitors who have not been converted to members.
    */
+    @RequirePermission(Permission.VISITOR_VIEW)
   @GetMapping("/non-converted")
   public ResponseEntity<List<VisitorResponse>> getNonConvertedVisitors() {
     return ResponseEntity.ok(visitorService.getNonConvertedVisitors());
@@ -122,6 +133,7 @@ public class VisitorController {
   /**
    * Convert a visitor to a member.
    */
+    @RequirePermission(Permission.VISITOR_MANAGE)
   @PostMapping("/convert")
   public ResponseEntity<MemberResponse> convertVisitorToMember(@Valid @RequestBody ConvertVisitorRequest request) {
     return ResponseEntity.ok(visitorService.convertVisitorToMember(request));
@@ -130,6 +142,7 @@ public class VisitorController {
   /**
    * Get visitor by phone number.
    */
+    @RequirePermission(Permission.VISITOR_VIEW)
   @GetMapping("/by-phone")
   public ResponseEntity<VisitorResponse> getVisitorByPhoneNumber(@RequestParam String phoneNumber) {
     return ResponseEntity.ok(visitorService.getVisitorByPhoneNumber(phoneNumber));
@@ -138,6 +151,7 @@ public class VisitorController {
   /**
    * Get visitor by email.
    */
+    @RequirePermission(Permission.VISITOR_VIEW)
   @GetMapping("/by-email")
   public ResponseEntity<VisitorResponse> getVisitorByEmail(@RequestParam String email) {
     return ResponseEntity.ok(visitorService.getVisitorByEmail(email));

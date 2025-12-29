@@ -1,5 +1,8 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
+import com.reuben.pastcare_spring.enums.Permission;
+
 import com.reuben.pastcare_spring.dtos.*;
 import com.reuben.pastcare_spring.models.FellowshipMemberAction;
 import com.reuben.pastcare_spring.models.FellowshipType;
@@ -11,7 +14,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -30,7 +32,7 @@ public class FellowshipController {
    * Get all fellowships for the current user's church.
    */
   @GetMapping
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.FELLOWSHIP_VIEW_ALL)
   @Operation(summary = "Get all fellowships", description = "Returns all fellowships for the current user's church")
   public ResponseEntity<List<FellowshipResponse>> getAllFellowships() {
     List<FellowshipResponse> fellowships = fellowshipService.getAllFellowships();
@@ -41,7 +43,7 @@ public class FellowshipController {
    * Get all active fellowships
    */
   @GetMapping("/active")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.FELLOWSHIP_VIEW_ALL)
   @Operation(summary = "Get active fellowships", description = "Returns all active fellowships")
   public ResponseEntity<List<FellowshipResponse>> getActiveFellowships() {
     List<FellowshipResponse> fellowships = fellowshipService.getActiveFellowships();
@@ -52,7 +54,7 @@ public class FellowshipController {
    * Get fellowships accepting new members
    */
   @GetMapping("/accepting-members")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.FELLOWSHIP_VIEW_ALL)
   @Operation(summary = "Get fellowships accepting members", description = "Returns fellowships currently accepting new members")
   public ResponseEntity<List<FellowshipResponse>> getFellowshipsAcceptingMembers() {
     List<FellowshipResponse> fellowships = fellowshipService.getFellowshipsAcceptingMembers();
@@ -63,7 +65,7 @@ public class FellowshipController {
    * Get fellowships by type
    */
   @GetMapping("/type/{type}")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.FELLOWSHIP_VIEW_ALL)
   @Operation(summary = "Get fellowships by type", description = "Returns fellowships of a specific type")
   public ResponseEntity<List<FellowshipResponse>> getFellowshipsByType(@PathVariable FellowshipType type) {
     List<FellowshipResponse> fellowships = fellowshipService.getFellowshipsByType(type);
@@ -74,7 +76,7 @@ public class FellowshipController {
    * Get fellowship by ID.
    */
   @GetMapping("/{id}")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.FELLOWSHIP_VIEW_ALL)
   @Operation(summary = "Get fellowship by ID", description = "Returns a single fellowship by ID")
   public ResponseEntity<FellowshipResponse> getFellowshipById(@PathVariable Long id) {
     FellowshipResponse fellowship = fellowshipService.getFellowshipById(id);
@@ -85,7 +87,7 @@ public class FellowshipController {
    * Create a new fellowship.
    */
   @PostMapping
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.FELLOWSHIP_MANAGE)
   @Operation(summary = "Create fellowship", description = "Creates a new fellowship")
   public ResponseEntity<FellowshipResponse> createFellowship(
     @Valid @RequestBody FellowshipRequest request,
@@ -100,7 +102,7 @@ public class FellowshipController {
    * Update an existing fellowship.
    */
   @PutMapping("/{id}")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.FELLOWSHIP_MANAGE)
   @Operation(summary = "Update fellowship", description = "Updates an existing fellowship")
   public ResponseEntity<FellowshipResponse> updateFellowship(
     @PathVariable Long id,
@@ -114,7 +116,7 @@ public class FellowshipController {
    * Delete a fellowship.
    */
   @DeleteMapping("/{id}")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.FELLOWSHIP_MANAGE)
   @Operation(summary = "Delete fellowship", description = "Deletes a fellowship")
   public ResponseEntity<Void> deleteFellowship(@PathVariable Long id) {
     fellowshipService.deleteFellowship(id);
@@ -125,7 +127,7 @@ public class FellowshipController {
    * Assign a leader to a fellowship
    */
   @PostMapping("/{fellowshipId}/leader/{userId}")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.FELLOWSHIP_MANAGE)
   @Operation(summary = "Assign leader", description = "Assigns a leader to a fellowship")
   public ResponseEntity<FellowshipResponse> assignLeader(
     @PathVariable Long fellowshipId,
@@ -139,7 +141,7 @@ public class FellowshipController {
    * Add a co-leader to a fellowship
    */
   @PostMapping("/{fellowshipId}/coleaders/{userId}")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.FELLOWSHIP_MANAGE)
   @Operation(summary = "Add co-leader", description = "Adds a co-leader to a fellowship")
   public ResponseEntity<FellowshipResponse> addColeader(
     @PathVariable Long fellowshipId,
@@ -153,7 +155,7 @@ public class FellowshipController {
    * Remove a co-leader from a fellowship
    */
   @DeleteMapping("/{fellowshipId}/coleaders/{userId}")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.FELLOWSHIP_MANAGE)
   @Operation(summary = "Remove co-leader", description = "Removes a co-leader from a fellowship")
   public ResponseEntity<FellowshipResponse> removeColeader(
     @PathVariable Long fellowshipId,
@@ -169,7 +171,7 @@ public class FellowshipController {
    * Create a join request for a fellowship
    */
   @PostMapping("/join-requests")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.FELLOWSHIP_MANAGE)
   @Operation(summary = "Create join request", description = "Creates a request to join a fellowship")
   public ResponseEntity<FellowshipJoinRequestResponse> createJoinRequest(
     @Valid @RequestBody FellowshipJoinRequestRequest request
@@ -182,7 +184,7 @@ public class FellowshipController {
    * Get all join requests for a fellowship
    */
   @GetMapping("/{fellowshipId}/join-requests")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.FELLOWSHIP_VIEW_ALL)
   @Operation(summary = "Get join requests", description = "Returns all join requests for a fellowship")
   public ResponseEntity<List<FellowshipJoinRequestResponse>> getJoinRequestsByFellowship(
     @PathVariable Long fellowshipId
@@ -195,7 +197,7 @@ public class FellowshipController {
    * Get all pending join requests for a fellowship
    */
   @GetMapping("/{fellowshipId}/join-requests/pending")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.FELLOWSHIP_VIEW_ALL)
   @Operation(summary = "Get pending join requests", description = "Returns all pending join requests for a fellowship")
   public ResponseEntity<List<FellowshipJoinRequestResponse>> getPendingJoinRequests(
     @PathVariable Long fellowshipId
@@ -208,7 +210,7 @@ public class FellowshipController {
    * Approve a join request
    */
   @PostMapping("/join-requests/{requestId}/approve")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.FELLOWSHIP_MANAGE)
   @Operation(summary = "Approve join request", description = "Approves a join request and adds member to fellowship")
   public ResponseEntity<FellowshipJoinRequestResponse> approveJoinRequest(
     @PathVariable Long requestId,
@@ -225,7 +227,7 @@ public class FellowshipController {
    * Reject a join request
    */
   @PostMapping("/join-requests/{requestId}/reject")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.FELLOWSHIP_MANAGE)
   @Operation(summary = "Reject join request", description = "Rejects a join request")
   public ResponseEntity<FellowshipJoinRequestResponse> rejectJoinRequest(
     @PathVariable Long requestId,
@@ -242,7 +244,7 @@ public class FellowshipController {
    * Upload fellowship image
    */
   @PostMapping("/{id}/image")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.FELLOWSHIP_MANAGE)
   @Operation(summary = "Upload fellowship image", description = "Upload an image for a fellowship")
   public ResponseEntity<FellowshipResponse> uploadFellowshipImage(
     @PathVariable Long id,
@@ -258,7 +260,7 @@ public class FellowshipController {
    * Add multiple members to fellowship
    */
   @PostMapping("/{id}/members/bulk")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.FELLOWSHIP_MANAGE)
   @Operation(summary = "Add multiple members", description = "Adds multiple members to a fellowship at once")
   public ResponseEntity<FellowshipResponse> addMembersBulk(
     @PathVariable Long id,
@@ -274,7 +276,7 @@ public class FellowshipController {
    * Remove multiple members from fellowship
    */
   @DeleteMapping("/{id}/members/bulk")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.FELLOWSHIP_MANAGE)
   @Operation(summary = "Remove multiple members", description = "Removes multiple members from a fellowship at once")
   public ResponseEntity<FellowshipResponse> removeMembersBulk(
     @PathVariable Long id,
@@ -290,7 +292,7 @@ public class FellowshipController {
    * Get member IDs for a fellowship
    */
   @GetMapping("/{id}/members/ids")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.FELLOWSHIP_VIEW_ALL)
   @Operation(summary = "Get fellowship member IDs", description = "Returns list of member IDs in this fellowship")
   public ResponseEntity<java.util.List<Long>> getFellowshipMemberIds(@PathVariable Long id) {
     java.util.List<Long> memberIds = fellowshipService.getFellowshipMemberIds(id);
@@ -303,7 +305,7 @@ public class FellowshipController {
    * Get analytics for a specific fellowship
    */
   @GetMapping("/{id}/analytics")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.FELLOWSHIP_VIEW_ALL)
   @Operation(summary = "Get fellowship analytics", description = "Returns analytics for a specific fellowship including health metrics, growth trends, and occupancy")
   public ResponseEntity<FellowshipAnalyticsResponse> getFellowshipAnalytics(@PathVariable Long id) {
     FellowshipAnalyticsResponse analytics = fellowshipService.getFellowshipAnalytics(id);
@@ -314,7 +316,7 @@ public class FellowshipController {
    * Get analytics for all fellowships
    */
   @GetMapping("/analytics/all")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.FELLOWSHIP_VIEW_ALL)
   @Operation(summary = "Get all fellowship analytics", description = "Returns analytics for all fellowships in the church")
   public ResponseEntity<List<FellowshipAnalyticsResponse>> getAllFellowshipAnalytics() {
     List<FellowshipAnalyticsResponse> analytics = fellowshipService.getAllFellowshipAnalytics();
@@ -325,7 +327,7 @@ public class FellowshipController {
    * Get fellowship comparison data
    */
   @GetMapping("/analytics/comparison")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.FELLOWSHIP_VIEW_ALL)
   @Operation(summary = "Get fellowship comparison", description = "Returns comparison data for all fellowships ranked by health and size")
   public ResponseEntity<List<FellowshipComparisonResponse>> getFellowshipComparison() {
     List<FellowshipComparisonResponse> comparison = fellowshipService.getFellowshipComparison();
@@ -336,7 +338,7 @@ public class FellowshipController {
    * Get fellowship retention metrics
    */
   @GetMapping("/{id}/retention")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.FELLOWSHIP_VIEW_ALL)
   @Operation(summary = "Get fellowship retention metrics", description = "Returns retention metrics for a fellowship over a specified time period")
   public ResponseEntity<FellowshipRetentionResponse> getFellowshipRetention(
       @PathVariable Long id,
@@ -352,7 +354,7 @@ public class FellowshipController {
    * Record a fellowship membership action
    */
   @PostMapping("/{id}/record-action")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.FELLOWSHIP_MANAGE)
   @Operation(summary = "Record membership action", description = "Records a fellowship membership action for retention tracking")
   public ResponseEntity<Void> recordMembershipAction(
       @PathVariable Long id,
@@ -374,7 +376,7 @@ public class FellowshipController {
    * Get all fellowship multiplications
    */
   @GetMapping("/multiplications")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.FELLOWSHIP_VIEW_ALL)
   @Operation(summary = "Get all multiplications", description = "Returns all fellowship multiplication events")
   public ResponseEntity<List<FellowshipMultiplicationResponse>> getAllMultiplications() {
     List<FellowshipMultiplicationResponse> multiplications = fellowshipService.getAllMultiplications();
@@ -385,7 +387,7 @@ public class FellowshipController {
    * Get multiplications for a specific fellowship
    */
   @GetMapping("/{id}/multiplications")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.FELLOWSHIP_VIEW_ALL)
   @Operation(summary = "Get fellowship multiplications", description = "Returns multiplication events for a specific fellowship (as parent)")
   public ResponseEntity<List<FellowshipMultiplicationResponse>> getFellowshipMultiplications(
       @PathVariable Long id) {
@@ -397,7 +399,7 @@ public class FellowshipController {
    * Record a fellowship multiplication
    */
   @PostMapping("/{id}/multiply")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.FELLOWSHIP_MANAGE)
   @Operation(summary = "Record multiplication", description = "Records a fellowship multiplication event")
   public ResponseEntity<FellowshipMultiplicationResponse> recordMultiplication(
       @PathVariable Long id,
@@ -414,7 +416,7 @@ public class FellowshipController {
    * Get balance recommendations for all fellowships
    */
   @GetMapping("/balance-recommendations")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.FELLOWSHIP_VIEW_ALL)
   @Operation(summary = "Get balance recommendations", description = "Returns balance recommendations for all fellowships")
   public ResponseEntity<List<FellowshipBalanceRecommendationResponse>> getBalanceRecommendations() {
     List<FellowshipBalanceRecommendationResponse> recommendations = fellowshipService.getBalanceRecommendations();
@@ -425,7 +427,7 @@ public class FellowshipController {
    * Get balance recommendation for a specific fellowship
    */
   @GetMapping("/{id}/balance-recommendation")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.FELLOWSHIP_VIEW_ALL)
   @Operation(summary = "Get fellowship balance recommendation", description = "Returns balance recommendation for a specific fellowship")
   public ResponseEntity<FellowshipBalanceRecommendationResponse> getFellowshipBalanceRecommendation(
       @PathVariable Long id) {

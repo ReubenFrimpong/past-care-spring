@@ -17,6 +17,7 @@ import com.reuben.pastcare_spring.models.Visitor;
  */
 @Repository
 public interface VisitorRepository extends JpaRepository<Visitor, Long> {
+    java.util.List<Visitor> findByChurch_Id(Long churchId);
 
   /**
    * Find visitor by phone number (unique within tenant).
@@ -89,5 +90,9 @@ public interface VisitorRepository extends JpaRepository<Visitor, Long> {
          "GROUP BY v.ageGroup")
   List<Object[]> getVisitorsByAgeGroup(@Param("startDate") LocalDate startDate,
                                         @Param("endDate") LocalDate endDate);
-                                        
+
+  /**
+   * Count visitors by church ID
+   */
+  Long countByChurch_Id(Long churchId);
 }

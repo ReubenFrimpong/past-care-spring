@@ -1,5 +1,8 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
+import com.reuben.pastcare_spring.enums.Permission;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -62,6 +65,7 @@ public class ReminderController {
    * @param createdByUserId User creating the reminder (from auth context)
    * @return Created reminder
    */
+    @RequirePermission(Permission.EVENT_CREATE)
   @PostMapping
   public ResponseEntity<ReminderResponse> createReminder(
       @Valid @RequestBody ReminderRequest request,
@@ -72,6 +76,7 @@ public class ReminderController {
   /**
    * Get all reminders.
    */
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
   @GetMapping
   public ResponseEntity<List<ReminderResponse>> getAllReminders() {
     return ResponseEntity.ok(reminderService.getAllReminders());
@@ -80,6 +85,7 @@ public class ReminderController {
   /**
    * Get reminder by ID.
    */
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
   @GetMapping("/{id}")
   public ResponseEntity<ReminderResponse> getReminderById(@PathVariable Long id) {
     return ResponseEntity.ok(reminderService.getReminderById(id));
@@ -88,6 +94,7 @@ public class ReminderController {
   /**
    * Get all recipients for a reminder.
    */
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
   @GetMapping("/{id}/recipients")
   public ResponseEntity<List<RecipientResponse>> getReminderRecipients(@PathVariable Long id) {
     return ResponseEntity.ok(reminderService.getReminderRecipients(id));
@@ -96,6 +103,7 @@ public class ReminderController {
   /**
    * Get reminders by status.
    */
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
   @GetMapping("/status/{status}")
   public ResponseEntity<List<ReminderResponse>> getRemindersByStatus(@PathVariable ReminderStatus status) {
     return ResponseEntity.ok(reminderService.getRemindersByStatus(status));
@@ -104,6 +112,7 @@ public class ReminderController {
   /**
    * Get reminders scheduled within a date range.
    */
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
   @GetMapping("/date-range")
   public ResponseEntity<List<ReminderResponse>> getRemindersByDateRange(
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
@@ -114,6 +123,7 @@ public class ReminderController {
   /**
    * Send a reminder immediately (bypasses schedule).
    */
+    @RequirePermission(Permission.EVENT_CREATE)
   @PostMapping("/{id}/send")
   public ResponseEntity<ReminderResponse> sendReminderNow(@PathVariable Long id) {
     return ResponseEntity.ok(reminderService.sendReminderNow(id));
@@ -122,6 +132,7 @@ public class ReminderController {
   /**
    * Cancel a reminder.
    */
+    @RequirePermission(Permission.EVENT_CREATE)
   @PutMapping("/{id}/cancel")
   public ResponseEntity<ReminderResponse> cancelReminder(
       @PathVariable Long id,
@@ -132,6 +143,7 @@ public class ReminderController {
   /**
    * Delete a reminder.
    */
+    @RequirePermission(Permission.EVENT_CREATE)
   @DeleteMapping("/{id}")
   public ResponseEntity<?> deleteReminder(@PathVariable Long id) {
     reminderService.deleteReminder(id);

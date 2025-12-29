@@ -27,6 +27,7 @@ public class CampaignService {
   private final UserRepository userRepository;
   private final PledgeRepository pledgeRepository;
   private final DonationRepository donationRepository;
+  private final TenantValidationService tenantValidationService;
 
   /**
    * Get all campaigns for a church
@@ -45,6 +46,10 @@ public class CampaignService {
     Church church = getChurch(churchId);
     Campaign campaign = campaignRepository.findByIdAndChurch(id, church)
         .orElseThrow(() -> new IllegalArgumentException("Campaign not found with id: " + id));
+
+    // CRITICAL SECURITY: Validate campaign belongs to current church
+    tenantValidationService.validateCampaignAccess(campaign);
+
     return CampaignResponse.fromEntity(campaign);
   }
 
@@ -74,6 +79,9 @@ public class CampaignService {
     Campaign campaign = campaignRepository.findByIdAndChurch(id, church)
         .orElseThrow(() -> new IllegalArgumentException("Campaign not found with id: " + id));
 
+    // CRITICAL SECURITY: Validate campaign belongs to current church
+    tenantValidationService.validateCampaignAccess(campaign);
+
     updateCampaignFromRequest(campaign, request);
     Campaign saved = campaignRepository.save(campaign);
     return CampaignResponse.fromEntity(saved);
@@ -87,6 +95,9 @@ public class CampaignService {
     Church church = getChurch(churchId);
     Campaign campaign = campaignRepository.findByIdAndChurch(id, church)
         .orElseThrow(() -> new IllegalArgumentException("Campaign not found with id: " + id));
+
+    // CRITICAL SECURITY: Validate campaign belongs to current church
+    tenantValidationService.validateCampaignAccess(campaign);
 
     // Check if campaign has associated pledges or donations
     long pledgeCount = pledgeRepository.countByCampaignAndChurch(campaign, church);
@@ -165,6 +176,9 @@ public class CampaignService {
   public void updateCampaignProgress(Long campaignId) {
     Campaign campaign = campaignRepository.findById(campaignId)
         .orElseThrow(() -> new IllegalArgumentException("Campaign not found with id: " + campaignId));
+
+    // CRITICAL SECURITY: Validate campaign belongs to current church
+    tenantValidationService.validateCampaignAccess(campaign);
 
     Church church = campaign.getChurch();
 
@@ -295,6 +309,9 @@ public class CampaignService {
     Church church = getChurch(churchId);
     Campaign campaign = campaignRepository.findByIdAndChurch(id, church)
         .orElseThrow(() -> new IllegalArgumentException("Campaign not found with id: " + id));
+
+    // CRITICAL SECURITY: Validate campaign belongs to current church
+    tenantValidationService.validateCampaignAccess(campaign);
 
     campaign.setStatus(status);
     Campaign saved = campaignRepository.save(campaign);

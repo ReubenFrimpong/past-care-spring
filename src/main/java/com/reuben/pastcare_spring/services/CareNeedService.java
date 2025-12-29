@@ -28,6 +28,7 @@ public class CareNeedService {
     private final MemberRepository memberRepository;
     private final UserRepository userRepository;
     private final ChurchRepository churchRepository;
+    private final TenantValidationService tenantValidationService;
 
     /**
      * Create a new care need
@@ -63,6 +64,10 @@ public class CareNeedService {
     public CareNeedResponse getCareNeedById(Long id) {
         CareNeed careNeed = careNeedRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Care need not found with id: " + id));
+
+        // CRITICAL SECURITY: Validate care need belongs to current church
+        tenantValidationService.validateCareNeedAccess(careNeed);
+
         return CareNeedResponse.fromEntity(careNeed);
     }
 
@@ -84,6 +89,9 @@ public class CareNeedService {
         CareNeed careNeed = careNeedRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Care need not found with id: " + id));
 
+        // CRITICAL SECURITY: Validate care need belongs to current church
+        tenantValidationService.validateCareNeedAccess(careNeed);
+
         // Update member if changed
         if (!careNeed.getMember().getId().equals(request.getMemberId())) {
             Member member = memberRepository.findById(request.getMemberId())
@@ -103,6 +111,10 @@ public class CareNeedService {
     public void deleteCareNeed(Long id) {
         CareNeed careNeed = careNeedRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Care need not found with id: " + id));
+
+        // CRITICAL SECURITY: Validate care need belongs to current church
+        tenantValidationService.validateCareNeedAccess(careNeed);
+
         careNeedRepository.delete(careNeed);
     }
 
@@ -113,6 +125,9 @@ public class CareNeedService {
     public CareNeedResponse assignCareNeed(Long id, Long userId) {
         CareNeed careNeed = careNeedRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Care need not found with id: " + id));
+
+        // CRITICAL SECURITY: Validate care need belongs to current church
+        tenantValidationService.validateCareNeedAccess(careNeed);
 
         User assignedTo = userRepository.findById(userId)
             .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + userId));
@@ -135,6 +150,9 @@ public class CareNeedService {
         CareNeed careNeed = careNeedRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Care need not found with id: " + id));
 
+        // CRITICAL SECURITY: Validate care need belongs to current church
+        tenantValidationService.validateCareNeedAccess(careNeed);
+
         careNeed.setStatus(status);
 
         CareNeed updated = careNeedRepository.save(careNeed);
@@ -148,6 +166,9 @@ public class CareNeedService {
     public CareNeedResponse resolveCareNeed(Long id, String resolutionNotes) {
         CareNeed careNeed = careNeedRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Care need not found with id: " + id));
+
+        // CRITICAL SECURITY: Validate care need belongs to current church
+        tenantValidationService.validateCareNeedAccess(careNeed);
 
         careNeed.setStatus(CareNeedStatus.RESOLVED);
         careNeed.setResolvedDate(LocalDateTime.now());

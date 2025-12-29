@@ -26,6 +26,7 @@ public class FellowshipService {
   private final LocationRepository locationRepository;
   private final ChurchRepository churchRepository;
   private final ImageService imageService;
+  private final TenantValidationService tenantValidationService;
 
   /**
    * Get all fellowships
@@ -42,6 +43,10 @@ public class FellowshipService {
   public FellowshipResponse getFellowshipById(Long id) {
     Fellowship fellowship = fellowshipRepository.findById(id)
       .orElseThrow(() -> new IllegalArgumentException("Fellowship not found with id: " + id));
+
+    // CRITICAL SECURITY: Validate fellowship belongs to current church
+    tenantValidationService.validateFellowshipAccess(fellowship);
+
     return FellowshipResponse.fromEntity(fellowship);
   }
 
@@ -69,6 +74,10 @@ public class FellowshipService {
   public FellowshipResponse updateFellowship(Long id, FellowshipRequest request) {
     Fellowship fellowship = fellowshipRepository.findById(id)
       .orElseThrow(() -> new IllegalArgumentException("Fellowship not found with id: " + id));
+
+    // CRITICAL SECURITY: Validate fellowship belongs to current church
+    tenantValidationService.validateFellowshipAccess(fellowship);
+
     updateFellowshipFromRequest(fellowship, request);
     Fellowship updated = fellowshipRepository.save(fellowship);
     return FellowshipResponse.fromEntity(updated);
@@ -81,6 +90,10 @@ public class FellowshipService {
   public void deleteFellowship(Long id) {
     Fellowship fellowship = fellowshipRepository.findById(id)
       .orElseThrow(() -> new IllegalArgumentException("Fellowship not found with id: " + id));
+
+    // CRITICAL SECURITY: Validate fellowship belongs to current church
+    tenantValidationService.validateFellowshipAccess(fellowship);
+
     fellowshipRepository.delete(fellowship);
   }
 
@@ -122,6 +135,9 @@ public class FellowshipService {
     Fellowship fellowship = fellowshipRepository.findById(fellowshipId)
       .orElseThrow(() -> new IllegalArgumentException("Fellowship not found with id: " + fellowshipId));
 
+    // CRITICAL SECURITY: Validate fellowship belongs to current church
+    tenantValidationService.validateFellowshipAccess(fellowship);
+
     User user = userRepository.findById(userId)
       .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + userId));
 
@@ -137,6 +153,9 @@ public class FellowshipService {
   public FellowshipResponse addColeader(Long fellowshipId, Long userId) {
     Fellowship fellowship = fellowshipRepository.findById(fellowshipId)
       .orElseThrow(() -> new IllegalArgumentException("Fellowship not found with id: " + fellowshipId));
+
+    // CRITICAL SECURITY: Validate fellowship belongs to current church
+    tenantValidationService.validateFellowshipAccess(fellowship);
 
     User user = userRepository.findById(userId)
       .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + userId));
@@ -160,6 +179,9 @@ public class FellowshipService {
   public FellowshipResponse removeColeader(Long fellowshipId, Long userId) {
     Fellowship fellowship = fellowshipRepository.findById(fellowshipId)
       .orElseThrow(() -> new IllegalArgumentException("Fellowship not found with id: " + fellowshipId));
+
+    // CRITICAL SECURITY: Validate fellowship belongs to current church
+    tenantValidationService.validateFellowshipAccess(fellowship);
 
     if (fellowship.getColeaders() != null) {
       fellowship.getColeaders().removeIf(user -> user.getId().equals(userId));
@@ -348,6 +370,9 @@ public class FellowshipService {
     Fellowship fellowship = fellowshipRepository.findById(fellowshipId)
       .orElseThrow(() -> new IllegalArgumentException("Fellowship not found with id: " + fellowshipId));
 
+    // CRITICAL SECURITY: Validate fellowship belongs to current church
+    tenantValidationService.validateFellowshipAccess(fellowship);
+
     try {
       // Upload image using ImageService with fellowship-specific directory
       String imagePath = imageService.uploadFellowshipImage(image, fellowship.getImageUrl());
@@ -366,6 +391,9 @@ public class FellowshipService {
   public FellowshipResponse addMembersBulk(Long fellowshipId, List<Long> memberIds) {
     Fellowship fellowship = fellowshipRepository.findById(fellowshipId)
       .orElseThrow(() -> new IllegalArgumentException("Fellowship not found with id: " + fellowshipId));
+
+    // CRITICAL SECURITY: Validate fellowship belongs to current church
+    tenantValidationService.validateFellowshipAccess(fellowship);
 
     if (memberIds == null || memberIds.isEmpty()) {
       throw new IllegalArgumentException("Member IDs list cannot be empty");
@@ -405,6 +433,9 @@ public class FellowshipService {
   public FellowshipResponse removeMembersBulk(Long fellowshipId, List<Long> memberIds) {
     Fellowship fellowship = fellowshipRepository.findById(fellowshipId)
       .orElseThrow(() -> new IllegalArgumentException("Fellowship not found with id: " + fellowshipId));
+
+    // CRITICAL SECURITY: Validate fellowship belongs to current church
+    tenantValidationService.validateFellowshipAccess(fellowship);
 
     if (memberIds == null || memberIds.isEmpty()) {
       throw new IllegalArgumentException("Member IDs list cannot be empty");
@@ -454,6 +485,9 @@ public class FellowshipService {
   public FellowshipAnalyticsResponse getFellowshipAnalytics(Long fellowshipId) {
     Fellowship fellowship = fellowshipRepository.findById(fellowshipId)
       .orElseThrow(() -> new IllegalArgumentException("Fellowship not found with id: " + fellowshipId));
+
+    // CRITICAL SECURITY: Validate fellowship belongs to current church
+    tenantValidationService.validateFellowshipAccess(fellowship);
 
     int currentMembers = fellowship.getMembers() != null ? fellowship.getMembers().size() : 0;
     Integer maxCapacity = fellowship.getMaxCapacity() != null ? fellowship.getMaxCapacity() : 100;
@@ -633,6 +667,9 @@ public class FellowshipService {
     Fellowship fellowship = fellowshipRepository.findById(fellowshipId)
       .orElseThrow(() -> new IllegalArgumentException("Fellowship not found with id: " + fellowshipId));
 
+    // CRITICAL SECURITY: Validate fellowship belongs to current church
+    tenantValidationService.validateFellowshipAccess(fellowship);
+
     // Get history for the period
     List<FellowshipMemberHistory> history = memberHistoryRepository
       .findByFellowshipAndEffectiveDateBetween(fellowship, startDate, endDate);
@@ -685,6 +722,10 @@ public class FellowshipService {
                                      String notes, Long recordedByUserId) {
     Fellowship fellowship = fellowshipRepository.findById(fellowshipId)
       .orElseThrow(() -> new IllegalArgumentException("Fellowship not found"));
+
+    // CRITICAL SECURITY: Validate fellowship belongs to current church
+    tenantValidationService.validateFellowshipAccess(fellowship);
+
     Member member = memberRepository.findById(memberId)
       .orElseThrow(() -> new IllegalArgumentException("Member not found"));
     User recordedBy = userRepository.findById(recordedByUserId)
@@ -797,6 +838,10 @@ public class FellowshipService {
   public FellowshipBalanceRecommendationResponse getFellowshipBalanceRecommendation(Long fellowshipId) {
     Fellowship fellowship = fellowshipRepository.findById(fellowshipId)
       .orElseThrow(() -> new IllegalArgumentException("Fellowship not found"));
+
+    // CRITICAL SECURITY: Validate fellowship belongs to current church
+    tenantValidationService.validateFellowshipAccess(fellowship);
+
     return analyzeBalance(fellowship);
   }
 

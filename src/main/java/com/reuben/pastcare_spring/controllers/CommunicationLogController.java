@@ -1,7 +1,9 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
 import com.reuben.pastcare_spring.dtos.CommunicationLogRequest;
 import com.reuben.pastcare_spring.dtos.CommunicationLogResponse;
+import com.reuben.pastcare_spring.enums.Permission;
 import com.reuben.pastcare_spring.models.CommunicationType;
 import com.reuben.pastcare_spring.models.FollowUpStatus;
 import com.reuben.pastcare_spring.services.CommunicationLogService;
@@ -41,6 +43,7 @@ public class CommunicationLogController {
      * Create a new communication log.
      */
     @PostMapping
+    @RequirePermission(Permission.VISIT_CREATE)
     public ResponseEntity<CommunicationLogResponse> createCommunicationLog(
             @Valid @RequestBody CommunicationLogRequest request,
             HttpServletRequest httpRequest) {
@@ -56,6 +59,7 @@ public class CommunicationLogController {
      * Update an existing communication log.
      */
     @PutMapping("/{logId}")
+    @RequirePermission(Permission.VISIT_EDIT)
     public ResponseEntity<CommunicationLogResponse> updateCommunicationLog(
             @PathVariable Long logId,
             @Valid @RequestBody CommunicationLogRequest request,
@@ -72,6 +76,7 @@ public class CommunicationLogController {
      * Get a single communication log by ID.
      */
     @GetMapping("/{logId}")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     public ResponseEntity<CommunicationLogResponse> getCommunicationLogById(
             @PathVariable Long logId,
             HttpServletRequest request) {
@@ -85,6 +90,7 @@ public class CommunicationLogController {
      * Get all communication logs for a member.
      */
     @GetMapping("/member/{memberId}")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     public ResponseEntity<List<CommunicationLogResponse>> getMemberCommunicationLogs(
             @PathVariable Long memberId,
             HttpServletRequest request) {
@@ -98,6 +104,7 @@ public class CommunicationLogController {
      * Get all communication logs for the church with pagination.
      */
     @GetMapping
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     public ResponseEntity<Page<CommunicationLogResponse>> getChurchCommunicationLogs(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -117,6 +124,7 @@ public class CommunicationLogController {
      * Get communication logs by type.
      */
     @GetMapping("/type/{communicationType}")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     public ResponseEntity<Page<CommunicationLogResponse>> getCommunicationLogsByType(
             @PathVariable CommunicationType communicationType,
             @RequestParam(defaultValue = "0") int page,
@@ -134,6 +142,7 @@ public class CommunicationLogController {
      * Get communication logs within a date range.
      */
     @GetMapping("/date-range")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     public ResponseEntity<List<CommunicationLogResponse>> getCommunicationLogsByDateRange(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
@@ -148,6 +157,7 @@ public class CommunicationLogController {
      * Get communication logs requiring follow-up.
      */
     @GetMapping("/follow-up/required")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     public ResponseEntity<List<CommunicationLogResponse>> getFollowUpRequired(HttpServletRequest request) {
         Long churchId = requestContextUtil.extractChurchId(request);
         List<CommunicationLogResponse> logs = communicationLogService.getFollowUpRequired(churchId);
@@ -158,6 +168,7 @@ public class CommunicationLogController {
      * Get overdue follow-ups.
      */
     @GetMapping("/follow-up/overdue")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     public ResponseEntity<List<CommunicationLogResponse>> getOverdueFollowUps(HttpServletRequest request) {
         Long churchId = requestContextUtil.extractChurchId(request);
         List<CommunicationLogResponse> logs = communicationLogService.getOverdueFollowUps(churchId);
@@ -168,6 +179,7 @@ public class CommunicationLogController {
      * Update follow-up status.
      */
     @PatchMapping("/{logId}/follow-up-status")
+    @RequirePermission(Permission.VISIT_EDIT)
     public ResponseEntity<CommunicationLogResponse> updateFollowUpStatus(
             @PathVariable Long logId,
             @RequestParam FollowUpStatus status,
@@ -182,6 +194,7 @@ public class CommunicationLogController {
      * Get recent communications for a member.
      */
     @GetMapping("/member/{memberId}/recent")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     public ResponseEntity<List<CommunicationLogResponse>> getRecentCommunications(
             @PathVariable Long memberId,
             @RequestParam(defaultValue = "30") int days,
@@ -196,6 +209,7 @@ public class CommunicationLogController {
      * Delete a communication log.
      */
     @DeleteMapping("/{logId}")
+    @RequirePermission(Permission.VISIT_EDIT)
     public ResponseEntity<Void> deleteCommunicationLog(
             @PathVariable Long logId,
             HttpServletRequest request) {

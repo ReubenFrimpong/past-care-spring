@@ -27,6 +27,7 @@ public class DonationService {
   private final MemberRepository memberRepository;
   private final UserRepository userRepository;
   private final ChurchRepository churchRepository;
+  private final TenantValidationService tenantValidationService;
 
   /**
    * Get all donations for a church
@@ -46,6 +47,10 @@ public class DonationService {
   public DonationResponse getDonationById(Long id) {
     Donation donation = donationRepository.findById(id)
         .orElseThrow(() -> new IllegalArgumentException("Donation not found with id: " + id));
+
+    // CRITICAL SECURITY: Validate donation belongs to current church
+    tenantValidationService.validateDonationAccess(donation);
+
     return DonationResponse.fromEntity(donation);
   }
 
@@ -78,6 +83,9 @@ public class DonationService {
     Donation donation = donationRepository.findById(id)
         .orElseThrow(() -> new IllegalArgumentException("Donation not found with id: " + id));
 
+    // CRITICAL SECURITY: Validate donation belongs to current church
+    tenantValidationService.validateDonationAccess(donation);
+
     updateDonationFromRequest(donation, request);
 
     Donation updated = donationRepository.save(donation);
@@ -91,6 +99,10 @@ public class DonationService {
   public void deleteDonation(Long id) {
     Donation donation = donationRepository.findById(id)
         .orElseThrow(() -> new IllegalArgumentException("Donation not found with id: " + id));
+
+    // CRITICAL SECURITY: Validate donation belongs to current church
+    tenantValidationService.validateDonationAccess(donation);
+
     donationRepository.delete(donation);
   }
 
@@ -264,6 +276,9 @@ public class DonationService {
   public DonationResponse issueReceipt(Long donationId, String receiptNumber) {
     Donation donation = donationRepository.findById(donationId)
         .orElseThrow(() -> new IllegalArgumentException("Donation not found with id: " + donationId));
+
+    // CRITICAL SECURITY: Validate donation belongs to current church
+    tenantValidationService.validateDonationAccess(donation);
 
     donation.setReceiptIssued(true);
     donation.setReceiptNumber(receiptNumber);

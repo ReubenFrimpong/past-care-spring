@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.reuben.pastcare_spring.models.AttendanceSession;
+import com.reuben.pastcare_spring.models.Church;
 import com.reuben.pastcare_spring.enums.ServiceType;
 
 @Repository
@@ -91,4 +92,26 @@ public interface AttendanceSessionRepository extends JpaRepository<AttendanceSes
     LocalDate startDate,
     LocalDate endDate
   );
+
+  /**
+   * Find recent attendance sessions (for dashboard recent activities)
+   */
+  org.springframework.data.domain.Page<AttendanceSession> findByChurchOrderByCreatedAtDesc(
+    Church church,
+    org.springframework.data.domain.Pageable pageable
+  );
+
+  /**
+   * Get average attendance for a time period (for goal tracking)
+   * Dashboard Phase 2.3: Goal Tracking
+   */
+  @Query("SELECT AVG(SIZE(s.attendances)) FROM AttendanceSession s " +
+         "WHERE s.createdAt >= :startDate AND s.createdAt <= :endDate")
+  Double getAverageAttendanceForPeriod(
+    @Param("startDate") java.time.Instant startDate,
+    @Param("endDate") java.time.Instant endDate
+  );
+
+  // Count sessions by church ID
+  Long countByChurch_Id(Long churchId);
 }

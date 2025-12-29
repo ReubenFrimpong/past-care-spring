@@ -1,5 +1,8 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
+import com.reuben.pastcare_spring.enums.Permission;
+
 import com.reuben.pastcare_spring.dtos.AttendanceCertificateRequest;
 import com.reuben.pastcare_spring.dtos.AttendanceExportRequest;
 import com.reuben.pastcare_spring.dtos.MemberSegmentationResponse;
@@ -34,6 +37,7 @@ public class AttendanceExportController {
     /**
      * Export attendance data to Excel format
      */
+    @RequirePermission(Permission.ATTENDANCE_VIEW)
     @PostMapping("/excel")
     @Operation(summary = "Export attendance to Excel",
                description = "Export attendance data for a date range to Excel format")
@@ -59,6 +63,7 @@ public class AttendanceExportController {
     /**
      * Export attendance data to CSV format
      */
+    @RequirePermission(Permission.ATTENDANCE_VIEW)
     @PostMapping("/csv")
     @Operation(summary = "Export attendance to CSV",
                description = "Export attendance data for a date range to CSV format")
@@ -80,6 +85,7 @@ public class AttendanceExportController {
     /**
      * Generate attendance certificate for a member
      */
+    @RequirePermission(Permission.ATTENDANCE_VIEW)
     @PostMapping("/certificate")
     @Operation(summary = "Generate attendance certificate",
                description = "Generate a certificate for a member's attendance")
@@ -101,6 +107,7 @@ public class AttendanceExportController {
     /**
      * Get member segmentation based on attendance patterns
      */
+    @RequirePermission(Permission.ATTENDANCE_VIEW)
     @GetMapping("/segmentation")
     @Operation(summary = "Get member segmentation",
                description = "Analyze and segment members by attendance patterns")

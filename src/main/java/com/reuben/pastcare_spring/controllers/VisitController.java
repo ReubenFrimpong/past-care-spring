@@ -1,5 +1,8 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
+import com.reuben.pastcare_spring.enums.Permission;
+
 import com.reuben.pastcare_spring.dtos.VisitRequest;
 import com.reuben.pastcare_spring.dtos.VisitResponse;
 import com.reuben.pastcare_spring.services.VisitService;
@@ -11,7 +14,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -35,7 +37,7 @@ public class VisitController {
      * Get all visits for the current church
      */
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @Operation(summary = "Get all visits", description = "Returns all visits for the current church")
     public ResponseEntity<List<VisitResponse>> getAllVisits(HttpServletRequest request) {
         Long churchId = requestContextUtil.extractChurchId(request);
@@ -47,7 +49,7 @@ public class VisitController {
      * Get visit by ID
      */
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @Operation(summary = "Get visit by ID", description = "Returns a single visit by ID")
     public ResponseEntity<VisitResponse> getVisitById(@PathVariable Long id) {
         VisitResponse visit = visitService.getVisitById(id);
@@ -58,7 +60,7 @@ public class VisitController {
      * Create a new visit
      */
     @PostMapping
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_CREATE)
     @Operation(summary = "Create visit", description = "Creates a new pastoral visit")
     public ResponseEntity<VisitResponse> createVisit(
         @Valid @RequestBody VisitRequest request,
@@ -74,7 +76,7 @@ public class VisitController {
      * Update an existing visit
      */
     @PutMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_EDIT)
     @Operation(summary = "Update visit", description = "Updates an existing visit")
     public ResponseEntity<VisitResponse> updateVisit(
         @PathVariable Long id,
@@ -88,7 +90,7 @@ public class VisitController {
      * Delete a visit
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_EDIT)
     @Operation(summary = "Delete visit", description = "Deletes a visit")
     public ResponseEntity<Void> deleteVisit(@PathVariable Long id) {
         visitService.deleteVisit(id);
@@ -99,7 +101,7 @@ public class VisitController {
      * Get visits by member
      */
     @GetMapping("/member/{memberId}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @Operation(summary = "Get visits by member", description = "Returns all visits for a specific member")
     public ResponseEntity<List<VisitResponse>> getVisitsByMember(
         @PathVariable Long memberId,
@@ -114,7 +116,7 @@ public class VisitController {
      * Get visits by care need
      */
     @GetMapping("/care-need/{careNeedId}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @Operation(summary = "Get visits by care need", description = "Returns all visits for a specific care need")
     public ResponseEntity<List<VisitResponse>> getVisitsByCareNeed(
         @PathVariable Long careNeedId,
@@ -129,7 +131,7 @@ public class VisitController {
      * Get upcoming visits
      */
     @GetMapping("/upcoming")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @Operation(summary = "Get upcoming visits", description = "Returns all upcoming visits")
     public ResponseEntity<List<VisitResponse>> getUpcomingVisits(HttpServletRequest request) {
         Long churchId = requestContextUtil.extractChurchId(request);
@@ -141,7 +143,7 @@ public class VisitController {
      * Get past visits
      */
     @GetMapping("/past")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @Operation(summary = "Get past visits", description = "Returns all past visits")
     public ResponseEntity<List<VisitResponse>> getPastVisits(HttpServletRequest request) {
         Long churchId = requestContextUtil.extractChurchId(request);
@@ -153,7 +155,7 @@ public class VisitController {
      * Get today's visits
      */
     @GetMapping("/today")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @Operation(summary = "Get today's visits", description = "Returns all visits scheduled for today")
     public ResponseEntity<List<VisitResponse>> getTodaysVisits(HttpServletRequest request) {
         Long churchId = requestContextUtil.extractChurchId(request);
@@ -165,7 +167,7 @@ public class VisitController {
      * Get visits by date range
      */
     @GetMapping("/date-range")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @Operation(summary = "Get visits by date range", description = "Returns visits within a date range")
     public ResponseEntity<List<VisitResponse>> getVisitsByDateRange(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -181,7 +183,7 @@ public class VisitController {
      * Mark a visit as completed
      */
     @PutMapping("/{id}/complete")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_EDIT)
     @Operation(summary = "Mark visit as completed", description = "Marks a visit as completed with optional outcomes")
     public ResponseEntity<VisitResponse> completeVisit(
         @PathVariable Long id,
@@ -196,7 +198,7 @@ public class VisitController {
      * Get visits requiring follow-up
      */
     @GetMapping("/follow-up")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @Operation(summary = "Get visits requiring follow-up", description = "Returns all visits that require follow-up")
     public ResponseEntity<List<VisitResponse>> getVisitsRequiringFollowUp(HttpServletRequest request) {
         Long churchId = requestContextUtil.extractChurchId(request);

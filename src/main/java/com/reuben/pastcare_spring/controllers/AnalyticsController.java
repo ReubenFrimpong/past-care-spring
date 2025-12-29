@@ -1,5 +1,8 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
+import com.reuben.pastcare_spring.enums.Permission;
+
 import java.time.LocalDate;
 import java.util.List;
 
@@ -39,6 +42,7 @@ public class AnalyticsController {
      * @param endDate End date (optional, defaults to today)
      * @return Comprehensive analytics response
      */
+    @RequirePermission(Permission.REPORT_VIEW)
     @GetMapping("/attendance")
     public ResponseEntity<AttendanceAnalyticsResponse> getAttendanceAnalytics(
             @RequestParam Long churchId,
@@ -63,6 +67,7 @@ public class AnalyticsController {
      * @param endDate End date (optional, defaults to today)
      * @return Summary statistics
      */
+    @RequirePermission(Permission.REPORT_VIEW)
     @GetMapping("/summary")
     public ResponseEntity<AttendanceSummaryResponse> getAttendanceSummary(
             @RequestParam Long churchId,
@@ -86,6 +91,7 @@ public class AnalyticsController {
      * @param endDate End date (optional, defaults to today)
      * @return List of member engagement metrics
      */
+    @RequirePermission(Permission.REPORT_VIEW)
     @GetMapping("/member-engagement")
     public ResponseEntity<List<MemberEngagementResponse>> getMemberEngagement(
             @RequestParam Long churchId,
@@ -109,6 +115,7 @@ public class AnalyticsController {
      * @param endDate End date (optional, defaults to today)
      * @return List of service type analytics
      */
+    @RequirePermission(Permission.REPORT_VIEW)
     @GetMapping("/service-types")
     public ResponseEntity<List<ServiceTypeAnalyticsResponse>> getServiceTypeAnalytics(
             @RequestParam Long churchId,
@@ -126,6 +133,7 @@ public class AnalyticsController {
      * Get analytics for a specific period (convenience endpoints)
      */
 
+    @RequirePermission(Permission.REPORT_VIEW)
     @GetMapping("/summary/this-week")
     public ResponseEntity<AttendanceSummaryResponse> getThisWeekSummary(@RequestParam Long churchId) {
         LocalDate start = LocalDate.now().minusDays(7);
@@ -133,6 +141,7 @@ public class AnalyticsController {
         return ResponseEntity.ok(analyticsService.getAttendanceSummary(churchId, start, end));
     }
 
+    @RequirePermission(Permission.REPORT_VIEW)
     @GetMapping("/summary/this-month")
     public ResponseEntity<AttendanceSummaryResponse> getThisMonthSummary(@RequestParam Long churchId) {
         LocalDate start = LocalDate.now().withDayOfMonth(1);
@@ -140,6 +149,7 @@ public class AnalyticsController {
         return ResponseEntity.ok(analyticsService.getAttendanceSummary(churchId, start, end));
     }
 
+    @RequirePermission(Permission.REPORT_VIEW)
     @GetMapping("/summary/this-year")
     public ResponseEntity<AttendanceSummaryResponse> getThisYearSummary(@RequestParam Long churchId) {
         LocalDate start = LocalDate.now().withDayOfYear(1);
@@ -147,6 +157,7 @@ public class AnalyticsController {
         return ResponseEntity.ok(analyticsService.getAttendanceSummary(churchId, start, end));
     }
 
+    @RequirePermission(Permission.REPORT_VIEW)
     @GetMapping("/summary/last-30-days")
     public ResponseEntity<AttendanceSummaryResponse> getLast30DaysSummary(@RequestParam Long churchId) {
         LocalDate start = LocalDate.now().minusDays(30);

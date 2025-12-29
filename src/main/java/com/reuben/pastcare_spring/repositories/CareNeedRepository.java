@@ -20,6 +20,7 @@ import java.util.List;
 
 @Repository
 public interface CareNeedRepository extends JpaRepository<CareNeed, Long> {
+    java.util.List<CareNeed> findByChurch_Id(Long churchId);
 
     // Find by church
     Page<CareNeed> findByChurch(Church church, Pageable pageable);

@@ -14,6 +14,7 @@ import java.util.Optional;
 
 @Repository
 public interface HouseholdRepository extends JpaRepository<Household, Long> {
+    java.util.List<Household> findByChurch_Id(Long churchId);
 
     /**
      * Find all households for a specific church

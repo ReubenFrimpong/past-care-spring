@@ -1,5 +1,8 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
+import com.reuben.pastcare_spring.enums.Permission;
+
 import com.reuben.pastcare_spring.dtos.*;
 import com.reuben.pastcare_spring.models.*;
 import com.reuben.pastcare_spring.services.*;
@@ -11,14 +14,15 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * REST controller for event management.
@@ -33,16 +37,18 @@ public class EventController {
     private final EventOrganizerService organizerService;
     private final EventTagService tagService;
     private final ImageService imageService;
+    private final EventImageService eventImageService;
     private final CalendarExportService calendarExportService;
     private final EventReminderService reminderService;
     private final EventAnalyticsService analyticsService;
+    private final RecurringEventService recurringEventService;
     private final com.reuben.pastcare_spring.repositories.UserRepository userRepository;
 
     /**
      * Create a new event
      */
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR')")
+    @RequirePermission(Permission.EVENT_CREATE)
     public ResponseEntity<EventResponse> createEvent(
         @Valid @RequestBody EventRequest request,
         Authentication authentication
@@ -56,7 +62,7 @@ public class EventController {
      * Update an event
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR')")
+    @RequirePermission(Permission.EVENT_EDIT)
     public ResponseEntity<EventResponse> updateEvent(
         @PathVariable Long id,
         @Valid @RequestBody EventRequest request,
@@ -71,7 +77,7 @@ public class EventController {
      * Get event by ID
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
     public ResponseEntity<EventResponse> getEvent(@PathVariable Long id) {
         EventResponse response = eventService.getEvent(id);
         return ResponseEntity.ok(response);
@@ -81,7 +87,7 @@ public class EventController {
      * Get all events (paginated)
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
     public ResponseEntity<Page<EventResponse>> getAllEvents(
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "10") int size,
@@ -99,7 +105,7 @@ public class EventController {
      * Get upcoming events
      */
     @GetMapping("/upcoming")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
     public ResponseEntity<Page<EventResponse>> getUpcomingEvents(
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "10") int size
@@ -113,7 +119,7 @@ public class EventController {
      * Get ongoing events
      */
     @GetMapping("/ongoing")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
     public ResponseEntity<List<EventResponse>> getOngoingEvents() {
         List<EventResponse> response = eventService.getOngoingEvents();
         return ResponseEntity.ok(response);
@@ -123,7 +129,7 @@ public class EventController {
      * Get past events
      */
     @GetMapping("/past")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
     public ResponseEntity<Page<EventResponse>> getPastEvents(
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "10") int size
@@ -137,7 +143,7 @@ public class EventController {
      * Search events
      */
     @GetMapping("/search")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
     public ResponseEntity<Page<EventResponse>> searchEvents(
         @RequestParam String q,
         @RequestParam(defaultValue = "0") int page,
@@ -152,7 +158,7 @@ public class EventController {
      * Filter events
      */
     @GetMapping("/filter")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
     public ResponseEntity<Page<EventResponse>> filterEvents(
         @RequestParam(required = false) EventType eventType,
         @RequestParam(required = false) EventVisibility visibility,
@@ -179,7 +185,7 @@ public class EventController {
      * Cancel event
      */
     @PostMapping("/{id}/cancel")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR')")
+    @RequirePermission(Permission.EVENT_CREATE)
     public ResponseEntity<EventResponse> cancelEvent(
         @PathVariable Long id,
         @RequestParam String reason,
@@ -194,7 +200,7 @@ public class EventController {
      * Delete event
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    @RequirePermission(Permission.EVENT_EDIT)
     public ResponseEntity<Void> deleteEvent(@PathVariable Long id) {
         eventService.deleteEvent(id);
         return ResponseEntity.noContent().build();
@@ -204,7 +210,7 @@ public class EventController {
      * Get event statistics
      */
     @GetMapping("/stats")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF')")
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
     public ResponseEntity<EventStatsResponse> getEventStats() {
         EventStatsResponse response = eventService.getEventStats();
         return ResponseEntity.ok(response);
@@ -216,7 +222,7 @@ public class EventController {
      * Add organizer to event
      */
     @PostMapping("/{eventId}/organizers")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR')")
+    @RequirePermission(Permission.EVENT_CREATE)
     public ResponseEntity<EventOrganizerResponse> addOrganizer(
         @PathVariable Long eventId,
         @Valid @RequestBody EventOrganizerRequest request,
@@ -231,7 +237,7 @@ public class EventController {
      * Get event organizers
      */
     @GetMapping("/{eventId}/organizers")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
     public ResponseEntity<List<EventOrganizerResponse>> getEventOrganizers(@PathVariable Long eventId) {
         List<EventOrganizerResponse> response = organizerService.getEventOrganizers(eventId);
         return ResponseEntity.ok(response);
@@ -241,7 +247,7 @@ public class EventController {
      * Update organizer
      */
     @PutMapping("/organizers/{organizerId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR')")
+    @RequirePermission(Permission.EVENT_EDIT)
     public ResponseEntity<EventOrganizerResponse> updateOrganizer(
         @PathVariable Long organizerId,
         @Valid @RequestBody EventOrganizerRequest request
@@ -254,7 +260,7 @@ public class EventController {
      * Remove organizer
      */
     @DeleteMapping("/organizers/{organizerId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR')")
+    @RequirePermission(Permission.EVENT_EDIT)
     public ResponseEntity<Void> removeOrganizer(@PathVariable Long organizerId) {
         organizerService.removeOrganizer(organizerId);
         return ResponseEntity.noContent().build();
@@ -264,7 +270,7 @@ public class EventController {
      * Set as primary organizer
      */
     @PostMapping("/organizers/{organizerId}/set-primary")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR')")
+    @RequirePermission(Permission.EVENT_CREATE)
     public ResponseEntity<EventOrganizerResponse> setAsPrimaryOrganizer(@PathVariable Long organizerId) {
         EventOrganizerResponse response = organizerService.setAsPrimary(organizerId);
         return ResponseEntity.ok(response);
@@ -276,7 +282,7 @@ public class EventController {
      * Add tag to event
      */
     @PostMapping("/{eventId}/tags")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR')")
+    @RequirePermission(Permission.EVENT_CREATE)
     public ResponseEntity<Void> addTag(
         @PathVariable Long eventId,
         @Valid @RequestBody EventTagRequest request,
@@ -291,7 +297,7 @@ public class EventController {
      * Get event tags
      */
     @GetMapping("/{eventId}/tags")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
     public ResponseEntity<List<String>> getEventTags(@PathVariable Long eventId) {
         List<String> response = tagService.getEventTags(eventId);
         return ResponseEntity.ok(response);
@@ -301,7 +307,7 @@ public class EventController {
      * Remove tag from event
      */
     @DeleteMapping("/{eventId}/tags/{tag}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR')")
+    @RequirePermission(Permission.EVENT_EDIT)
     public ResponseEntity<Void> removeTag(
         @PathVariable Long eventId,
         @PathVariable String tag
@@ -314,7 +320,7 @@ public class EventController {
      * Get all tags
      */
     @GetMapping("/tags/all")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
     public ResponseEntity<List<String>> getAllTags() {
         List<String> response = tagService.getAllTags();
         return ResponseEntity.ok(response);
@@ -324,7 +330,7 @@ public class EventController {
      * Search tags (autocomplete)
      */
     @GetMapping("/tags/search")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
     public ResponseEntity<List<String>> searchTags(@RequestParam String q) {
         List<String> response = tagService.searchTags(q);
         return ResponseEntity.ok(response);
@@ -334,7 +340,7 @@ public class EventController {
      * Find events by tag
      */
     @GetMapping("/tags/{tag}/events")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
     public ResponseEntity<List<EventResponse>> findEventsByTag(@PathVariable String tag) {
         List<EventResponse> response = tagService.findEventsByTag(tag);
         return ResponseEntity.ok(response);
@@ -344,7 +350,7 @@ public class EventController {
      * Upload event image
      */
     @PostMapping("/{id}/upload-image")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR')")
+    @RequirePermission(Permission.EVENT_CREATE)
     public ResponseEntity<Map<String, String>> uploadEventImage(
         @PathVariable Long id,
         @RequestParam("image") MultipartFile image,
@@ -406,7 +412,7 @@ public class EventController {
      * Export single event to iCal format
      */
     @GetMapping("/{id}/ical")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
     public ResponseEntity<String> exportEventToICal(@PathVariable Long id) {
         EventResponse eventResponse = eventService.getEvent(id);
         Event event = eventService.getEventEntity(id);
@@ -423,7 +429,7 @@ public class EventController {
      * Export all church events to iCal format
      */
     @GetMapping("/ical")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
     public ResponseEntity<String> exportAllEventsToICal(Authentication authentication) {
         Long userId = getUserIdFromAuth(authentication);
         User user = userRepository.findById(userId)
@@ -444,7 +450,7 @@ public class EventController {
      * Get Google Calendar export URL for an event
      */
     @GetMapping("/{id}/google-calendar-url")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF', 'MEMBER')")
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
     public ResponseEntity<Map<String, String>> getGoogleCalendarUrl(@PathVariable Long id) {
         Event event = eventService.getEventEntity(id);
         String googleCalendarUrl = calendarExportService.generateGoogleCalendarUrl(event);
@@ -460,7 +466,7 @@ public class EventController {
      * Get embed code for public calendar
      */
     @GetMapping("/embed-code")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR')")
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
     public ResponseEntity<Map<String, String>> getEmbedCode(
         @RequestParam(defaultValue = "800") int width,
         @RequestParam(defaultValue = "600") int height,
@@ -486,7 +492,7 @@ public class EventController {
      * Send reminders for a specific event
      */
     @PostMapping("/{id}/send-reminders")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF')")
+    @RequirePermission(Permission.EVENT_CREATE)
     public ResponseEntity<Map<String, String>> sendEventReminders(@PathVariable Long id) {
         Event event = eventService.getEventEntity(id);
         reminderService.sendEventReminders(event);
@@ -502,7 +508,7 @@ public class EventController {
      * Send invitations to specific members
      */
     @PostMapping("/{id}/send-invitations")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR')")
+    @RequirePermission(Permission.EVENT_CREATE)
     public ResponseEntity<Map<String, Object>> sendInvitations(
         @PathVariable Long id,
         @RequestBody Map<String, Object> request
@@ -524,7 +530,7 @@ public class EventController {
      * Send invitations to all members
      */
     @PostMapping("/{id}/send-invitations-all")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR')")
+    @RequirePermission(Permission.EVENT_CREATE)
     public ResponseEntity<Map<String, Object>> sendInvitationsToAll(
         @PathVariable Long id,
         @RequestBody(required = false) Map<String, String> request
@@ -546,7 +552,7 @@ public class EventController {
      * Get detailed analytics for all events
      */
     @GetMapping("/analytics/overview")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF')")
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
     public ResponseEntity<Map<String, Object>> getAnalyticsOverview() {
         Map<String, Object> stats = analyticsService.getEventStats();
         return ResponseEntity.ok(stats);
@@ -556,7 +562,7 @@ public class EventController {
      * Get detailed analytics for a specific event
      */
     @GetMapping("/{id}/analytics")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR', 'STAFF')")
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
     public ResponseEntity<Map<String, Object>> getEventAnalytics(@PathVariable Long id) {
         Map<String, Object> stats = analyticsService.getEventStats(id);
         return ResponseEntity.ok(stats);
@@ -566,7 +572,7 @@ public class EventController {
      * Get attendance analytics
      */
     @GetMapping("/analytics/attendance")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR')")
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
     public ResponseEntity<Map<String, Object>> getAttendanceAnalytics(
         @RequestParam String startDate,
         @RequestParam String endDate
@@ -582,12 +588,157 @@ public class EventController {
      * Get event trends
      */
     @GetMapping("/analytics/trends")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'PASTOR')")
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
     public ResponseEntity<Map<String, Object>> getEventTrends(
         @RequestParam(defaultValue = "6") int months
     ) {
         Map<String, Object> trends = analyticsService.getEventTrends(months);
         return ResponseEntity.ok(trends);
+    }
+
+    // ==================== Recurring Events ====================
+
+    /**
+     * Generate recurring event instances
+     */
+    @PostMapping("/{id}/generate-instances")
+    @RequirePermission(Permission.EVENT_CREATE)
+    public ResponseEntity<Map<String, Object>> generateRecurringInstances(
+        @PathVariable Long id,
+        @RequestParam(required = false) Integer maxInstances
+    ) {
+        List<EventResponse> instances = recurringEventService.generateRecurringInstances(id, maxInstances);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Successfully generated " + instances.size() + " recurring instances");
+        response.put("count", instances.size());
+        response.put("instances", instances);
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Update future instances of a recurring event
+     */
+    @PutMapping("/{id}/update-future-instances")
+    @RequirePermission(Permission.EVENT_EDIT)
+    public ResponseEntity<Map<String, Object>> updateFutureInstances(
+        @PathVariable Long id,
+        @Valid @RequestBody EventRequest request
+    ) {
+        int updateCount = recurringEventService.updateFutureInstances(id, request);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Successfully updated " + updateCount + " future instances");
+        response.put("count", updateCount);
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Delete future instances of a recurring event
+     */
+    @DeleteMapping("/{id}/delete-future-instances")
+    @RequirePermission(Permission.EVENT_EDIT)
+    public ResponseEntity<Map<String, Object>> deleteFutureInstances(@PathVariable Long id) {
+        int deleteCount = recurringEventService.deleteFutureInstances(id);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Successfully deleted " + deleteCount + " future instances");
+        response.put("count", deleteCount);
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Get all instances of a recurring event
+     */
+    @GetMapping("/{id}/instances")
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
+    public ResponseEntity<Map<String, Object>> getRecurringInstances(@PathVariable Long id) {
+        List<Event> instances = recurringEventService.getRecurringInstances(id);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("count", instances.size());
+        response.put("instances", instances.stream()
+            .map(event -> EventResponse.fromEntity(event))
+            .collect(Collectors.toList()));
+
+        return ResponseEntity.ok(response);
+    }
+
+    // ==================== Photo Gallery Endpoints ====================
+
+    /**
+     * Get all images for an event
+     */
+    @GetMapping("/{id}/images")
+    public ResponseEntity<List<EventImageResponse>> getEventImages(@PathVariable Long id) {
+        List<EventImageResponse> images = eventImageService.getEventImages(id);
+        return ResponseEntity.ok(images);
+    }
+
+    /**
+     * Upload image to event gallery
+     */
+    @PostMapping("/{id}/images")
+    @RequirePermission(Permission.EVENT_CREATE)
+    public ResponseEntity<EventImageResponse> uploadEventGalleryImage(
+        @PathVariable Long id,
+        @RequestParam("image") MultipartFile image,
+        @RequestParam(value = "caption", required = false) String caption,
+        @RequestParam(value = "isCoverImage", required = false) Boolean isCoverImage,
+        Authentication authentication
+    ) {
+        try {
+            Long userId = getUserIdFromAuth(authentication);
+            EventImageResponse response = eventImageService.uploadEventImage(
+                id, image, caption, isCoverImage, userId
+            );
+            return ResponseEntity.ok(response);
+        } catch (IOException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    /**
+     * Update event image details
+     */
+    @PutMapping("/{eventId}/images/{imageId}")
+    @RequirePermission(Permission.EVENT_EDIT)
+    public ResponseEntity<EventImageResponse> updateEventImage(
+        @PathVariable Long eventId,
+        @PathVariable Long imageId,
+        @RequestBody EventImageRequest request
+    ) {
+        EventImageResponse response = eventImageService.updateEventImage(eventId, imageId, request);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Delete event image
+     */
+    @DeleteMapping("/{eventId}/images/{imageId}")
+    @RequirePermission(Permission.EVENT_EDIT)
+    public ResponseEntity<Void> deleteEventImage(
+        @PathVariable Long eventId,
+        @PathVariable Long imageId
+    ) {
+        eventImageService.deleteEventImage(eventId, imageId);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Reorder event images
+     */
+    @PutMapping("/{id}/images/reorder")
+    @RequirePermission(Permission.EVENT_EDIT)
+    public ResponseEntity<Void> reorderEventImages(
+        @PathVariable Long id,
+        @RequestBody List<Long> imageIds
+    ) {
+        eventImageService.reorderImages(id, imageIds);
+        return ResponseEntity.ok().build();
     }
 
     // ==================== Helper Methods ====================

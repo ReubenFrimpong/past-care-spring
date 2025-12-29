@@ -27,6 +27,7 @@ public class PrayerRequestService {
     private final MemberRepository memberRepository;
     private final UserRepository userRepository;
     private final ChurchRepository churchRepository;
+    private final TenantValidationService tenantValidationService;
 
     /**
      * Create a new prayer request (submit request)
@@ -62,6 +63,10 @@ public class PrayerRequestService {
     public PrayerRequestResponse getPrayerRequestById(Long id) {
         PrayerRequest prayerRequest = prayerRequestRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Prayer request not found with id: " + id));
+
+        // CRITICAL SECURITY: Validate prayer request belongs to current church
+        tenantValidationService.validatePrayerRequestAccess(prayerRequest);
+
         return PrayerRequestResponse.fromEntity(prayerRequest);
     }
 
@@ -83,6 +88,9 @@ public class PrayerRequestService {
         PrayerRequest prayerRequest = prayerRequestRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Prayer request not found with id: " + id));
 
+        // CRITICAL SECURITY: Validate prayer request belongs to current church
+        tenantValidationService.validatePrayerRequestAccess(prayerRequest);
+
         // Update member if changed
         if (!prayerRequest.getMember().getId().equals(request.getMemberId())) {
             Member member = memberRepository.findById(request.getMemberId())
@@ -102,6 +110,10 @@ public class PrayerRequestService {
     public void deletePrayerRequest(Long id) {
         PrayerRequest prayerRequest = prayerRequestRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Prayer request not found with id: " + id));
+
+        // CRITICAL SECURITY: Validate prayer request belongs to current church
+        tenantValidationService.validatePrayerRequestAccess(prayerRequest);
+
         prayerRequestRepository.delete(prayerRequest);
     }
 
@@ -112,6 +124,9 @@ public class PrayerRequestService {
     public PrayerRequestResponse incrementPrayerCount(Long id) {
         PrayerRequest prayerRequest = prayerRequestRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Prayer request not found with id: " + id));
+
+        // CRITICAL SECURITY: Validate prayer request belongs to current church
+        tenantValidationService.validatePrayerRequestAccess(prayerRequest);
 
         prayerRequest.incrementPrayerCount();
         PrayerRequest updated = prayerRequestRepository.save(prayerRequest);
@@ -125,6 +140,9 @@ public class PrayerRequestService {
     public PrayerRequestResponse markAsAnswered(Long id, String testimony) {
         PrayerRequest prayerRequest = prayerRequestRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Prayer request not found with id: " + id));
+
+        // CRITICAL SECURITY: Validate prayer request belongs to current church
+        tenantValidationService.validatePrayerRequestAccess(prayerRequest);
 
         prayerRequest.setStatus(PrayerRequestStatus.ANSWERED);
         prayerRequest.setAnsweredDate(LocalDateTime.now());
@@ -144,6 +162,9 @@ public class PrayerRequestService {
     public PrayerRequestResponse archivePrayerRequest(Long id) {
         PrayerRequest prayerRequest = prayerRequestRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Prayer request not found with id: " + id));
+
+        // CRITICAL SECURITY: Validate prayer request belongs to current church
+        tenantValidationService.validatePrayerRequestAccess(prayerRequest);
 
         prayerRequest.setStatus(PrayerRequestStatus.ARCHIVED);
         PrayerRequest updated = prayerRequestRepository.save(prayerRequest);

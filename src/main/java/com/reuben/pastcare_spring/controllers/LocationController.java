@@ -1,5 +1,8 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
+import com.reuben.pastcare_spring.enums.Permission;
+
 import com.reuben.pastcare_spring.models.Location;
 import com.reuben.pastcare_spring.services.LocationService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +27,7 @@ public class LocationController {
      * This avoids CORS issues when calling Nominatim from the frontend
      * Supports international locations - not limited to Ghana
      */
+    @RequirePermission(Permission.MEMBER_VIEW_ALL)
     @GetMapping("/search")
     public ResponseEntity<?> searchLocation(@RequestParam String query) {
         try {
@@ -59,6 +63,7 @@ public class LocationController {
      * Create or get existing location from Nominatim data
      * This endpoint ensures locations are deduplicated by coordinates
      */
+    @RequirePermission(Permission.CHURCH_SETTINGS_EDIT)
     @PostMapping("/create-from-nominatim")
     public ResponseEntity<?> createLocationFromNominatim(@RequestBody NominatimLocationRequest request) {
         try {

@@ -1,0 +1,28 @@
+-- Create report_executions table
+CREATE TABLE report_executions (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    report_id BIGINT NOT NULL,
+    schedule_id BIGINT,
+    executed_by BIGINT,
+    execution_date TIMESTAMP NOT NULL,
+    parameters TEXT,
+    format VARCHAR(50) NOT NULL,
+    output_file_url VARCHAR(500),
+    output_file_name VARCHAR(255),
+    file_size_bytes BIGINT,
+    status VARCHAR(50) NOT NULL,
+    error_message VARCHAR(2000),
+    row_count INT,
+    execution_time_ms BIGINT,
+    church_id BIGINT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (report_id) REFERENCES reports(id) ON DELETE CASCADE,
+    FOREIGN KEY (schedule_id) REFERENCES report_schedules(id) ON DELETE SET NULL,
+    FOREIGN KEY (executed_by) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (church_id) REFERENCES churches(id) ON DELETE CASCADE,
+    INDEX idx_church_date (church_id, execution_date),
+    INDEX idx_report_date (report_id, execution_date),
+    INDEX idx_user_date (executed_by, execution_date),
+    INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

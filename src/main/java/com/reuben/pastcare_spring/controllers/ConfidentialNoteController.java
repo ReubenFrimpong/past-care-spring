@@ -1,5 +1,8 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
+import com.reuben.pastcare_spring.enums.Permission;
+
 import com.reuben.pastcare_spring.dtos.ConfidentialNoteRequest;
 import com.reuben.pastcare_spring.dtos.ConfidentialNoteResponse;
 import com.reuben.pastcare_spring.models.ConfidentialNoteCategory;
@@ -38,6 +41,7 @@ public class ConfidentialNoteController {
     /**
      * Create a new confidential note.
      */
+    @RequirePermission(Permission.VISIT_CREATE)
     @PostMapping
     public ResponseEntity<ConfidentialNoteResponse> createConfidentialNote(
             @Valid @RequestBody ConfidentialNoteRequest request,
@@ -53,6 +57,7 @@ public class ConfidentialNoteController {
     /**
      * Update an existing confidential note.
      */
+    @RequirePermission(Permission.VISIT_CREATE)
     @PutMapping("/{noteId}")
     public ResponseEntity<ConfidentialNoteResponse> updateConfidentialNote(
             @PathVariable Long noteId,
@@ -69,6 +74,7 @@ public class ConfidentialNoteController {
     /**
      * Get a single confidential note by ID.
      */
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @GetMapping("/{noteId}")
     public ResponseEntity<ConfidentialNoteResponse> getConfidentialNoteById(
             @PathVariable Long noteId,
@@ -82,6 +88,7 @@ public class ConfidentialNoteController {
     /**
      * Get all confidential notes for a member (non-archived).
      */
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @GetMapping("/member/{memberId}")
     public ResponseEntity<List<ConfidentialNoteResponse>> getMemberConfidentialNotes(
             @PathVariable Long memberId,
@@ -95,6 +102,7 @@ public class ConfidentialNoteController {
     /**
      * Get all confidential notes for the church with pagination.
      */
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @GetMapping
     public ResponseEntity<Page<ConfidentialNoteResponse>> getChurchConfidentialNotes(
             @RequestParam(required = false) Boolean includeArchived,
@@ -115,6 +123,7 @@ public class ConfidentialNoteController {
     /**
      * Get confidential notes by category.
      */
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @GetMapping("/category/{category}")
     public ResponseEntity<Page<ConfidentialNoteResponse>> getConfidentialNotesByCategory(
             @PathVariable ConfidentialNoteCategory category,
@@ -132,6 +141,7 @@ public class ConfidentialNoteController {
     /**
      * Search confidential notes by subject or tags.
      */
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @GetMapping("/search")
     public ResponseEntity<Page<ConfidentialNoteResponse>> searchNotes(
             @RequestParam String search,
@@ -149,6 +159,7 @@ public class ConfidentialNoteController {
     /**
      * Get confidential notes requiring follow-up.
      */
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @GetMapping("/follow-up/required")
     public ResponseEntity<List<ConfidentialNoteResponse>> getFollowUpRequired(HttpServletRequest request) {
         Long churchId = requestContextUtil.extractChurchId(request);
@@ -159,6 +170,7 @@ public class ConfidentialNoteController {
     /**
      * Get overdue follow-ups for confidential notes.
      */
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @GetMapping("/follow-up/overdue")
     public ResponseEntity<List<ConfidentialNoteResponse>> getOverdueFollowUps(HttpServletRequest request) {
         Long churchId = requestContextUtil.extractChurchId(request);
@@ -169,6 +181,7 @@ public class ConfidentialNoteController {
     /**
      * Get high priority confidential notes.
      */
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @GetMapping("/priority/high")
     public ResponseEntity<List<ConfidentialNoteResponse>> getHighPriorityNotes(HttpServletRequest request) {
         Long churchId = requestContextUtil.extractChurchId(request);
@@ -179,6 +192,7 @@ public class ConfidentialNoteController {
     /**
      * Archive a confidential note.
      */
+    @RequirePermission(Permission.VISIT_CREATE)
     @PatchMapping("/{noteId}/archive")
     public ResponseEntity<ConfidentialNoteResponse> archiveNote(
             @PathVariable Long noteId,
@@ -192,6 +206,7 @@ public class ConfidentialNoteController {
     /**
      * Unarchive a confidential note.
      */
+    @RequirePermission(Permission.VISIT_CREATE)
     @PatchMapping("/{noteId}/unarchive")
     public ResponseEntity<ConfidentialNoteResponse> unarchiveNote(
             @PathVariable Long noteId,
@@ -205,6 +220,7 @@ public class ConfidentialNoteController {
     /**
      * Update follow-up status.
      */
+    @RequirePermission(Permission.VISIT_CREATE)
     @PatchMapping("/{noteId}/follow-up-status")
     public ResponseEntity<ConfidentialNoteResponse> updateFollowUpStatus(
             @PathVariable Long noteId,
@@ -219,6 +235,7 @@ public class ConfidentialNoteController {
     /**
      * Delete a confidential note (hard delete).
      */
+    @RequirePermission(Permission.VISIT_CREATE)
     @DeleteMapping("/{noteId}")
     public ResponseEntity<Void> deleteConfidentialNote(
             @PathVariable Long noteId,

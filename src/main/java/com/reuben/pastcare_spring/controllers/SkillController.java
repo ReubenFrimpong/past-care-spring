@@ -1,5 +1,8 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
+import com.reuben.pastcare_spring.enums.Permission;
+
 import com.reuben.pastcare_spring.dtos.SkillRequest;
 import com.reuben.pastcare_spring.enums.SkillCategory;
 import com.reuben.pastcare_spring.models.Skill;
@@ -22,6 +25,7 @@ public class SkillController {
     private final SkillService skillService;
     private final RequestContextUtil requestContextUtil;
 
+    @RequirePermission(Permission.MEMBER_EDIT_ALL)
     @PostMapping
     public ResponseEntity<Skill> createSkill(
             @Valid @RequestBody SkillRequest request,
@@ -31,6 +35,7 @@ public class SkillController {
         return ResponseEntity.status(HttpStatus.CREATED).body(skill);
     }
 
+    @RequirePermission(Permission.MEMBER_EDIT_ALL)
     @PutMapping("/{id}")
     public ResponseEntity<Skill> updateSkill(
             @PathVariable Long id,
@@ -41,6 +46,7 @@ public class SkillController {
         return ResponseEntity.ok(skill);
     }
 
+    @RequirePermission(Permission.MEMBER_VIEW_ALL)
     @GetMapping("/{id}")
     public ResponseEntity<Skill> getSkillById(
             @PathVariable Long id,
@@ -50,6 +56,7 @@ public class SkillController {
         return ResponseEntity.ok(skill);
     }
 
+    @RequirePermission(Permission.MEMBER_VIEW_ALL)
     @GetMapping
     public ResponseEntity<List<Skill>> getAllSkills(
             @RequestParam(required = false, defaultValue = "true") Boolean activeOnly,
@@ -61,6 +68,7 @@ public class SkillController {
         return ResponseEntity.ok(skills);
     }
 
+    @RequirePermission(Permission.MEMBER_VIEW_ALL)
     @GetMapping("/category/{category}")
     public ResponseEntity<List<Skill>> getSkillsByCategory(
             @PathVariable SkillCategory category,
@@ -70,6 +78,7 @@ public class SkillController {
         return ResponseEntity.ok(skills);
     }
 
+    @RequirePermission(Permission.MEMBER_VIEW_ALL)
     @GetMapping("/search")
     public ResponseEntity<List<Skill>> searchSkills(
             @RequestParam String query,
@@ -79,6 +88,7 @@ public class SkillController {
         return ResponseEntity.ok(skills);
     }
 
+    @RequirePermission(Permission.MEMBER_EDIT_ALL)
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteSkill(
             @PathVariable Long id,
@@ -88,6 +98,7 @@ public class SkillController {
         return ResponseEntity.noContent().build();
     }
 
+    @RequirePermission(Permission.MEMBER_EDIT_ALL)
     @PatchMapping("/{id}/deactivate")
     public ResponseEntity<Skill> deactivateSkill(
             @PathVariable Long id,
@@ -97,6 +108,7 @@ public class SkillController {
         return ResponseEntity.ok(skill);
     }
 
+    @RequirePermission(Permission.MEMBER_EDIT_ALL)
     @PatchMapping("/{id}/activate")
     public ResponseEntity<Skill> activateSkill(
             @PathVariable Long id,
@@ -106,6 +118,7 @@ public class SkillController {
         return ResponseEntity.ok(skill);
     }
 
+    @RequirePermission(Permission.MEMBER_VIEW_ALL)
     @GetMapping("/stats/count")
     public ResponseEntity<Long> getActiveSkillsCount(HttpServletRequest httpRequest) {
         Long churchId = requestContextUtil.extractChurchId(httpRequest);

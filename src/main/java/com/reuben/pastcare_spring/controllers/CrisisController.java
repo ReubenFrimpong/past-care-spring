@@ -1,5 +1,8 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
+import com.reuben.pastcare_spring.enums.Permission;
+
 import com.reuben.pastcare_spring.dtos.*;
 import com.reuben.pastcare_spring.models.CrisisSeverity;
 import com.reuben.pastcare_spring.models.CrisisStatus;
@@ -17,7 +20,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -39,7 +41,7 @@ public class CrisisController {
      * Report a new crisis
      */
     @PostMapping
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_CREATE)
     @Operation(summary = "Report crisis", description = "Reports a new crisis or emergency situation")
     public ResponseEntity<CrisisResponse> reportCrisis(
             @Valid @RequestBody CrisisRequest request,
@@ -54,7 +56,7 @@ public class CrisisController {
      * Get crisis by ID
      */
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @Operation(summary = "Get crisis by ID", description = "Returns a single crisis by ID")
     public ResponseEntity<CrisisResponse> getCrisisById(@PathVariable Long id) {
         CrisisResponse crisis = crisisService.getCrisisById(id);
@@ -65,7 +67,7 @@ public class CrisisController {
      * Get all crises with pagination
      */
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @Operation(summary = "Get all crises", description = "Returns paginated list of crises")
     public ResponseEntity<Page<CrisisResponse>> getCrises(
             @RequestParam(defaultValue = "0") int page,
@@ -84,7 +86,7 @@ public class CrisisController {
      * Update an existing crisis
      */
     @PutMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_EDIT)
     @Operation(summary = "Update crisis", description = "Updates an existing crisis")
     public ResponseEntity<CrisisResponse> updateCrisis(
             @PathVariable Long id,
@@ -97,7 +99,7 @@ public class CrisisController {
      * Delete a crisis
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_EDIT)
     @Operation(summary = "Delete crisis", description = "Deletes a crisis")
     public ResponseEntity<Void> deleteCrisis(@PathVariable Long id) {
         crisisService.deleteCrisis(id);
@@ -108,7 +110,7 @@ public class CrisisController {
      * Add affected member to crisis
      */
     @PostMapping("/{id}/affected-members")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_CREATE)
     @Operation(summary = "Add affected member", description = "Adds an affected member to a crisis")
     public ResponseEntity<CrisisAffectedMemberResponse> addAffectedMember(
             @PathVariable Long id,
@@ -121,7 +123,7 @@ public class CrisisController {
      * Bulk add affected members to crisis
      */
     @PostMapping("/{id}/affected-members/bulk")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_CREATE)
     @Operation(summary = "Bulk add affected members", description = "Adds multiple affected members to a crisis at once")
     public ResponseEntity<List<CrisisAffectedMemberResponse>> bulkAddAffectedMembers(
             @PathVariable Long id,
@@ -134,7 +136,7 @@ public class CrisisController {
      * Remove affected member from crisis
      */
     @DeleteMapping("/{id}/affected-members/{memberId}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_EDIT)
     @Operation(summary = "Remove affected member", description = "Removes an affected member from a crisis")
     public ResponseEntity<Void> removeAffectedMember(
             @PathVariable Long id,
@@ -147,7 +149,7 @@ public class CrisisController {
      * Mobilize resources for a crisis
      */
     @PostMapping("/{id}/mobilize")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_CREATE)
     @Operation(summary = "Mobilize resources", description = "Mobilizes resources for a crisis response")
     public ResponseEntity<CrisisResponse> mobilizeResources(
             @PathVariable Long id,
@@ -161,7 +163,7 @@ public class CrisisController {
      * Send emergency notifications
      */
     @PostMapping("/{id}/notify")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_CREATE)
     @Operation(summary = "Send notifications", description = "Sends emergency notifications for a crisis")
     public ResponseEntity<CrisisResponse> sendEmergencyNotifications(@PathVariable Long id) {
         CrisisResponse updated = crisisService.sendEmergencyNotifications(id);
@@ -172,7 +174,7 @@ public class CrisisController {
      * Resolve a crisis
      */
     @PostMapping("/{id}/resolve")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_CREATE)
     @Operation(summary = "Resolve crisis", description = "Marks a crisis as resolved")
     public ResponseEntity<CrisisResponse> resolveCrisis(
             @PathVariable Long id,
@@ -186,7 +188,7 @@ public class CrisisController {
      * Update crisis status
      */
     @PatchMapping("/{id}/status")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_EDIT)
     @Operation(summary = "Update status", description = "Updates the status of a crisis")
     public ResponseEntity<CrisisResponse> updateStatus(
             @PathVariable Long id,
@@ -200,7 +202,7 @@ public class CrisisController {
      * Get active crises
      */
     @GetMapping("/active")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @Operation(summary = "Get active crises", description = "Returns all active crises")
     public ResponseEntity<List<CrisisResponse>> getActiveCrises(HttpServletRequest httpRequest) {
         Long churchId = requestContextUtil.extractChurchId(httpRequest);
@@ -212,7 +214,7 @@ public class CrisisController {
      * Get critical crises
      */
     @GetMapping("/critical")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @Operation(summary = "Get critical crises", description = "Returns all critical severity crises")
     public ResponseEntity<List<CrisisResponse>> getCriticalCrises(HttpServletRequest httpRequest) {
         Long churchId = requestContextUtil.extractChurchId(httpRequest);
@@ -224,7 +226,7 @@ public class CrisisController {
      * Get crises by status
      */
     @GetMapping("/status/{status}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @Operation(summary = "Get by status", description = "Returns crises filtered by status")
     public ResponseEntity<Page<CrisisResponse>> getCrisesByStatus(
             @PathVariable CrisisStatus status,
@@ -241,7 +243,7 @@ public class CrisisController {
      * Get crises by type
      */
     @GetMapping("/type/{type}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @Operation(summary = "Get by type", description = "Returns crises filtered by type")
     public ResponseEntity<Page<CrisisResponse>> getCrisesByType(
             @PathVariable CrisisType type,
@@ -258,7 +260,7 @@ public class CrisisController {
      * Get crises by severity
      */
     @GetMapping("/severity/{severity}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @Operation(summary = "Get by severity", description = "Returns crises filtered by severity")
     public ResponseEntity<Page<CrisisResponse>> getCrisesBySeverity(
             @PathVariable CrisisSeverity severity,
@@ -275,7 +277,7 @@ public class CrisisController {
      * Search crises
      */
     @GetMapping("/search")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @Operation(summary = "Search crises", description = "Searches crises by title, description, or location")
     public ResponseEntity<Page<CrisisResponse>> searchCrises(
             @RequestParam String search,
@@ -292,7 +294,7 @@ public class CrisisController {
      * Get crisis statistics
      */
     @GetMapping("/stats")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @Operation(summary = "Get statistics", description = "Returns crisis statistics")
     public ResponseEntity<CrisisStatsResponse> getCrisisStats(HttpServletRequest httpRequest) {
         Long churchId = requestContextUtil.extractChurchId(httpRequest);
@@ -304,7 +306,7 @@ public class CrisisController {
      * Auto-detect and add affected members based on geographic location
      */
     @PostMapping("/{id}/auto-detect-members")
-    @PreAuthorize("hasAnyRole('ADMIN', 'PASTOR', 'LEADER')")
+    @RequirePermission(Permission.VISIT_CREATE)
     @Operation(summary = "Auto-detect affected members", description = "Automatically detects and adds members in the affected geographic area")
     public ResponseEntity<List<Member>> autoDetectAffectedMembers(@PathVariable Long id) {
         List<Member> affectedMembers = crisisService.autoDetectAffectedMembers(id);
@@ -315,7 +317,7 @@ public class CrisisController {
      * Preview members that would be affected by geographic criteria (without adding them)
      */
     @GetMapping("/preview-affected-members")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.VISIT_VIEW_ALL)
     @Operation(summary = "Preview affected members", description = "Preview which members would be affected based on geographic criteria")
     public ResponseEntity<List<Member>> previewAffectedMembers(
             @RequestParam(required = false) String suburb,

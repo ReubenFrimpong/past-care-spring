@@ -85,4 +85,19 @@ public interface PrayerRequestRepository extends JpaRepository<PrayerRequest, Lo
 
     // Find by church and status in list
     List<PrayerRequest> findByChurchAndStatusIn(Church church, List<PrayerRequestStatus> statuses);
+
+    // Find recent prayer requests (for dashboard recent activities)
+    Page<PrayerRequest> findByChurchOrderByCreatedAtDesc(Church church, Pageable pageable);
+
+    /**
+     * Count urgent active prayer requests (tenant-filtered)
+     * Dashboard Phase 2.4: Advanced Analytics
+     */
+    @Query("SELECT COUNT(p) FROM PrayerRequest p WHERE p.isUrgent = true AND (p.status = 'PENDING' OR p.status = 'ACTIVE')")
+    Long countUrgentActiveRequests();
+
+    /**
+     * Count prayer requests by church ID
+     */
+    Long countByChurch_Id(Long churchId);
 }

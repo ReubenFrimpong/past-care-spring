@@ -1,5 +1,8 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
+import com.reuben.pastcare_spring.enums.Permission;
+
 import com.reuben.pastcare_spring.dtos.PortalLoginRequest;
 import com.reuben.pastcare_spring.dtos.PortalRegistrationRequest;
 import com.reuben.pastcare_spring.dtos.PortalUserResponse;
@@ -27,6 +30,7 @@ public class PortalUserController {
     /**
      * Register new portal user (public endpoint)
      */
+    @RequirePermission(Permission.MEMBER_EDIT_ALL)
     @PostMapping("/register")
     public ResponseEntity<PortalUserResponse> register(
             @Valid @RequestBody PortalRegistrationRequest request,
@@ -38,6 +42,7 @@ public class PortalUserController {
     /**
      * Login portal user (public endpoint)
      */
+    @RequirePermission(Permission.MEMBER_EDIT_ALL)
     @PostMapping("/login")
     public ResponseEntity<Map<String, Object>> login(
             @Valid @RequestBody PortalLoginRequest request,
@@ -49,6 +54,7 @@ public class PortalUserController {
     /**
      * Verify email with token (public endpoint)
      */
+    @RequirePermission(Permission.MEMBER_VIEW_ALL)
     @GetMapping("/verify")
     public ResponseEntity<Map<String, String>> verifyEmail(@RequestParam String token) {
         portalUserService.verifyEmail(token);
@@ -60,6 +66,7 @@ public class PortalUserController {
     /**
      * Resend verification email (public endpoint)
      */
+    @RequirePermission(Permission.MEMBER_EDIT_ALL)
     @PostMapping("/resend-verification")
     public ResponseEntity<Map<String, String>> resendVerification(
             @RequestParam String email,
@@ -73,6 +80,7 @@ public class PortalUserController {
     /**
      * Request password reset (public endpoint)
      */
+    @RequirePermission(Permission.MEMBER_EDIT_ALL)
     @PostMapping("/forgot-password")
     public ResponseEntity<Map<String, String>> forgotPassword(
             @RequestParam String email,
@@ -86,6 +94,7 @@ public class PortalUserController {
     /**
      * Reset password with token (public endpoint)
      */
+    @RequirePermission(Permission.MEMBER_EDIT_ALL)
     @PostMapping("/reset-password")
     public ResponseEntity<Map<String, String>> resetPassword(
             @RequestParam String token,
@@ -101,6 +110,7 @@ public class PortalUserController {
     /**
      * Get all portal users by status (admin only)
      */
+    @RequirePermission(Permission.MEMBER_VIEW_ALL)
     @GetMapping("/users")
     public ResponseEntity<List<PortalUserResponse>> getPortalUsersByStatus(
             @RequestParam(required = false) PortalUserStatus status,
@@ -115,6 +125,7 @@ public class PortalUserController {
     /**
      * Get portal user by ID (admin only)
      */
+    @RequirePermission(Permission.MEMBER_VIEW_ALL)
     @GetMapping("/users/{id}")
     public ResponseEntity<PortalUserResponse> getPortalUserById(
             @PathVariable Long id,
@@ -127,6 +138,7 @@ public class PortalUserController {
     /**
      * Approve portal user (admin only)
      */
+    @RequirePermission(Permission.MEMBER_EDIT_ALL)
     @PostMapping("/users/{id}/approve")
     public ResponseEntity<PortalUserResponse> approvePortalUser(
             @PathVariable Long id,
@@ -141,6 +153,7 @@ public class PortalUserController {
     /**
      * Reject portal user (admin only)
      */
+    @RequirePermission(Permission.MEMBER_EDIT_ALL)
     @PostMapping("/users/{id}/reject")
     public ResponseEntity<PortalUserResponse> rejectPortalUser(
             @PathVariable Long id,

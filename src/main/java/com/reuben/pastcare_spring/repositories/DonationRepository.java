@@ -21,6 +21,7 @@ import java.util.List;
  */
 @Repository
 public interface DonationRepository extends JpaRepository<Donation, Long> {
+    java.util.List<Donation> findByChurch_Id(Long churchId);
 
   /**
    * Find all donations for a church
@@ -171,5 +172,25 @@ public interface DonationRepository extends JpaRepository<Donation, Long> {
   BigDecimal getTotalDonationsByCampaign(
       @Param("campaign") Campaign campaign,
       @Param("church") Church church
+  );
+
+  /**
+   * Find recent donations ordered by donation date (for dashboard recent activities)
+   */
+  @Query("SELECT d FROM Donation d WHERE d.church = :church ORDER BY d.donationDate DESC, d.createdAt DESC")
+  org.springframework.data.domain.Page<Donation> findByChurchOrderByDonationDateDesc(
+      @Param("church") Church church,
+      org.springframework.data.domain.Pageable pageable
+  );
+
+  /**
+   * Get total donations for a time period (for goal tracking)
+   * Dashboard Phase 2.3: Goal Tracking
+   */
+  @Query("SELECT COALESCE(SUM(d.amount), 0) FROM Donation d " +
+         "WHERE d.createdAt >= :startDate AND d.createdAt <= :endDate")
+  BigDecimal getTotalDonationsForPeriod(
+      @Param("startDate") java.time.Instant startDate,
+      @Param("endDate") java.time.Instant endDate
   );
 }

@@ -36,6 +36,7 @@ public class AttendanceService {
   private final FellowshipRepository fellowshipRepository;
   private final MemberRepository memberRepository;
   private final QRCodeService qrCodeService;
+  private final TenantValidationService tenantValidationService;
 
   public AttendanceService(
       AttendanceSessionRepository attendanceSessionRepository,
@@ -43,13 +44,15 @@ public class AttendanceService {
       ChurchRepository churchRepository,
       FellowshipRepository fellowshipRepository,
       MemberRepository memberRepository,
-      QRCodeService qrCodeService) {
+      QRCodeService qrCodeService,
+      TenantValidationService tenantValidationService) {
     this.attendanceSessionRepository = attendanceSessionRepository;
     this.attendanceRepository = attendanceRepository;
     this.churchRepository = churchRepository;
     this.fellowshipRepository = fellowshipRepository;
     this.memberRepository = memberRepository;
     this.qrCodeService = qrCodeService;
+    this.tenantValidationService = tenantValidationService;
   }
 
   @Transactional
@@ -80,6 +83,9 @@ public class AttendanceService {
     AttendanceSession session = attendanceSessionRepository.findById(id)
         .orElseThrow(() -> new IllegalArgumentException("Attendance session not found"));
 
+    // CRITICAL SECURITY: Validate attendance session belongs to current church
+    tenantValidationService.validateAttendanceSessionAccess(session);
+
     session.setSessionName(request.sessionName());
     session.setSessionDate(request.sessionDate());
     session.setSessionTime(request.sessionTime());
@@ -104,6 +110,10 @@ public class AttendanceService {
   public AttendanceSessionResponse getAttendanceSession(Long id) {
     AttendanceSession session = attendanceSessionRepository.findById(id)
         .orElseThrow(() -> new IllegalArgumentException("Attendance session not found"));
+
+    // CRITICAL SECURITY: Validate attendance session belongs to current church
+    tenantValidationService.validateAttendanceSessionAccess(session);
+
     return AttendanceSessionMapper.toAttendanceSessionResponse(session, true);
   }
 
@@ -135,6 +145,10 @@ public class AttendanceService {
   public void deleteAttendanceSession(Long id) {
     AttendanceSession session = attendanceSessionRepository.findById(id)
         .orElseThrow(() -> new IllegalArgumentException("Attendance session not found"));
+
+    // CRITICAL SECURITY: Validate attendance session belongs to current church
+    tenantValidationService.validateAttendanceSessionAccess(session);
+
     attendanceSessionRepository.delete(session);
   }
 
@@ -182,6 +196,10 @@ public class AttendanceService {
   public AttendanceSessionResponse completeAttendanceSession(Long id) {
     AttendanceSession session = attendanceSessionRepository.findById(id)
         .orElseThrow(() -> new IllegalArgumentException("Attendance session not found"));
+
+    // CRITICAL SECURITY: Validate attendance session belongs to current church
+    tenantValidationService.validateAttendanceSessionAccess(session);
+
     session.setIsCompleted(true);
     AttendanceSession updatedSession = attendanceSessionRepository.save(session);
     return AttendanceSessionMapper.toAttendanceSessionResponse(updatedSession, true);
@@ -198,6 +216,9 @@ public class AttendanceService {
   public QRCodeResponse generateQRCodeForSession(Long sessionId) {
     AttendanceSession session = attendanceSessionRepository.findById(sessionId)
         .orElseThrow(() -> new IllegalArgumentException("Attendance session not found with id: " + sessionId));
+
+    // CRITICAL SECURITY: Validate attendance session belongs to current church
+    tenantValidationService.validateAttendanceSessionAccess(session);
 
     // Generate check-in URL with encrypted session data
     String checkInUrl = qrCodeService.generateCheckInUrl(sessionId);

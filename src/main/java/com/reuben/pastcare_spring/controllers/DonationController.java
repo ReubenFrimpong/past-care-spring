@@ -1,8 +1,10 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
 import com.reuben.pastcare_spring.dtos.DonationRequest;
 import com.reuben.pastcare_spring.dtos.DonationResponse;
 import com.reuben.pastcare_spring.dtos.DonationSummaryResponse;
+import com.reuben.pastcare_spring.enums.Permission;
 import com.reuben.pastcare_spring.models.DonationType;
 import com.reuben.pastcare_spring.services.DonationService;
 import com.reuben.pastcare_spring.util.RequestContextUtil;
@@ -13,7 +15,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -36,7 +37,7 @@ public class DonationController {
    * Get all donations for the current church
    */
   @GetMapping
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission({Permission.DONATION_VIEW_ALL, Permission.DONATION_VIEW_OWN})
   @Operation(summary = "Get all donations", description = "Returns all donations for the current church")
   public ResponseEntity<List<DonationResponse>> getAllDonations(HttpServletRequest request) {
     Long churchId = requestContextUtil.extractChurchId(request);
@@ -48,7 +49,7 @@ public class DonationController {
    * Get donation by ID
    */
   @GetMapping("/{id}")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission({Permission.DONATION_VIEW_ALL, Permission.DONATION_VIEW_OWN})
   @Operation(summary = "Get donation by ID", description = "Returns a single donation by ID")
   public ResponseEntity<DonationResponse> getDonationById(@PathVariable Long id) {
     DonationResponse donation = donationService.getDonationById(id);
@@ -59,7 +60,7 @@ public class DonationController {
    * Create a new donation
    */
   @PostMapping
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.DONATION_CREATE)
   @Operation(summary = "Create donation", description = "Creates a new donation record")
   public ResponseEntity<DonationResponse> createDonation(
       @Valid @RequestBody DonationRequest request,
@@ -75,7 +76,7 @@ public class DonationController {
    * Update an existing donation
    */
   @PutMapping("/{id}")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.DONATION_EDIT)
   @Operation(summary = "Update donation", description = "Updates an existing donation record")
   public ResponseEntity<DonationResponse> updateDonation(
       @PathVariable Long id,
@@ -89,7 +90,7 @@ public class DonationController {
    * Delete a donation
    */
   @DeleteMapping("/{id}")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.DONATION_DELETE)
   @Operation(summary = "Delete donation", description = "Deletes a donation record")
   public ResponseEntity<Void> deleteDonation(@PathVariable Long id) {
     donationService.deleteDonation(id);
@@ -100,7 +101,7 @@ public class DonationController {
    * Get donations by date range
    */
   @GetMapping("/date-range")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission({Permission.DONATION_VIEW_ALL, Permission.DONATION_VIEW_OWN})
   @Operation(summary = "Get donations by date range", description = "Returns donations within a date range")
   public ResponseEntity<List<DonationResponse>> getDonationsByDateRange(
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -116,7 +117,7 @@ public class DonationController {
    * Get donations by member
    */
   @GetMapping("/member/{memberId}")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission({Permission.DONATION_VIEW_ALL, Permission.DONATION_VIEW_OWN})
   @Operation(summary = "Get donations by member", description = "Returns all donations for a specific member")
   public ResponseEntity<List<DonationResponse>> getDonationsByMember(
       @PathVariable Long memberId,
@@ -131,7 +132,7 @@ public class DonationController {
    * Get donations by type
    */
   @GetMapping("/type/{donationType}")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission({Permission.DONATION_VIEW_ALL, Permission.DONATION_VIEW_OWN})
   @Operation(summary = "Get donations by type", description = "Returns all donations of a specific type")
   public ResponseEntity<List<DonationResponse>> getDonationsByType(
       @PathVariable DonationType donationType,
@@ -146,7 +147,7 @@ public class DonationController {
    * Get donations by campaign
    */
   @GetMapping("/campaign/{campaign}")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission({Permission.DONATION_VIEW_ALL, Permission.CAMPAIGN_VIEW})
   @Operation(summary = "Get donations by campaign", description = "Returns all donations for a specific campaign")
   public ResponseEntity<List<DonationResponse>> getDonationsByCampaign(
       @PathVariable String campaign,
@@ -161,7 +162,7 @@ public class DonationController {
    * Get donation summary
    */
   @GetMapping("/summary")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.DONATION_VIEW_ALL)
   @Operation(summary = "Get donation summary", description = "Returns summary statistics for all donations")
   public ResponseEntity<DonationSummaryResponse> getDonationSummary(HttpServletRequest request) {
     Long churchId = requestContextUtil.extractChurchId(request);
@@ -173,7 +174,7 @@ public class DonationController {
    * Get donation summary by date range
    */
   @GetMapping("/summary/date-range")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.DONATION_VIEW_ALL)
   @Operation(summary = "Get donation summary by date range", description = "Returns summary statistics for donations within a date range")
   public ResponseEntity<DonationSummaryResponse> getDonationSummaryByDateRange(
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -189,7 +190,7 @@ public class DonationController {
    * Issue receipt for a donation
    */
   @PostMapping("/{id}/issue-receipt")
-  @PreAuthorize("isAuthenticated()")
+  @RequirePermission(Permission.RECEIPT_ISSUE)
   @Operation(summary = "Issue receipt", description = "Issues a receipt for a donation")
   public ResponseEntity<DonationResponse> issueReceipt(
       @PathVariable Long id,

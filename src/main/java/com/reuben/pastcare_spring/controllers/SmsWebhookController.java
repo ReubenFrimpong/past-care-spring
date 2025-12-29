@@ -1,5 +1,8 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
+import com.reuben.pastcare_spring.enums.Permission;
+
 import com.reuben.pastcare_spring.models.SmsMessage;
 import com.reuben.pastcare_spring.models.SmsStatus;
 import com.reuben.pastcare_spring.repositories.SmsMessageRepository;
@@ -53,6 +56,7 @@ public class SmsWebhookController {
      *
      * Environment variable needed: africas-talking.api-key
      */
+    @RequirePermission(Permission.SMS_SEND)
     @PostMapping("/africas-talking/delivery")
     public ResponseEntity<String> handleAfricasTalkingDelivery(@RequestBody Map<String, Object> payload) {
         log.info("Received Africa's Talking delivery webhook: {}", payload);
@@ -122,6 +126,7 @@ public class SmsWebhookController {
      *
      * Environment variable needed: twilio.auth-token (for signature verification)
      */
+    @RequirePermission(Permission.SMS_SEND)
     @PostMapping("/twilio/delivery")
     public ResponseEntity<String> handleTwilioDelivery(
             @RequestParam Map<String, String> params,
@@ -203,6 +208,7 @@ public class SmsWebhookController {
     /**
      * Health check endpoint for webhook configuration testing
      */
+    @RequirePermission(Permission.SMS_SEND)
     @GetMapping("/health")
     public ResponseEntity<Map<String, String>> healthCheck() {
         return ResponseEntity.ok(Map.of(

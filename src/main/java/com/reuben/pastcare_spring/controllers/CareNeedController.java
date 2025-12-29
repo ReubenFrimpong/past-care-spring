@@ -1,9 +1,11 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
 import com.reuben.pastcare_spring.dtos.AutoDetectedCareNeed;
 import com.reuben.pastcare_spring.dtos.CareNeedRequest;
 import com.reuben.pastcare_spring.dtos.CareNeedResponse;
 import com.reuben.pastcare_spring.dtos.CareNeedStatsResponse;
+import com.reuben.pastcare_spring.enums.Permission;
 import com.reuben.pastcare_spring.models.CareNeedStatus;
 import com.reuben.pastcare_spring.models.CareNeedType;
 import com.reuben.pastcare_spring.services.CareNeedService;
@@ -18,7 +20,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -40,7 +41,7 @@ public class CareNeedController {
      * Create a new care need
      */
     @PostMapping
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.CARE_NEED_CREATE)
     @Operation(summary = "Create care need", description = "Creates a new pastoral care need")
     public ResponseEntity<CareNeedResponse> createCareNeed(
             @Valid @RequestBody CareNeedRequest request,
@@ -55,7 +56,7 @@ public class CareNeedController {
      * Get care need by ID
      */
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.CARE_NEED_VIEW_ALL)
     @Operation(summary = "Get care need by ID", description = "Returns a single care need by ID")
     public ResponseEntity<CareNeedResponse> getCareNeedById(@PathVariable Long id) {
         CareNeedResponse careNeed = careNeedService.getCareNeedById(id);
@@ -66,7 +67,7 @@ public class CareNeedController {
      * Get all care needs with pagination
      */
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.CARE_NEED_VIEW_ALL)
     @Operation(summary = "Get all care needs", description = "Returns paginated list of care needs")
     public ResponseEntity<Page<CareNeedResponse>> getCareNeeds(
             @RequestParam(defaultValue = "0") int page,
@@ -85,7 +86,7 @@ public class CareNeedController {
      * Update an existing care need
      */
     @PutMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.CARE_NEED_EDIT)
     @Operation(summary = "Update care need", description = "Updates an existing care need")
     public ResponseEntity<CareNeedResponse> updateCareNeed(
             @PathVariable Long id,
@@ -98,7 +99,7 @@ public class CareNeedController {
      * Delete a care need
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.CARE_NEED_EDIT)
     @Operation(summary = "Delete care need", description = "Deletes a care need")
     public ResponseEntity<Void> deleteCareNeed(@PathVariable Long id) {
         careNeedService.deleteCareNeed(id);
@@ -109,7 +110,7 @@ public class CareNeedController {
      * Assign a care need to a user
      */
     @PatchMapping("/{id}/assign")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.CARE_NEED_EDIT)
     @Operation(summary = "Assign care need", description = "Assigns a care need to a user")
     public ResponseEntity<CareNeedResponse> assignCareNeed(
             @PathVariable Long id,
@@ -123,7 +124,7 @@ public class CareNeedController {
      * Update care need status
      */
     @PatchMapping("/{id}/status")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.CARE_NEED_EDIT)
     @Operation(summary = "Update status", description = "Updates the status of a care need")
     public ResponseEntity<CareNeedResponse> updateStatus(
             @PathVariable Long id,
@@ -137,7 +138,7 @@ public class CareNeedController {
      * Mark a care need as resolved
      */
     @PatchMapping("/{id}/resolve")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.CARE_NEED_EDIT)
     @Operation(summary = "Resolve care need", description = "Marks a care need as resolved")
     public ResponseEntity<CareNeedResponse> resolveCareNeed(
             @PathVariable Long id,
@@ -151,7 +152,7 @@ public class CareNeedController {
      * Get care needs by status
      */
     @GetMapping("/status/{status}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.CARE_NEED_VIEW_ALL)
     @Operation(summary = "Get by status", description = "Returns care needs filtered by status")
     public ResponseEntity<Page<CareNeedResponse>> getCareNeedsByStatus(
             @PathVariable CareNeedStatus status,
@@ -168,7 +169,7 @@ public class CareNeedController {
      * Get care needs by type
      */
     @GetMapping("/type/{type}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.CARE_NEED_VIEW_ALL)
     @Operation(summary = "Get by type", description = "Returns care needs filtered by type")
     public ResponseEntity<Page<CareNeedResponse>> getCareNeedsByType(
             @PathVariable CareNeedType type,
@@ -185,7 +186,7 @@ public class CareNeedController {
      * Get care needs assigned to a user
      */
     @GetMapping("/assigned/{userId}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.CARE_NEED_VIEW_ALL)
     @Operation(summary = "Get assigned", description = "Returns care needs assigned to a specific user")
     public ResponseEntity<Page<CareNeedResponse>> getAssignedCareNeeds(
             @PathVariable Long userId,
@@ -202,7 +203,7 @@ public class CareNeedController {
      * Search care needs
      */
     @GetMapping("/search")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.CARE_NEED_VIEW_ALL)
     @Operation(summary = "Search care needs", description = "Searches care needs by title, description, or member name")
     public ResponseEntity<Page<CareNeedResponse>> searchCareNeeds(
             @RequestParam String search,
@@ -219,7 +220,7 @@ public class CareNeedController {
      * Get care need statistics
      */
     @GetMapping("/stats")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.CARE_NEED_VIEW_ALL)
     @Operation(summary = "Get statistics", description = "Returns care need statistics")
     public ResponseEntity<CareNeedStatsResponse> getCareNeedStats(HttpServletRequest httpRequest) {
         Long churchId = requestContextUtil.extractChurchId(httpRequest);
@@ -231,7 +232,7 @@ public class CareNeedController {
      * Get overdue care needs
      */
     @GetMapping("/overdue")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.CARE_NEED_VIEW_ALL)
     @Operation(summary = "Get overdue", description = "Returns overdue care needs")
     public ResponseEntity<List<CareNeedResponse>> getOverdueCareNeeds(HttpServletRequest httpRequest) {
         Long churchId = requestContextUtil.extractChurchId(httpRequest);
@@ -243,7 +244,7 @@ public class CareNeedController {
      * Get urgent care needs
      */
     @GetMapping("/urgent")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.CARE_NEED_VIEW_ALL)
     @Operation(summary = "Get urgent", description = "Returns urgent care needs")
     public ResponseEntity<List<CareNeedResponse>> getUrgentCareNeeds(HttpServletRequest httpRequest) {
         Long churchId = requestContextUtil.extractChurchId(httpRequest);
@@ -255,7 +256,7 @@ public class CareNeedController {
      * Get unassigned care needs
      */
     @GetMapping("/unassigned")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.CARE_NEED_VIEW_ALL)
     @Operation(summary = "Get unassigned", description = "Returns unassigned care needs")
     public ResponseEntity<List<CareNeedResponse>> getUnassignedCareNeeds(HttpServletRequest httpRequest) {
         Long churchId = requestContextUtil.extractChurchId(httpRequest);
@@ -267,7 +268,7 @@ public class CareNeedController {
      * Get care needs for the current user (assigned to me)
      */
     @GetMapping("/assigned-to-me")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.CARE_NEED_VIEW_ALL)
     @Operation(summary = "Get my assigned care needs", description = "Returns care needs assigned to the current user")
     public ResponseEntity<List<CareNeedResponse>> getMyAssignedCareNeeds(HttpServletRequest httpRequest) {
         Long churchId = requestContextUtil.extractChurchId(httpRequest);
@@ -281,7 +282,7 @@ public class CareNeedController {
      * Get care needs by member
      */
     @GetMapping("/member/{memberId}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.CARE_NEED_VIEW_ALL)
     @Operation(summary = "Get by member", description = "Returns care needs for a specific member")
     public ResponseEntity<List<CareNeedResponse>> getCareNeedsByMember(
             @PathVariable Long memberId,
@@ -295,7 +296,7 @@ public class CareNeedController {
      * Auto-detect members needing care
      */
     @GetMapping("/detect-needs")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.CARE_NEED_VIEW_ALL)
     @Operation(summary = "Detect needs", description = "Auto-detects members needing care based on attendance patterns")
     public ResponseEntity<List<Long>> detectMembersNeedingCare(HttpServletRequest httpRequest) {
         Long churchId = requestContextUtil.extractChurchId(httpRequest);
@@ -307,7 +308,7 @@ public class CareNeedController {
      * Get auto-detected care need suggestions
      */
     @GetMapping("/auto-detect")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(Permission.CARE_NEED_VIEW_ALL)
     @Operation(summary = "Auto-detect suggestions", description = "Returns detailed care need suggestions for members with irregular attendance")
     public ResponseEntity<List<AutoDetectedCareNeed>> getAutoDetectedCareNeeds(HttpServletRequest httpRequest) {
         Long churchId = requestContextUtil.extractChurchId(httpRequest);

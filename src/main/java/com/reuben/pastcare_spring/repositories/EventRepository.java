@@ -131,6 +131,15 @@ public interface EventRepository extends JpaRepository<Event, Long> {
 
     List<Event> findByParentEventAndDeletedAtIsNull(Event parentEvent);
 
+    // Find instances by parent event ID
+    List<Event> findByParentEventId(Long parentEventId);
+
+    // Find future instances by parent event ID
+    List<Event> findByParentEventIdAndStartDateAfter(Long parentEventId, LocalDateTime startDate);
+
+    // Count instances by parent event ID
+    long countByParentEventId(Long parentEventId);
+
     // Events requiring registration
     @Query("SELECT e FROM Event e WHERE e.church.id = :churchId " +
            "AND e.deletedAt IS NULL " +
@@ -233,5 +242,16 @@ public interface EventRepository extends JpaRepository<Event, Long> {
         @Param("isCancelled") Boolean isCancelled,
         @Param("searchTerm") String searchTerm,
         Pageable pageable
+    );
+
+    /**
+     * Count events in a time period (for goal tracking)
+     * Dashboard Phase 2.3: Goal Tracking
+     */
+    @Query("SELECT COUNT(e) FROM Event e WHERE e.deletedAt IS NULL " +
+           "AND e.createdAt >= :startDate AND e.createdAt <= :endDate")
+    Long countEventsInPeriod(
+        @Param("startDate") LocalDateTime startDate,
+        @Param("endDate") LocalDateTime endDate
     );
 }

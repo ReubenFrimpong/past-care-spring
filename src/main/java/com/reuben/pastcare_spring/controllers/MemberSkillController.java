@@ -1,5 +1,8 @@
 package com.reuben.pastcare_spring.controllers;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
+import com.reuben.pastcare_spring.enums.Permission;
+
 import com.reuben.pastcare_spring.dtos.MemberSkillRequest;
 import com.reuben.pastcare_spring.enums.ProficiencyLevel;
 import com.reuben.pastcare_spring.models.MemberSkill;
@@ -22,6 +25,7 @@ public class MemberSkillController {
     private final MemberSkillService memberSkillService;
     private final RequestContextUtil requestContextUtil;
 
+    @RequirePermission(Permission.MEMBER_EDIT_ALL)
     @PostMapping
     public ResponseEntity<MemberSkill> assignSkillToMember(
             @Valid @RequestBody MemberSkillRequest request,
@@ -31,6 +35,7 @@ public class MemberSkillController {
         return ResponseEntity.status(HttpStatus.CREATED).body(memberSkill);
     }
 
+    @RequirePermission(Permission.MEMBER_EDIT_ALL)
     @PutMapping("/{id}")
     public ResponseEntity<MemberSkill> updateMemberSkill(
             @PathVariable Long id,
@@ -41,6 +46,7 @@ public class MemberSkillController {
         return ResponseEntity.ok(memberSkill);
     }
 
+    @RequirePermission(Permission.MEMBER_VIEW_ALL)
     @GetMapping("/member/{memberId}")
     public ResponseEntity<List<MemberSkill>> getMemberSkills(
             @PathVariable Long memberId,
@@ -50,6 +56,7 @@ public class MemberSkillController {
         return ResponseEntity.ok(skills);
     }
 
+    @RequirePermission(Permission.MEMBER_VIEW_ALL)
     @GetMapping("/skill/{skillId}")
     public ResponseEntity<List<MemberSkill>> getMembersWithSkill(
             @PathVariable Long skillId,
@@ -59,6 +66,7 @@ public class MemberSkillController {
         return ResponseEntity.ok(members);
     }
 
+    @RequirePermission(Permission.MEMBER_VIEW_ALL)
     @GetMapping("/skill/{skillId}/willing")
     public ResponseEntity<List<MemberSkill>> getMembersWillingToServe(
             @PathVariable Long skillId,
@@ -68,6 +76,7 @@ public class MemberSkillController {
         return ResponseEntity.ok(members);
     }
 
+    @RequirePermission(Permission.MEMBER_VIEW_ALL)
     @GetMapping("/skill/{skillId}/proficiency")
     public ResponseEntity<List<MemberSkill>> getMembersBySkillAndProficiency(
             @PathVariable Long skillId,
@@ -78,6 +87,7 @@ public class MemberSkillController {
         return ResponseEntity.ok(members);
     }
 
+    @RequirePermission(Permission.MEMBER_VIEW_ALL)
     @GetMapping("/member/{memberId}/serving")
     public ResponseEntity<List<MemberSkill>> getCurrentlyServingSkills(
             @PathVariable Long memberId,
@@ -87,6 +97,7 @@ public class MemberSkillController {
         return ResponseEntity.ok(skills);
     }
 
+    @RequirePermission(Permission.MEMBER_EDIT_ALL)
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> removeMemberSkill(
             @PathVariable Long id,
@@ -96,6 +107,7 @@ public class MemberSkillController {
         return ResponseEntity.noContent().build();
     }
 
+    @RequirePermission(Permission.MEMBER_VIEW_ALL)
     @GetMapping("/member/{memberId}/count")
     public ResponseEntity<Long> getMemberSkillCount(
             @PathVariable Long memberId,

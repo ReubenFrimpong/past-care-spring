@@ -15,6 +15,7 @@ import java.util.List;
 
 @Repository
 public interface VisitRepository extends JpaRepository<Visit, Long> {
+    java.util.List<Visit> findByChurch_Id(Long churchId);
 
     // Find by church
     List<Visit> findByChurchOrderByVisitDateDesc(Church church);
@@ -68,4 +69,7 @@ public interface VisitRepository extends JpaRepository<Visit, Long> {
     // Count upcoming visits
     @Query("SELECT COUNT(v) FROM Visit v WHERE v.visitDate >= :currentDate AND v.isCompleted = false")
     Long countUpcoming(@Param("currentDate") LocalDate currentDate);
+
+    // Count visits by church
+    Long countByChurch(Church church);
 }

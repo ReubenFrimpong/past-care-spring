@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.PatchMapping;
 
+import com.reuben.pastcare_spring.annotations.RequirePermission;
 import com.reuben.pastcare_spring.dtos.AdvancedSearchRequest;
 import com.reuben.pastcare_spring.dtos.AdvancedSearchResponse;
 import com.reuben.pastcare_spring.dtos.MemberResponse;
@@ -14,6 +15,7 @@ import com.reuben.pastcare_spring.dtos.TagRequest;
 import com.reuben.pastcare_spring.dtos.TagStatsResponse;
 import com.reuben.pastcare_spring.dtos.ProfileCompletenessResponse;
 import com.reuben.pastcare_spring.dtos.CompletenessStatsResponse;
+import com.reuben.pastcare_spring.enums.Permission;
 import com.reuben.pastcare_spring.services.ImageService;
 import com.reuben.pastcare_spring.services.MemberService;
 import com.reuben.pastcare_spring.util.RequestContextUtil;
@@ -55,6 +57,7 @@ public class MembersController {
   }
 
   @GetMapping
+  @RequirePermission({Permission.MEMBER_VIEW_ALL, Permission.MEMBER_VIEW_FELLOWSHIP, Permission.MEMBER_VIEW_OWN})
   public ResponseEntity<Page<MemberResponse>> getMembers(
       @RequestParam(required = false) String search,
       @RequestParam(required = false) String filter,
@@ -69,34 +72,40 @@ public class MembersController {
   }
 
   @GetMapping("/stats")
+  @RequirePermission({Permission.MEMBER_VIEW_ALL, Permission.MEMBER_VIEW_FELLOWSHIP})
   public ResponseEntity<MemberStatsResponse> getMemberStats(HttpServletRequest request) {
     Long churchId = requestContextUtil.extractChurchId(request);
     return ResponseEntity.ok(memberService.getMemberStats(churchId));
   }
 
   @GetMapping("/{id}")
+  @RequirePermission({Permission.MEMBER_VIEW_ALL, Permission.MEMBER_VIEW_FELLOWSHIP, Permission.MEMBER_VIEW_OWN})
   public ResponseEntity<MemberResponse> getMemberById(@PathVariable Long id) {
     return ResponseEntity.ok(memberService.getMemberById(id));
   }
-  
+
 
   @PostMapping
+  @RequirePermission(Permission.MEMBER_CREATE)
   public ResponseEntity<MemberResponse> createMember(@Valid @RequestBody MemberRequest memberRequest) {
       return ResponseEntity.ok(memberService.createMember(memberRequest));
   }
 
   @PutMapping("/{id}")
+  @RequirePermission({Permission.MEMBER_EDIT_ALL, Permission.MEMBER_EDIT_OWN, Permission.MEMBER_EDIT_PASTORAL})
   public ResponseEntity<MemberResponse> updateMember(@PathVariable Long id, @RequestBody MemberRequest memberRequest) {
       return ResponseEntity.ok(memberService.updateMember(id, memberRequest));
   }
-  
+
   @DeleteMapping("/{id}")
+  @RequirePermission(Permission.MEMBER_DELETE)
   public ResponseEntity<?> deleteMember(@PathVariable Long id){
     memberService.deleteMember(id);
     return ResponseEntity.noContent().build();
   }
 
   @PostMapping("/{id}/profile-image")
+  @RequirePermission({Permission.MEMBER_EDIT_ALL, Permission.MEMBER_EDIT_OWN})
   public ResponseEntity<?> uploadProfileImage(@PathVariable Long id, @RequestParam("image") MultipartFile image) {
       return ResponseEntity.ok(memberService.uploadProfileImage(id, image));
   }
@@ -110,6 +119,7 @@ public class MembersController {
    * @return Created member response with status VISITOR and ~25% profile completeness
    */
   @PostMapping("/quick-add")
+  @RequirePermission(Permission.MEMBER_CREATE)
   public ResponseEntity<MemberResponse> quickAddMember(
       @Valid @RequestBody com.reuben.pastcare_spring.dtos.MemberQuickAddRequest request,
       HttpServletRequest httpRequest) {
@@ -126,6 +136,7 @@ public class MembersController {
    * @return Import results with success/failure counts and error details
    */
   @PostMapping("/bulk-import")
+  @RequirePermission(Permission.MEMBER_IMPORT)
   public ResponseEntity<com.reuben.pastcare_spring.dtos.MemberBulkImportResponse> bulkImportMembers(
       @Valid @RequestBody com.reuben.pastcare_spring.dtos.MemberBulkImportRequest request,
       HttpServletRequest httpRequest) {
@@ -141,6 +152,7 @@ public class MembersController {
    * @return Update results with success/failure counts and error details
    */
   @PatchMapping("/bulk-update")
+  @RequirePermission(Permission.MEMBER_EDIT_ALL)
   public ResponseEntity<com.reuben.pastcare_spring.dtos.MemberBulkUpdateResponse> bulkUpdateMembers(
       @Valid @RequestBody com.reuben.pastcare_spring.dtos.MemberBulkUpdateRequest request,
       HttpServletRequest httpRequest) {
