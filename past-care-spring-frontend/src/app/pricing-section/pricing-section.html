@@ -1,0 +1,101 @@
+<section class="pricing-section">
+  <div class="pricing-container">
+    <!-- Section Header -->
+    <div class="pricing-header">
+      <h2 class="section-title">Simple, Transparent Pricing</h2>
+      <p class="section-subtitle">
+        Choose the plan that's right for your church. No hidden fees. Cancel anytime.
+      </p>
+    </div>
+
+    <!-- Pricing Cards Grid -->
+    <div class="pricing-grid">
+      @for (plan of plans(); track plan.id) {
+        <div
+          class="pricing-card"
+          [class.highlighted]="plan.highlighted"
+        >
+          <!-- Popular Badge -->
+          @if (plan.highlighted) {
+            <div class="popular-badge">Most Popular</div>
+          }
+
+          <!-- Plan Header -->
+          <div class="plan-header">
+            <h3 class="plan-name">{{ plan.displayName }}</h3>
+            <p class="plan-tagline">{{ plan.tagline }}</p>
+          </div>
+
+          <!-- Plan Price -->
+          <div class="plan-price">
+            <div class="price-wrapper">
+              @if (plan.price === 0) {
+                <span class="price">Free</span>
+              } @else {
+                <span class="price">${{ plan.price }}</span>
+                <span class="period">/{{ plan.billingPeriod }}</span>
+              }
+            </div>
+            <p class="price-description">{{ plan.description }}</p>
+          </div>
+
+          <!-- Plan Features -->
+          <ul class="plan-features">
+            @for (feature of plan.features; track $index) {
+              <li class="feature-item">
+                @if (feature.includes('Everything in')) {
+                  <i class="icon icon-arrow"></i>
+                  <strong>{{ feature }}</strong>
+                } @else {
+                  <i class="icon icon-check"></i>
+                  {{ feature }}
+                }
+              </li>
+            }
+          </ul>
+
+          <!-- Plan CTA Button -->
+          <div class="plan-action">
+            <button
+              class="btn {{ plan.buttonClass }}"
+              (click)="selectPlan(plan.name)"
+            >
+              {{ plan.buttonText }}
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Pricing Footer -->
+    <div class="pricing-footer">
+      <p class="footer-text">
+        All plans include secure data hosting, automatic backups, and regular feature updates.
+        <br>
+        <strong>Questions?</strong>
+        <a href="/contact" class="footer-link">Contact our sales team</a> or
+        <a href="/faq" class="footer-link">view FAQ</a>
+      </p>
+    </div>
+
+    <!-- Trust Indicators -->
+    <div class="trust-indicators">
+      <div class="trust-item">
+        <i class="icon icon-shield"></i>
+        <span>Bank-level security</span>
+      </div>
+      <div class="trust-item">
+        <i class="icon icon-clock"></i>
+        <span>99.9% uptime</span>
+      </div>
+      <div class="trust-item">
+        <i class="icon icon-support"></i>
+        <span>24/7 support</span>
+      </div>
+      <div class="trust-item">
+        <i class="icon icon-money"></i>
+        <span>30-day money back</span>
+      </div>
+    </div>
+  </div>
+</section>
