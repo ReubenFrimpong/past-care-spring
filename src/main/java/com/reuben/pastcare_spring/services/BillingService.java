@@ -41,6 +41,7 @@ public class BillingService {
     private final SubscriptionPlanRepository planRepository;
     private final PaymentRepository paymentRepository;
     private final PaystackService paystackService;
+    private final com.reuben.pastcare_spring.repositories.ChurchRepository churchRepository;
 
     /**
      * Get church subscription.
@@ -69,7 +70,7 @@ public class BillingService {
     }
 
     /**
-     * Create initial subscription for a new church (14-day trial on STARTER plan).
+     * Create initial subscription for a new church on STARTER plan.
      */
     @Transactional
     public ChurchSubscription createInitialSubscription(Long churchId) {
@@ -82,13 +83,14 @@ public class BillingService {
         SubscriptionPlan starterPlan = planRepository.findByIsFreeTrueAndIsActiveTrue()
             .orElseThrow(() -> new RuntimeException("Free plan not found"));
 
-        // Create subscription with 14-day trial
+        // Create subscription - starts immediately on free plan
         ChurchSubscription subscription = ChurchSubscription.builder()
             .churchId(churchId)
             .plan(starterPlan)
-            .status("TRIALING")
-            .trialEndDate(LocalDate.now().plusDays(14))
-            .autoRenew(true)
+            .status("ACTIVE")
+            .currentPeriodStart(LocalDate.now())
+            .currentPeriodEnd(null) // No end date for free plan
+            .autoRenew(false) // No auto-renew for free plan
             .gracePeriodDays(7)
             .failedPaymentAttempts(0)
             .build();
@@ -177,7 +179,6 @@ public class BillingService {
         ChurchSubscription subscription = getChurchSubscription(payment.getChurchId());
         subscription.setPlan(payment.getPlan());
         subscription.setStatus("ACTIVE");
-        subscription.setTrialEndDate(null); // End trial
         subscription.setCurrentPeriodStart(LocalDate.now());
         subscription.setCurrentPeriodEnd(LocalDate.now().plusMonths(1));
         subscription.setNextBillingDate(LocalDate.now().plusMonths(1));
@@ -185,6 +186,7 @@ public class BillingService {
         subscription.setCardLast4(cardLast4);
         subscription.setCardBrand(cardBrand);
         subscription.setPaystackAuthorizationCode(authCode);
+        subscription.setAutoRenew(true); // Enable auto-renew for paid plans
         subscription.setFailedPaymentAttempts(0);
         subscriptionRepository.save(subscription);
 
@@ -268,14 +270,6 @@ public class BillingService {
     }
 
     /**
-     * Check if church is within trial period.
-     */
-    public boolean isInTrialPeriod(Long churchId) {
-        ChurchSubscription subscription = getChurchSubscription(churchId);
-        return subscription.isTrialing();
-    }
-
-    /**
      * Check if church has active subscription.
      */
     public boolean hasActiveSubscription(Long churchId) {
@@ -306,9 +300,9 @@ public class BillingService {
     @Transactional(readOnly = true)
     public SubscriptionStats getSubscriptionStats() {
         long activeSubscriptions = subscriptionRepository.countActiveSubscriptions();
-        long trialingSubscriptions = subscriptionRepository.countByStatus("TRIALING");
         long canceledSubscriptions = subscriptionRepository.countByStatus("CANCELED");
         long pastDueSubscriptions = subscriptionRepository.countByStatus("PAST_DUE");
+        long suspendedSubscriptions = subscriptionRepository.countByStatus("SUSPENDED");
 
         BigDecimal totalRevenue = paymentRepository.calculateTotalRevenue();
         if (totalRevenue == null) totalRevenue = BigDecimal.ZERO;
@@ -318,9 +312,9 @@ public class BillingService {
 
         return SubscriptionStats.builder()
             .activeSubscriptions(activeSubscriptions)
-            .trialingSubscriptions(trialingSubscriptions)
             .canceledSubscriptions(canceledSubscriptions)
             .pastDueSubscriptions(pastDueSubscriptions)
+            .suspendedSubscriptions(suspendedSubscriptions)
             .totalRevenue(totalRevenue)
             .successfulPayments(successfulPayments)
             .failedPayments(failedPayments)
@@ -344,13 +338,73 @@ public class BillingService {
                     continue;
                 }
 
-                // TODO: Charge using stored authorization code
-                // For now, mark as PAST_DUE and send reminder
-                subscription.setStatus("PAST_DUE");
-                subscription.setFailedPaymentAttempts(subscription.getFailedPaymentAttempts() + 1);
-                subscriptionRepository.save(subscription);
+                // Get stored authorization code
+                String authCode = subscription.getPaystackAuthorizationCode();
+                if (authCode == null || authCode.isEmpty()) {
+                    log.error("No authorization code for church {}", subscription.getChurchId());
+                    subscription.setStatus("PAST_DUE");
+                    subscription.setFailedPaymentAttempts(subscription.getFailedPaymentAttempts() + 1);
+                    subscriptionRepository.save(subscription);
+                    continue;
+                }
 
-                log.warn("Subscription renewal due for church {}", subscription.getChurchId());
+                // Get church email
+                String email = getChurchEmail(subscription.getChurchId());
+                if (email == null || email.isEmpty()) {
+                    log.error("No email found for church {}", subscription.getChurchId());
+                    subscription.setStatus("PAST_DUE");
+                    subscription.setFailedPaymentAttempts(subscription.getFailedPaymentAttempts() + 1);
+                    subscriptionRepository.save(subscription);
+                    continue;
+                }
+
+                // Create payment record
+                Payment payment = Payment.builder()
+                    .churchId(subscription.getChurchId())
+                    .plan(subscription.getPlan())
+                    .amount(subscription.getPlan().getPrice())
+                    .currency("USD")
+                    .status("PENDING")
+                    .paystackReference("RENEWAL-" + UUID.randomUUID())
+                    .paymentType("SUBSCRIPTION")
+                    .description("Monthly renewal - " + subscription.getPlan().getDisplayName())
+                    .build();
+                paymentRepository.save(payment);
+
+                // Charge using stored authorization code
+                JsonNode result = paystackService.chargeAuthorization(
+                    authCode,
+                    subscription.getPlan().getPrice(),
+                    email,
+                    payment.getPaystackReference()
+                );
+
+                // Check result
+                if (result.get("status").asBoolean()) {
+                    // Success: Update subscription
+                    payment.markAsSuccessful();
+                    payment.setPaystackTransactionId(result.get("data").get("reference").asText());
+                    paymentRepository.save(payment);
+
+                    subscription.setNextBillingDate(LocalDate.now().plusMonths(1));
+                    subscription.setCurrentPeriodStart(LocalDate.now());
+                    subscription.setCurrentPeriodEnd(LocalDate.now().plusMonths(1));
+                    subscription.setFailedPaymentAttempts(0);
+                    subscriptionRepository.save(subscription);
+
+                    log.info("Subscription renewed successfully for church {}", subscription.getChurchId());
+                } else {
+                    // Failure: Mark as PAST_DUE
+                    String errorMsg = result.has("message") ? result.get("message").asText() : "Charge failed";
+                    payment.markAsFailed(errorMsg);
+                    paymentRepository.save(payment);
+
+                    subscription.setStatus("PAST_DUE");
+                    subscription.setFailedPaymentAttempts(subscription.getFailedPaymentAttempts() + 1);
+                    subscriptionRepository.save(subscription);
+
+                    log.warn("Renewal failed for church {}: {}", subscription.getChurchId(), errorMsg);
+                }
             } catch (Exception e) {
                 log.error("Error processing renewal for church {}", subscription.getChurchId(), e);
             }
@@ -398,28 +452,18 @@ public class BillingService {
      * If church has free months remaining, skip charging and use credit instead.
      *
      * @param subscription Subscription to renew
-     * @return true if charged successfully or credit used, false if charge failed
      */
-    private boolean processRenewalWithPromoCredits(ChurchSubscription subscription) {
-        // Check if church has promotional credits
-        if (subscription.hasPromotionalCredits()) {
-            // Use promotional credit instead of charging
-            subscription.usePromotionalCredit();
-            subscription.setNextBillingDate(LocalDate.now().plusMonths(1));
-            subscription.setCurrentPeriodStart(LocalDate.now());
-            subscription.setCurrentPeriodEnd(LocalDate.now().plusMonths(1));
-            subscription.setFailedPaymentAttempts(0);
-            subscriptionRepository.save(subscription);
+    private void processRenewalWithPromoCredits(ChurchSubscription subscription) {
+        // Use promotional credit instead of charging
+        subscription.usePromotionalCredit();
+        subscription.setNextBillingDate(LocalDate.now().plusMonths(1));
+        subscription.setCurrentPeriodStart(LocalDate.now());
+        subscription.setCurrentPeriodEnd(LocalDate.now().plusMonths(1));
+        subscription.setFailedPaymentAttempts(0);
+        subscriptionRepository.save(subscription);
 
-            log.info("Used promotional credit for church {}. {} free month(s) remaining",
-                subscription.getChurchId(), subscription.getFreeMonthsRemaining());
-
-            return true;
-        }
-
-        // No promotional credits, proceed with normal charging
-        // TODO: Implement actual Paystack charge
-        return false;
+        log.info("Used promotional credit for church {}. {} free month(s) remaining",
+            subscription.getChurchId(), subscription.getFreeMonthsRemaining());
     }
 
     /**
@@ -438,6 +482,18 @@ public class BillingService {
         subscriptionRepository.save(subscription);
 
         log.info("Revoked {} free month(s) from church {}. Reason: {}", revokedMonths, churchId, reason);
+    }
+
+    /**
+     * Get church email for billing purposes.
+     *
+     * @param churchId Church ID
+     * @return Church email address
+     */
+    private String getChurchEmail(Long churchId) {
+        return churchRepository.findById(churchId)
+            .map(church -> church.getEmail())
+            .orElse(null);
     }
 
     /**
@@ -479,9 +535,9 @@ public class BillingService {
     @lombok.Builder
     public static class SubscriptionStats {
         private long activeSubscriptions;
-        private long trialingSubscriptions;
         private long canceledSubscriptions;
         private long pastDueSubscriptions;
+        private long suspendedSubscriptions;
         private BigDecimal totalRevenue;
         private long successfulPayments;
         private long failedPayments;

@@ -36,11 +36,6 @@ public interface ChurchSubscriptionRepository extends JpaRepository<ChurchSubscr
     List<ChurchSubscription> findByStatus(String status);
 
     /**
-     * Find all trialing subscriptions.
-     */
-    List<ChurchSubscription> findByStatusAndTrialEndDateBefore(String status, LocalDate date);
-
-    /**
      * Find all subscriptions due for billing.
      */
     List<ChurchSubscription> findByNextBillingDateBeforeAndAutoRenewTrue(LocalDate date);
@@ -56,8 +51,8 @@ public interface ChurchSubscriptionRepository extends JpaRepository<ChurchSubscr
     long countByStatus(String status);
 
     /**
-     * Count active subscriptions (TRIALING or ACTIVE).
+     * Count active subscriptions (ACTIVE only).
      */
-    @Query("SELECT COUNT(cs) FROM ChurchSubscription cs WHERE cs.status IN ('TRIALING', 'ACTIVE')")
+    @Query("SELECT COUNT(cs) FROM ChurchSubscription cs WHERE cs.status = 'ACTIVE'")
     long countActiveSubscriptions();
 }

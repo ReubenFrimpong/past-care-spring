@@ -46,17 +46,11 @@ public class ChurchSubscription {
     private SubscriptionPlan plan;
 
     /**
-     * Subscription status: TRIALING, ACTIVE, PAST_DUE, CANCELED, SUSPENDED
+     * Subscription status: ACTIVE, PAST_DUE, CANCELED, SUSPENDED
      */
     @Column(name = "status", nullable = false, length = 20)
     @Builder.Default
-    private String status = "TRIALING";
-
-    /**
-     * Trial end date (typically 14 or 30 days from registration)
-     */
-    @Column(name = "trial_end_date")
-    private LocalDate trialEndDate;
+    private String status = "ACTIVE";
 
     /**
      * Next billing date
@@ -200,19 +194,10 @@ public class ChurchSubscription {
     }
 
     /**
-     * Check if subscription is active (trialing or active status)
+     * Check if subscription is active
      */
     public boolean isActive() {
-        return "TRIALING".equals(status) || "ACTIVE".equals(status);
-    }
-
-    /**
-     * Check if subscription is in trial period
-     */
-    public boolean isTrialing() {
-        return "TRIALING".equals(status) &&
-               trialEndDate != null &&
-               LocalDate.now().isBefore(trialEndDate);
+        return "ACTIVE".equals(status);
     }
 
     /**
@@ -253,14 +238,6 @@ public class ChurchSubscription {
     public boolean shouldSuspend() {
         if (!isPastDue()) return false;
         return !isInGracePeriod();
-    }
-
-    /**
-     * Get days remaining in trial
-     */
-    public long getDaysRemainingInTrial() {
-        if (!isTrialing()) return 0;
-        return java.time.temporal.ChronoUnit.DAYS.between(LocalDate.now(), trialEndDate);
     }
 
     /**

@@ -3,6 +3,7 @@ package com.reuben.pastcare_spring.config;
 import com.reuben.pastcare_spring.models.Church;
 import com.reuben.pastcare_spring.repositories.ChurchRepository;
 import com.reuben.pastcare_spring.services.EventReminderService;
+import com.reuben.pastcare_spring.services.BillingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -12,7 +13,7 @@ import java.util.List;
 
 /**
  * Scheduled tasks for automated background jobs
- * Handles event reminders, notifications, and other recurring tasks
+ * Handles event reminders, notifications, billing renewals, and other recurring tasks
  */
 @Component
 @RequiredArgsConstructor
@@ -21,6 +22,7 @@ public class ScheduledTasks {
 
     private final EventReminderService eventReminderService;
     private final ChurchRepository churchRepository;
+    private final BillingService billingService;
 
     /**
      * Send event reminders daily at 9:00 AM
@@ -91,5 +93,38 @@ public class ScheduledTasks {
         // Lightweight health check
         long activeChurches = churchRepository.count();
         log.debug("Hourly health check - Active churches: {}", activeChurches);
+    }
+
+    /**
+     * Process subscription renewals daily at 2:00 AM
+     * Charges subscriptions that are due for renewal
+     * Uses promotional credits first if available, otherwise charges via Paystack
+     */
+    @Scheduled(cron = "0 0 2 * * *", zone = "UTC")
+    public void processSubscriptionRenewals() {
+        log.info("Starting subscription renewal job...");
+
+        try {
+            billingService.processSubscriptionRenewals();
+            log.info("Subscription renewal job completed successfully");
+        } catch (Exception e) {
+            log.error("Error in subscription renewal job: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Suspend past-due subscriptions daily at 3:00 AM
+     * Suspends subscriptions that have exceeded their grace period (7 days)
+     */
+    @Scheduled(cron = "0 0 3 * * *", zone = "UTC")
+    public void suspendPastDueSubscriptions() {
+        log.info("Starting past-due subscription suspension job...");
+
+        try {
+            billingService.suspendPastDueSubscriptions();
+            log.info("Past-due subscription suspension job completed successfully");
+        } catch (Exception e) {
+            log.error("Error in suspension job: {}", e.getMessage(), e);
+        }
     }
 }

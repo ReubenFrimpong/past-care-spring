@@ -180,7 +180,6 @@ public class BillingController {
 
         SubscriptionStatusResponse response = SubscriptionStatusResponse.builder()
             .isActive(subscription.isActive())
-            .isTrialing(subscription.isTrialing())
             .isPastDue(subscription.isPastDue())
             .isCanceled(subscription.isCanceled())
             .isSuspended(subscription.isSuspended())
@@ -188,7 +187,6 @@ public class BillingController {
             .planName(subscription.getPlan().getName())
             .planDisplayName(subscription.getPlan().getDisplayName())
             .status(subscription.getStatus())
-            .trialEndDate(subscription.getTrialEndDate())
             .nextBillingDate(subscription.getNextBillingDate())
             .currentPeriodEnd(subscription.getCurrentPeriodEnd())
             .build();
@@ -313,7 +311,6 @@ public class BillingController {
     @lombok.Builder
     public static class SubscriptionStatusResponse {
         private boolean isActive;
-        private boolean isTrialing;
         private boolean isPastDue;
         private boolean isCanceled;
         private boolean isSuspended;
@@ -321,7 +318,6 @@ public class BillingController {
         private String planName;
         private String planDisplayName;
         private String status;
-        private java.time.LocalDate trialEndDate;
         private java.time.LocalDate nextBillingDate;
         private java.time.LocalDate currentPeriodEnd;
     }
