@@ -338,6 +338,12 @@ public class BillingService {
 
         for (ChurchSubscription subscription : dueForRenewal) {
             try {
+                // Check if church has promotional credits first
+                if (subscription.hasPromotionalCredits()) {
+                    processRenewalWithPromoCredits(subscription);
+                    continue;
+                }
+
                 // TODO: Charge using stored authorization code
                 // For now, mark as PAST_DUE and send reminder
                 subscription.setStatus("PAST_DUE");
@@ -367,6 +373,103 @@ public class BillingService {
                 log.warn("Subscription suspended for church {} due to non-payment", subscription.getChurchId());
             }
         }
+    }
+
+    /**
+     * Grant promotional credits (free months) to a church.
+     *
+     * @param churchId Church ID to grant credits to
+     * @param months Number of free months to grant
+     * @param note Reason for granting (e.g., "Holiday promotion", "Referral bonus")
+     * @param grantedBy User ID who is granting the credit
+     */
+    @Transactional
+    public void grantPromotionalCredits(Long churchId, int months, String note, Long grantedBy) {
+        ChurchSubscription subscription = getChurchSubscription(churchId);
+
+        subscription.grantPromotionalCredits(months, note, grantedBy);
+        subscriptionRepository.save(subscription);
+
+        log.info("Granted {} free month(s) to church {}. Reason: {}", months, churchId, note);
+    }
+
+    /**
+     * Process renewal with promotional credits consideration.
+     * If church has free months remaining, skip charging and use credit instead.
+     *
+     * @param subscription Subscription to renew
+     * @return true if charged successfully or credit used, false if charge failed
+     */
+    private boolean processRenewalWithPromoCredits(ChurchSubscription subscription) {
+        // Check if church has promotional credits
+        if (subscription.hasPromotionalCredits()) {
+            // Use promotional credit instead of charging
+            subscription.usePromotionalCredit();
+            subscription.setNextBillingDate(LocalDate.now().plusMonths(1));
+            subscription.setCurrentPeriodStart(LocalDate.now());
+            subscription.setCurrentPeriodEnd(LocalDate.now().plusMonths(1));
+            subscription.setFailedPaymentAttempts(0);
+            subscriptionRepository.save(subscription);
+
+            log.info("Used promotional credit for church {}. {} free month(s) remaining",
+                subscription.getChurchId(), subscription.getFreeMonthsRemaining());
+
+            return true;
+        }
+
+        // No promotional credits, proceed with normal charging
+        // TODO: Implement actual Paystack charge
+        return false;
+    }
+
+    /**
+     * Revoke remaining promotional credits from a church.
+     *
+     * @param churchId Church ID to revoke credits from
+     * @param reason Reason for revoking
+     */
+    @Transactional
+    public void revokePromotionalCredits(Long churchId, String reason) {
+        ChurchSubscription subscription = getChurchSubscription(churchId);
+
+        int revokedMonths = subscription.getFreeMonthsRemaining();
+        subscription.setFreeMonthsRemaining(0);
+        subscription.setPromotionalNote(reason);
+        subscriptionRepository.save(subscription);
+
+        log.info("Revoked {} free month(s) from church {}. Reason: {}", revokedMonths, churchId, reason);
+    }
+
+    /**
+     * Get subscription with promotional credit details.
+     *
+     * @param churchId Church ID
+     * @return Subscription with promotional credit info
+     */
+    @Transactional(readOnly = true)
+    public PromotionalCreditInfo getPromotionalCreditInfo(Long churchId) {
+        ChurchSubscription subscription = getChurchSubscription(churchId);
+
+        return PromotionalCreditInfo.builder()
+            .hasCredits(subscription.hasPromotionalCredits())
+            .freeMonthsRemaining(subscription.getFreeMonthsRemaining())
+            .promotionalNote(subscription.getPromotionalNote())
+            .promotionalGrantedBy(subscription.getPromotionalGrantedBy())
+            .promotionalGrantedAt(subscription.getPromotionalGrantedAt())
+            .build();
+    }
+
+    /**
+     * Promotional credit info DTO.
+     */
+    @lombok.Data
+    @lombok.Builder
+    public static class PromotionalCreditInfo {
+        private boolean hasCredits;
+        private Integer freeMonthsRemaining;
+        private String promotionalNote;
+        private Long promotionalGrantedBy;
+        private LocalDateTime promotionalGrantedAt;
     }
 
     /**

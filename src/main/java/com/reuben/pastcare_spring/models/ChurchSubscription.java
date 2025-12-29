@@ -152,6 +152,31 @@ public class ChurchSubscription {
     private Integer failedPaymentAttempts = 0;
 
     /**
+     * Number of free months remaining (promotional credit)
+     */
+    @Column(name = "free_months_remaining")
+    @Builder.Default
+    private Integer freeMonthsRemaining = 0;
+
+    /**
+     * Note about the promotional credit (e.g., "Holiday promotion", "Referral bonus")
+     */
+    @Column(name = "promotional_note", length = 255)
+    private String promotionalNote;
+
+    /**
+     * User ID who granted the promotional credit
+     */
+    @Column(name = "promotional_granted_by")
+    private Long promotionalGrantedBy;
+
+    /**
+     * When the promotional credit was granted
+     */
+    @Column(name = "promotional_granted_at")
+    private LocalDateTime promotionalGrantedAt;
+
+    /**
      * When subscription was created
      */
     @Column(name = "created_at", nullable = false)
@@ -244,5 +269,31 @@ public class ChurchSubscription {
     public long getDaysUntilNextBilling() {
         if (nextBillingDate == null) return 0;
         return java.time.temporal.ChronoUnit.DAYS.between(LocalDate.now(), nextBillingDate);
+    }
+
+    /**
+     * Check if subscription has promotional credits (free months)
+     */
+    public boolean hasPromotionalCredits() {
+        return freeMonthsRemaining != null && freeMonthsRemaining > 0;
+    }
+
+    /**
+     * Use one promotional credit (decrement free months)
+     */
+    public void usePromotionalCredit() {
+        if (hasPromotionalCredits()) {
+            freeMonthsRemaining--;
+        }
+    }
+
+    /**
+     * Grant promotional credits (free months)
+     */
+    public void grantPromotionalCredits(int months, String note, Long grantedBy) {
+        this.freeMonthsRemaining = (this.freeMonthsRemaining == null ? 0 : this.freeMonthsRemaining) + months;
+        this.promotionalNote = note;
+        this.promotionalGrantedBy = grantedBy;
+        this.promotionalGrantedAt = LocalDateTime.now();
     }
 }

@@ -208,6 +208,76 @@ public class BillingController {
     }
 
     /**
+     * Grant promotional credits (free months) to a church (SUPERADMIN only).
+     */
+    @PostMapping("/promotional-credits/grant")
+    @Operation(summary = "Grant promotional credits to a church (SUPERADMIN only)")
+    @RequirePermission(Permission.PLATFORM_ACCESS)
+    public ResponseEntity<Map<String, String>> grantPromotionalCredits(
+            @RequestBody GrantPromotionalCreditsRequest request) {
+
+        Long grantedBy = TenantContext.getCurrentUserId();
+
+        billingService.grantPromotionalCredits(
+            request.getChurchId(),
+            request.getMonths(),
+            request.getNote(),
+            grantedBy
+        );
+
+        log.info("SUPERADMIN granted {} free month(s) to church {}",
+            request.getMonths(), request.getChurchId());
+
+        return ResponseEntity.ok(Map.of(
+            "message", String.format("Granted %d free month(s) to church %d",
+                request.getMonths(), request.getChurchId())
+        ));
+    }
+
+    /**
+     * Revoke promotional credits from a church (SUPERADMIN only).
+     */
+    @PostMapping("/promotional-credits/revoke")
+    @Operation(summary = "Revoke promotional credits from a church (SUPERADMIN only)")
+    @RequirePermission(Permission.PLATFORM_ACCESS)
+    public ResponseEntity<Map<String, String>> revokePromotionalCredits(
+            @RequestBody RevokePromotionalCreditsRequest request) {
+
+        billingService.revokePromotionalCredits(
+            request.getChurchId(),
+            request.getReason()
+        );
+
+        log.info("SUPERADMIN revoked promotional credits from church {}", request.getChurchId());
+
+        return ResponseEntity.ok(Map.of("message", "Promotional credits revoked successfully"));
+    }
+
+    /**
+     * Get promotional credit info for current church.
+     */
+    @GetMapping("/promotional-credits")
+    @Operation(summary = "Get promotional credit info")
+    @RequirePermission(Permission.SUBSCRIPTION_VIEW)
+    public ResponseEntity<BillingService.PromotionalCreditInfo> getPromotionalCreditInfo() {
+        Long churchId = TenantContext.getCurrentChurchId();
+        BillingService.PromotionalCreditInfo info = billingService.getPromotionalCreditInfo(churchId);
+        return ResponseEntity.ok(info);
+    }
+
+    /**
+     * Get promotional credit info for specific church (SUPERADMIN only).
+     */
+    @GetMapping("/promotional-credits/{churchId}")
+    @Operation(summary = "Get promotional credit info for specific church (SUPERADMIN only)")
+    @RequirePermission(Permission.PLATFORM_ACCESS)
+    public ResponseEntity<BillingService.PromotionalCreditInfo> getPromotionalCreditInfoForChurch(
+            @PathVariable Long churchId) {
+        BillingService.PromotionalCreditInfo info = billingService.getPromotionalCreditInfo(churchId);
+        return ResponseEntity.ok(info);
+    }
+
+    /**
      * Request DTO for subscription upgrade.
      */
     @lombok.Data
@@ -215,6 +285,25 @@ public class BillingController {
         private Long planId;
         private String email;
         private String callbackUrl;
+    }
+
+    /**
+     * Request DTO for granting promotional credits.
+     */
+    @lombok.Data
+    public static class GrantPromotionalCreditsRequest {
+        private Long churchId;
+        private int months;
+        private String note;
+    }
+
+    /**
+     * Request DTO for revoking promotional credits.
+     */
+    @lombok.Data
+    public static class RevokePromotionalCreditsRequest {
+        private Long churchId;
+        private String reason;
     }
 
     /**
