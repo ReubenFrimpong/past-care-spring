@@ -18,9 +18,11 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import com.reuben.pastcare_spring.dtos.ErrorResponse;
 import com.reuben.pastcare_spring.exceptions.AccountLockedException;
+import com.reuben.pastcare_spring.exceptions.AddonAlreadyPurchasedException;
 import com.reuben.pastcare_spring.exceptions.DuplicateChurchException;
 import com.reuben.pastcare_spring.exceptions.DuplicateResourceException;
 import com.reuben.pastcare_spring.exceptions.DuplicateUserException;
@@ -28,6 +30,8 @@ import com.reuben.pastcare_spring.exceptions.FileUploadException;
 import com.reuben.pastcare_spring.exceptions.InsufficientPermissionException;
 import com.reuben.pastcare_spring.exceptions.InvalidCredentialsException;
 import com.reuben.pastcare_spring.exceptions.ResourceNotFoundException;
+import com.reuben.pastcare_spring.exceptions.StorageLimitExceededException;
+import com.reuben.pastcare_spring.exceptions.SubscriptionRequiredForAddonException;
 import com.reuben.pastcare_spring.exceptions.TenantViolationException;
 import com.reuben.pastcare_spring.exceptions.TooManyRequestsException;
 import com.reuben.pastcare_spring.exceptions.UnauthorizedException;
@@ -310,6 +314,184 @@ public class GlobalExceptionHandler {
     );
 
     return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+  }
+
+  /**
+   * Handle storage limit exceeded exception (HTTP 413 Payload Too Large).
+   *
+   * <p>Triggered when:
+   * <ul>
+   *   <li>File upload would exceed church's storage limit</li>
+   *   <li>Member creation exceeds storage quota</li>
+   * </ul>
+   *
+   * <p>Response includes:
+   * <ul>
+   *   <li>Current usage in MB</li>
+   *   <li>Storage limit in MB</li>
+   *   <li>File size that was attempted</li>
+   *   <li>Percentage used</li>
+   *   <li>Suggested action (purchase addon or delete files)</li>
+   * </ul>
+   */
+  @ExceptionHandler(StorageLimitExceededException.class)
+  public ResponseEntity<Map<String, Object>> handleStorageLimitExceededException(
+      StorageLimitExceededException exp,
+      WebRequest request) {
+    logger.warn("Storage limit exceeded for request {}: Current: {:.2f} MB, Limit: {} MB, Attempted file: {:.2f} MB ({:.1f}% used)",
+        request.getDescription(false),
+        exp.getCurrentUsageMb(),
+        exp.getLimitMb(),
+        exp.getFileSizeMb(),
+        exp.getPercentageUsed());
+
+    Map<String, Object> errorResponse = new HashMap<>();
+    errorResponse.put("status", HttpStatus.PAYLOAD_TOO_LARGE.value());
+    errorResponse.put("error", "STORAGE_LIMIT_EXCEEDED");
+    errorResponse.put("title", "Storage Limit Exceeded");
+    errorResponse.put("message", exp.getUserFriendlyMessage());
+    errorResponse.put("path", request.getDescription(false).replace("uri=", ""));
+
+    // Include detailed metrics for client-side display
+    Map<String, Object> details = new HashMap<>();
+    details.put("currentUsageMb", exp.getCurrentUsageMb());
+    details.put("limitMb", exp.getLimitMb());
+    details.put("fileSizeMb", exp.getFileSizeMb());
+    details.put("newTotalMb", exp.getNewTotalMb());
+    details.put("percentageUsed", exp.getPercentageUsed());
+    details.put("suggestedAction", "Purchase additional storage or delete unused files");
+    errorResponse.put("details", details);
+
+    return new ResponseEntity<>(errorResponse, HttpStatus.PAYLOAD_TOO_LARGE);
+  }
+
+  /**
+   * Handle addon already purchased exception (HTTP 409 Conflict).
+   *
+   * <p>Triggered when church attempts to purchase an addon they already have active.
+   *
+   * <p>Frontend should:
+   * <ul>
+   *   <li>Display message that addon is already active</li>
+   *   <li>Suggest canceling existing addon first if they want to change</li>
+   *   <li>Show addon details (expiry date, storage capacity)</li>
+   * </ul>
+   */
+  @ExceptionHandler(AddonAlreadyPurchasedException.class)
+  public ResponseEntity<ErrorResponse> handleAddonAlreadyPurchasedException(
+      AddonAlreadyPurchasedException exp,
+      WebRequest request) {
+    logger.warn("Addon already purchased for request {}: {}",
+        request.getDescription(false), exp.getMessage());
+
+    ErrorResponse errorResponse = new ErrorResponse(
+        HttpStatus.CONFLICT.value(),
+        "Addon Already Active",
+        exp.getMessage(),
+        request.getDescription(false).replace("uri=", "")
+    );
+
+    return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
+  }
+
+  /**
+   * Handle subscription required for addon exception (HTTP 402 Payment Required).
+   *
+   * <p>Triggered when church tries to purchase addon without active subscription.
+   *
+   * <p>Frontend should:
+   * <ul>
+   *   <li>Redirect to subscription activation page</li>
+   *   <li>Show message that base subscription is required first</li>
+   *   <li>Display subscription plans</li>
+   * </ul>
+   */
+  @ExceptionHandler(SubscriptionRequiredForAddonException.class)
+  public ResponseEntity<ErrorResponse> handleSubscriptionRequiredForAddonException(
+      SubscriptionRequiredForAddonException exp,
+      WebRequest request) {
+    logger.warn("Subscription required for addon purchase: {}",
+        request.getDescription(false));
+
+    ErrorResponse errorResponse = new ErrorResponse(
+        HttpStatus.PAYMENT_REQUIRED.value(),
+        "Subscription Required",
+        exp.getMessage(),
+        request.getDescription(false).replace("uri=", "")
+    );
+
+    return new ResponseEntity<>(errorResponse, HttpStatus.PAYMENT_REQUIRED);
+  }
+
+  @ExceptionHandler(DataIntegrityViolationException.class)
+  public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(
+      DataIntegrityViolationException exp,
+      WebRequest request) {
+    logger.warn("Database constraint violation for request {}: {}",
+        request.getDescription(false), exp.getMessage());
+
+    String userMessage = "Unable to complete the operation due to a data conflict.";
+    String errorTitle = "Data Conflict";
+
+    // Extract the root cause message
+    String rootMessage = exp.getMostSpecificCause().getMessage();
+
+    // Check for common constraint violations and provide user-friendly messages
+    if (rootMessage != null) {
+      String lowerMessage = rootMessage.toLowerCase();
+
+      // Email unique constraint violation
+      if (lowerMessage.contains("duplicate") && lowerMessage.contains("email")) {
+        userMessage = "This email address is already registered. Please use a different email or try logging in.";
+        errorTitle = "Email Already Registered";
+      }
+      // Church name unique constraint violation
+      else if (lowerMessage.contains("duplicate") && lowerMessage.contains("church") && lowerMessage.contains("name")) {
+        userMessage = "A church with this name already exists. Please choose a different name.";
+        errorTitle = "Church Name Already Exists";
+      }
+      // Phone number unique constraint violation
+      else if (lowerMessage.contains("duplicate") && lowerMessage.contains("phone")) {
+        userMessage = "This phone number is already registered. Please use a different phone number.";
+        errorTitle = "Phone Number Already Registered";
+      }
+      // Partnership code unique constraint violation
+      else if (lowerMessage.contains("duplicate") && lowerMessage.contains("code")) {
+        userMessage = "This code already exists. Please use a different code.";
+        errorTitle = "Duplicate Code";
+      }
+      // Primary key constraint violation (unusual case - likely a system issue)
+      else if (lowerMessage.contains("primary") || lowerMessage.contains("pk_")) {
+        userMessage = "A system error occurred. Please try again. If the problem persists, contact support.";
+        errorTitle = "System Error";
+        logger.error("PRIMARY KEY constraint violation - possible data corruption or ID generation issue: {}",
+            rootMessage);
+      }
+      // Foreign key constraint violation
+      else if (lowerMessage.contains("foreign key") || lowerMessage.contains("fk_")) {
+        userMessage = "This operation cannot be completed because the referenced data does not exist or has been deleted.";
+        errorTitle = "Invalid Reference";
+      }
+      // Not null constraint violation
+      else if (lowerMessage.contains("null") && lowerMessage.contains("not")) {
+        userMessage = "Required information is missing. Please fill in all required fields.";
+        errorTitle = "Missing Required Information";
+      }
+      // Generic duplicate entry
+      else if (lowerMessage.contains("duplicate entry") || lowerMessage.contains("duplicate key")) {
+        userMessage = "This information already exists in the system. Please check your input and try again.";
+        errorTitle = "Duplicate Entry";
+      }
+    }
+
+    ErrorResponse errorResponse = new ErrorResponse(
+        HttpStatus.CONFLICT.value(),
+        errorTitle,
+        userMessage,
+        request.getDescription(false).replace("uri=", "")
+    );
+
+    return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
   }
 
   @ExceptionHandler(Exception.class)

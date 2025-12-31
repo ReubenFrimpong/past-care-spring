@@ -41,6 +41,8 @@ public class PaystackWebhookController {
     private final ChurchRepository churchRepository;
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
+    private final com.reuben.pastcare_spring.services.BillingService billingService;
+    private final com.reuben.pastcare_spring.services.StorageAddonBillingService storageAddonBillingService;
 
     @Value("${paystack.secret-key:}")
     private String paystackSecretKey;
@@ -49,18 +51,23 @@ public class PaystackWebhookController {
         ChurchSmsCreditService churchSmsCreditService,
         ChurchRepository churchRepository,
         UserRepository userRepository,
-        ObjectMapper objectMapper
+        ObjectMapper objectMapper,
+        com.reuben.pastcare_spring.services.BillingService billingService,
+        com.reuben.pastcare_spring.services.StorageAddonBillingService storageAddonBillingService
     ) {
         this.churchSmsCreditService = churchSmsCreditService;
         this.churchRepository = churchRepository;
         this.userRepository = userRepository;
         this.objectMapper = objectMapper;
+        this.billingService = billingService;
+        this.storageAddonBillingService = storageAddonBillingService;
     }
 
     /**
-     * Paystack webhook endpoint for payment events
+     * Paystack webhook endpoint for payment events.
+     * This endpoint is called by Paystack servers and MUST NOT require authentication.
+     * Security is ensured through webhook signature verification.
      */
-    @RequirePermission(Permission.DONATION_VIEW_ALL)
     @PostMapping("/events")
     public ResponseEntity<String> handlePaystackWebhook(
             @RequestBody String payload,
@@ -110,12 +117,29 @@ public class PaystackWebhookController {
                 return ResponseEntity.ok("No metadata - ignoring");
             }
 
+            // Route based on reference prefix
+            if (reference.startsWith("SUB-")) {
+                return handleSubscriptionPayment(reference, data);
+            }
+
+            if (reference.startsWith("ADDON-")) {
+                return handleAddonPayment(reference, data);
+            }
+
+            if (reference.startsWith("RENEWAL-")) {
+                // Renewal payments are already processed by BillingService scheduled job
+                // Just log and acknowledge
+                log.info("Renewal payment webhook received: {}", reference);
+                return ResponseEntity.ok("Renewal acknowledged");
+            }
+
+            // Otherwise, handle as SMS credits purchase
             Long churchId = metadata.has("church_id") ? metadata.get("church_id").asLong() : null;
             Long userId = metadata.has("user_id") ? metadata.get("user_id").asLong() : null;
             String creditAmountStr = metadata.has("credit_amount") ? metadata.get("credit_amount").asText() : null;
 
             if (churchId == null || creditAmountStr == null) {
-                log.warn("Missing required metadata fields");
+                log.warn("Missing required metadata fields for SMS purchase");
                 return ResponseEntity.ok("Incomplete metadata - ignoring");
             }
 
@@ -139,6 +163,48 @@ public class PaystackWebhookController {
         } catch (Exception e) {
             log.error("Error handling Paystack charge.success: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error processing charge");
+        }
+    }
+
+    /**
+     * Handle subscription payment webhook.
+     * This is called when a subscription payment succeeds.
+     */
+    private ResponseEntity<String> handleSubscriptionPayment(String reference, JsonNode data) {
+        try {
+            log.info("Processing subscription payment via webhook: {}", reference);
+
+            // Use the existing billing service to activate subscription
+            billingService.verifyAndActivateSubscription(reference);
+
+            log.info("Subscription activated successfully via webhook: {}", reference);
+            return ResponseEntity.ok("Subscription activated");
+
+        } catch (Exception e) {
+            log.error("Error activating subscription via webhook: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Error activating subscription: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Handle storage addon payment webhook.
+     * This is called when an addon purchase payment succeeds.
+     */
+    private ResponseEntity<String> handleAddonPayment(String reference, JsonNode data) {
+        try {
+            log.info("Processing storage addon payment via webhook: {}", reference);
+
+            // Verify payment and activate addon
+            storageAddonBillingService.verifyAndActivateAddon(reference);
+
+            log.info("Storage addon activated successfully via webhook: {}", reference);
+            return ResponseEntity.ok("Addon activated");
+
+        } catch (Exception e) {
+            log.error("Error activating addon via webhook: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Error activating addon: " + e.getMessage());
         }
     }
 
@@ -195,7 +261,6 @@ public class PaystackWebhookController {
         }
     }
 
-    @RequirePermission(Permission.DONATION_VIEW_ALL)
     @GetMapping("/health")
     public ResponseEntity<String> healthCheck() {
         boolean configured = paystackSecretKey != null && !paystackSecretKey.isEmpty();
