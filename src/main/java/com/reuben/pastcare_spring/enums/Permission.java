@@ -430,14 +430,24 @@ public enum Permission {
     PLATFORM_MANAGE_CHURCHES,
 
     /**
-     * Manage billing and subscriptions for all churches
+     * View billing and subscription information (church-level)
+     */
+    BILLING_VIEW,
+
+    /**
+     * Manage billing and subscriptions for all churches (platform-level)
      */
     BILLING_MANAGE,
 
     /**
      * Configure system-wide settings
      */
-    SYSTEM_CONFIG;
+    SYSTEM_CONFIG,
+
+    /**
+     * Full superadmin access to all platform features
+     */
+    SUPERADMIN_ACCESS;
 
     /**
      * Get display name for permission (for UI)

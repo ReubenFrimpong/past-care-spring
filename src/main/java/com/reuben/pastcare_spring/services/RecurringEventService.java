@@ -9,6 +9,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.reuben.pastcare_spring.dtos.AttendanceSessionResponse;
 import com.reuben.pastcare_spring.dtos.EventRequest;
 import com.reuben.pastcare_spring.dtos.EventResponse;
 import com.reuben.pastcare_spring.models.Event;
@@ -29,6 +30,7 @@ public class RecurringEventService {
 
     private final EventRepository eventRepository;
     private final EventService eventService;
+    private final EventAttendanceService eventAttendanceService;
 
     /**
      * Generate recurring event instances from a parent event
@@ -85,6 +87,20 @@ public class RecurringEventService {
         }
 
         log.info("Generated {} recurring instances for event {}", instances.size(), parentEventId);
+
+        // Auto-generate attendance sessions if this is a service-type event
+        try {
+            if (eventAttendanceService.shouldEnableAttendanceTracking(parentEvent)) {
+                List<AttendanceSessionResponse> attendanceSessions =
+                    eventAttendanceService.generateAttendanceSessionsForRecurringEvent(parentEventId);
+                log.info("Auto-generated {} attendance sessions for recurring event {}",
+                    attendanceSessions.size(), parentEventId);
+            }
+        } catch (Exception e) {
+            log.error("Failed to auto-generate attendance sessions: {}", e.getMessage());
+            // Don't fail the whole operation if attendance generation fails
+        }
+
         return instances;
     }
 

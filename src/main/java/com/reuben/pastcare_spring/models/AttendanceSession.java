@@ -35,6 +35,10 @@ public class AttendanceSession extends TenantBaseEntity {
   @JoinColumn(name = "fellowship_id")
   private Fellowship fellowship;
 
+  @ManyToOne
+  @JoinColumn(name = "event_id")
+  private Event event;
+
   @Column(columnDefinition = "TEXT")
   private String notes;
 

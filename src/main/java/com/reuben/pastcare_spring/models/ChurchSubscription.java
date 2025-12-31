@@ -125,6 +125,20 @@ public class ChurchSubscription {
     private String cardBrand;
 
     /**
+     * Billing period: MONTHLY, QUARTERLY (3 months), BIANNUAL (6 months), YEARLY
+     */
+    @Column(name = "billing_period", length = 20)
+    @Builder.Default
+    private String billingPeriod = "MONTHLY";
+
+    /**
+     * Number of months in the billing period (1, 3, 6, or 12)
+     */
+    @Column(name = "billing_period_months")
+    @Builder.Default
+    private Integer billingPeriodMonths = 1;
+
+    /**
      * Auto-renew enabled (default true)
      */
     @Column(name = "auto_renew", nullable = false)
@@ -132,11 +146,12 @@ public class ChurchSubscription {
     private Boolean autoRenew = true;
 
     /**
-     * Grace period days after payment failure (default 7)
+     * Grace period days after payment failure (default 0 - no automatic grace period)
+     * Grace period must be explicitly granted by SUPERADMIN
      */
     @Column(name = "grace_period_days")
     @Builder.Default
-    private Integer gracePeriodDays = 7;
+    private Integer gracePeriodDays = 0;
 
     /**
      * Number of failed payment attempts
@@ -181,6 +196,38 @@ public class ChurchSubscription {
      */
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    /**
+     * Timestamp when subscription was suspended (triggers 30-day deletion countdown)
+     */
+    @Column(name = "suspended_at")
+    private LocalDateTime suspendedAt;
+
+    /**
+     * Date when church data will be permanently deleted
+     * Calculated as: suspended_at + 30 days + retention_extension_days
+     */
+    @Column(name = "data_retention_end_date")
+    private LocalDate dataRetentionEndDate;
+
+    /**
+     * Number of days SUPERADMIN has extended the retention period beyond 30 days
+     */
+    @Column(name = "retention_extension_days")
+    @Builder.Default
+    private Integer retentionExtensionDays = 0;
+
+    /**
+     * Timestamp when the 7-day deletion warning email was sent
+     */
+    @Column(name = "deletion_warning_sent_at")
+    private LocalDateTime deletionWarningSentAt;
+
+    /**
+     * SUPERADMIN note explaining why retention period was extended
+     */
+    @Column(name = "retention_extension_note", length = 500)
+    private String retentionExtensionNote;
 
     @PrePersist
     protected void onCreate() {
@@ -272,5 +319,96 @@ public class ChurchSubscription {
         this.promotionalNote = note;
         this.promotionalGrantedBy = grantedBy;
         this.promotionalGrantedAt = LocalDateTime.now();
+    }
+
+    // ==================== DATA RETENTION METHODS ====================
+
+    /**
+     * Calculate data deletion date: suspension date + 90 days + extension days
+     * Returns null if subscription is not suspended
+     */
+    public LocalDate getCalculatedDeletionDate() {
+        if (suspendedAt == null) return null;
+        int totalRetentionDays = 90 + (retentionExtensionDays != null ? retentionExtensionDays : 0);
+        return suspendedAt.toLocalDate().plusDays(totalRetentionDays);
+    }
+
+    /**
+     * Check if church data is eligible for deletion
+     * True if: subscription is suspended AND deletion date has passed AND warning was sent 7+ days ago
+     */
+    public boolean isEligibleForDeletion() {
+        if (!isSuspended()) return false;
+        if (dataRetentionEndDate == null) return false;
+        if (LocalDate.now().isBefore(dataRetentionEndDate) || LocalDate.now().isEqual(dataRetentionEndDate)) {
+            return false;
+        }
+
+        // Must have sent warning at least 7 days ago
+        if (deletionWarningSentAt == null) return false;
+        return deletionWarningSentAt.isBefore(LocalDateTime.now().minusDays(7));
+    }
+
+    /**
+     * Check if church needs a deletion warning email
+     * True if: deletion date is 7 days away AND warning hasn't been sent yet
+     */
+    public boolean needsDeletionWarning() {
+        if (!isSuspended()) return false;
+        if (dataRetentionEndDate == null) return false;
+        if (deletionWarningSentAt != null) return false; // Already sent
+
+        // Send warning 7 days before deletion
+        LocalDate warningDate = dataRetentionEndDate.minusDays(7);
+        return LocalDate.now().isAfter(warningDate) || LocalDate.now().isEqual(warningDate);
+    }
+
+    /**
+     * Get days until data deletion
+     * Returns negative number if deletion date has passed
+     */
+    public long getDaysUntilDeletion() {
+        if (dataRetentionEndDate == null) return -1;
+        return java.time.temporal.ChronoUnit.DAYS.between(LocalDate.now(), dataRetentionEndDate);
+    }
+
+    /**
+     * Mark subscription as suspended and set deletion timer (90 days)
+     */
+    public void markAsSuspended() {
+        this.status = "SUSPENDED";
+        this.suspendedAt = LocalDateTime.now();
+        this.dataRetentionEndDate = LocalDate.now().plusDays(90 + (retentionExtensionDays != null ? retentionExtensionDays : 0));
+    }
+
+    /**
+     * Extend data retention period (SUPERADMIN action)
+     */
+    public void extendRetentionPeriod(int additionalDays, String note) {
+        this.retentionExtensionDays = (this.retentionExtensionDays != null ? this.retentionExtensionDays : 0) + additionalDays;
+        this.retentionExtensionNote = note;
+
+        // Recalculate deletion date (90 days base + extensions)
+        if (suspendedAt != null) {
+            this.dataRetentionEndDate = suspendedAt.toLocalDate().plusDays(90 + this.retentionExtensionDays);
+        }
+    }
+
+    /**
+     * Cancel deletion and reset retention timer (when subscription is reactivated)
+     */
+    public void cancelDeletion() {
+        this.suspendedAt = null;
+        this.dataRetentionEndDate = null;
+        this.deletionWarningSentAt = null;
+        this.retentionExtensionDays = 0;
+        this.retentionExtensionNote = null;
+    }
+
+    /**
+     * Mark deletion warning as sent
+     */
+    public void markDeletionWarningSent() {
+        this.deletionWarningSentAt = LocalDateTime.now();
     }
 }

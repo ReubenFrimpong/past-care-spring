@@ -1,5 +1,6 @@
 package com.reuben.pastcare_spring.repositories;
 
+import com.reuben.pastcare_spring.models.Church;
 import com.reuben.pastcare_spring.models.StorageUsage;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -16,6 +17,26 @@ public interface StorageUsageRepository extends JpaRepository<StorageUsage, Long
      * Get the most recent storage usage for a church.
      */
     Optional<StorageUsage> findFirstByChurchIdOrderByCalculatedAtDesc(Long churchId);
+
+    /**
+     * Get the most recent storage usage for a church (by Church entity).
+     */
+    Optional<StorageUsage> findFirstByChurchOrderByCalculatedAtDesc(Church church);
+
+    /**
+     * Alias for findFirstByChurchOrderByCalculatedAtDesc
+     */
+    default Optional<StorageUsage> findLatestByChurch(Church church) {
+        return findFirstByChurchOrderByCalculatedAtDesc(church);
+    }
+
+    /**
+     * Find first storage usage after a date for a church.
+     */
+    Optional<StorageUsage> findFirstByChurchAndCalculatedAtAfterOrderByCalculatedAtAsc(
+            Church church,
+            LocalDateTime calculatedAt
+    );
 
     /**
      * Get all storage usage records for a church within a date range.

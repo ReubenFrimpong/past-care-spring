@@ -17,6 +17,8 @@ public record AttendanceSessionRequest(
 
   Long fellowshipId,
 
+  Long eventId,
+
   @NotNull(message = "Church ID is required")
   Long churchId,
 

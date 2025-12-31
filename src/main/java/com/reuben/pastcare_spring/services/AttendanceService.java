@@ -19,11 +19,13 @@ import com.reuben.pastcare_spring.mapper.AttendanceSessionMapper;
 import com.reuben.pastcare_spring.models.Attendance;
 import com.reuben.pastcare_spring.models.AttendanceSession;
 import com.reuben.pastcare_spring.models.Church;
+import com.reuben.pastcare_spring.models.Event;
 import com.reuben.pastcare_spring.models.Fellowship;
 import com.reuben.pastcare_spring.models.Member;
 import com.reuben.pastcare_spring.repositories.AttendanceRepository;
 import com.reuben.pastcare_spring.repositories.AttendanceSessionRepository;
 import com.reuben.pastcare_spring.repositories.ChurchRepository;
+import com.reuben.pastcare_spring.repositories.EventRepository;
 import com.reuben.pastcare_spring.repositories.FellowshipRepository;
 import com.reuben.pastcare_spring.repositories.MemberRepository;
 
@@ -33,6 +35,7 @@ public class AttendanceService {
   private final AttendanceSessionRepository attendanceSessionRepository;
   private final AttendanceRepository attendanceRepository;
   private final ChurchRepository churchRepository;
+  private final EventRepository eventRepository;
   private final FellowshipRepository fellowshipRepository;
   private final MemberRepository memberRepository;
   private final QRCodeService qrCodeService;
@@ -42,6 +45,7 @@ public class AttendanceService {
       AttendanceSessionRepository attendanceSessionRepository,
       AttendanceRepository attendanceRepository,
       ChurchRepository churchRepository,
+      EventRepository eventRepository,
       FellowshipRepository fellowshipRepository,
       MemberRepository memberRepository,
       QRCodeService qrCodeService,
@@ -49,6 +53,7 @@ public class AttendanceService {
     this.attendanceSessionRepository = attendanceSessionRepository;
     this.attendanceRepository = attendanceRepository;
     this.churchRepository = churchRepository;
+    this.eventRepository = eventRepository;
     this.fellowshipRepository = fellowshipRepository;
     this.memberRepository = memberRepository;
     this.qrCodeService = qrCodeService;
@@ -72,6 +77,12 @@ public class AttendanceService {
       Fellowship fellowship = fellowshipRepository.findById(request.fellowshipId())
           .orElseThrow(() -> new IllegalArgumentException("Fellowship not found"));
       session.setFellowship(fellowship);
+    }
+
+    if (request.eventId() != null) {
+      Event event = eventRepository.findById(request.eventId())
+          .orElseThrow(() -> new IllegalArgumentException("Event not found"));
+      session.setEvent(event);
     }
 
     AttendanceSession savedSession = attendanceSessionRepository.save(session);
@@ -101,6 +112,14 @@ public class AttendanceService {
       session.setFellowship(fellowship);
     } else {
       session.setFellowship(null);
+    }
+
+    if (request.eventId() != null) {
+      Event event = eventRepository.findById(request.eventId())
+          .orElseThrow(() -> new IllegalArgumentException("Event not found"));
+      session.setEvent(event);
+    } else {
+      session.setEvent(null);
     }
 
     AttendanceSession updatedSession = attendanceSessionRepository.save(session);

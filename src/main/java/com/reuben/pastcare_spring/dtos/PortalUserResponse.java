@@ -20,6 +20,7 @@ public class PortalUserResponse {
     private Long memberId;
     private String memberFirstName;
     private String memberLastName;
+    private String profileImageUrl;
     private PortalUserStatus status;
     private LocalDateTime emailVerifiedAt;
     private LocalDateTime approvedAt;

@@ -32,33 +32,37 @@ class ProfileCompletenessServiceTest {
     }
 
     @Test
-    @DisplayName("Should return 30% for minimal member (core fields + spouse not required)")
+    @DisplayName("Should return 32% for minimal member (core fields + spouse not required)")
     void testCalculateCompletenessMinimal() {
         Member member = createMinimalMember();
         int completeness = service.calculateCompleteness(member);
-        assertEquals(30, completeness); // 25 core + 5 spouse not required
+        assertEquals(32, completeness); // 25 core + 7 spouse not required (not married)
     }
 
     @Test
-    @DisplayName("Should return 90% for complete member profile")
+    @DisplayName("Should return 100% for complete single member profile")
     void testCalculateCompletenessComplete() {
         Member member = createCompleteMember();
+        member.setMaritalStatus("single"); // Single member doesn't need spouse link
         int completeness = service.calculateCompleteness(member);
-        assertEquals(90, completeness); // All fields filled
+        // 25 (core) + 12 (dob) + 12 (location) + 13 (profile image) + 6 (marital status)
+        // + 7 (spouse not required for single) + 5 (occupation) + 5 (memberSince) + 5 (fellowships)
+        // + 5 (emergency contact name) + 5 (emergency contact number) = 100
+        assertEquals(100, completeness);
     }
 
     @Test
-    @DisplayName("Should calculate 40% for member with DOB only")
+    @DisplayName("Should calculate 44% for member with DOB only")
     void testCalculateCompletenessWithDob() {
         Member member = createMinimalMember();
         member.setDob(LocalDate.of(1990, 1, 1));
 
         int completeness = service.calculateCompleteness(member);
-        assertEquals(40, completeness); // 30 (base) + 10 (dob)
+        assertEquals(44, completeness); // 32 (base) + 12 (dob)
     }
 
     @Test
-    @DisplayName("Should calculate 40% for member with location only")
+    @DisplayName("Should calculate 44% for member with location only")
     void testCalculateCompletenessWithLocation() {
         Member member = createMinimalMember();
         Location location = new Location();
@@ -67,72 +71,74 @@ class ProfileCompletenessServiceTest {
         member.setLocation(location);
 
         int completeness = service.calculateCompleteness(member);
-        assertEquals(40, completeness); // 30 (base) + 10 (location)
+        assertEquals(44, completeness); // 32 (base) + 12 (location)
     }
 
     @Test
-    @DisplayName("Should calculate 40% for member with profile image only")
+    @DisplayName("Should calculate 45% for member with profile image only")
     void testCalculateCompletenessWithProfileImage() {
         Member member = createMinimalMember();
         member.setProfileImageUrl("https://example.com/image.jpg");
 
         int completeness = service.calculateCompleteness(member);
-        assertEquals(40, completeness); // 30 (base) + 10 (profile image)
+        assertEquals(45, completeness); // 32 (base) + 13 (profile image)
     }
 
     @Test
-    @DisplayName("Should calculate 35% for single member with marital status")
+    @DisplayName("Should calculate 38% for single member with marital status")
     void testCalculateCompletenessSingleMember() {
         Member member = createMinimalMember();
         member.setMaritalStatus("single");
 
         int completeness = service.calculateCompleteness(member);
-        assertEquals(35, completeness); // 30 (base) + 5 (marital status)
+        assertEquals(38, completeness); // 32 (base) + 6 (marital status)
     }
 
     @Test
-    @DisplayName("Should calculate 30% for married member without spouse name")
+    @DisplayName("Should calculate 31% for married member without spouse link")
     void testCalculateCompletenessMarriedWithoutSpouse() {
         Member member = createMinimalMember();
         member.setMaritalStatus("married");
 
         int completeness = service.calculateCompleteness(member);
-        assertEquals(30, completeness); // 25 (core) + 5 (marital status), no spouse name, no auto-add
+        // 25 (core) + 6 (marital status) + 0 (no spouse not required bonus for married) = 31
+        assertEquals(31, completeness);
     }
 
     @Test
-    @DisplayName("Should calculate 35% for married member with spouse name")
+    @DisplayName("Should calculate 31% for married member without spouse link (spouse field is optional)")
     void testCalculateCompletenessMarriedWithSpouse() {
         Member member = createMinimalMember();
         member.setMaritalStatus("married");
         // Spouse linking is optional - spouse field removed
 
         int completeness = service.calculateCompleteness(member);
-        assertEquals(35, completeness); // 25 (core) + 5 (marital status) + 5 (spouse name)
+        // 25 (core) + 6 (marital status) + 0 (no spouse linked) = 31
+        assertEquals(31, completeness);
     }
 
     @Test
-    @DisplayName("Should calculate 35% for member with occupation only")
+    @DisplayName("Should calculate 37% for member with occupation only")
     void testCalculateCompletenessWithOccupation() {
         Member member = createMinimalMember();
         member.setOccupation("Engineer");
 
         int completeness = service.calculateCompleteness(member);
-        assertEquals(35, completeness); // 30 (base) + 5 (occupation)
+        assertEquals(37, completeness); // 32 (base) + 5 (occupation)
     }
 
     @Test
-    @DisplayName("Should calculate 35% for member with memberSince only")
+    @DisplayName("Should calculate 37% for member with memberSince only")
     void testCalculateCompletenessWithMemberSince() {
         Member member = createMinimalMember();
         member.setMemberSince(YearMonth.now());
 
         int completeness = service.calculateCompleteness(member);
-        assertEquals(35, completeness); // 30 (base) + 5 (memberSince)
+        assertEquals(37, completeness); // 32 (base) + 5 (memberSince)
     }
 
     @Test
-    @DisplayName("Should calculate 35% for member with fellowships")
+    @DisplayName("Should calculate 37% for member with fellowships")
     void testCalculateCompletenessWithFellowships() {
         Member member = createMinimalMember();
         List<Fellowship> fellowships = new ArrayList<>();
@@ -142,7 +148,7 @@ class ProfileCompletenessServiceTest {
         member.setFellowships(fellowships);
 
         int completeness = service.calculateCompleteness(member);
-        assertEquals(35, completeness); // 30 (base) + 5 (fellowships)
+        assertEquals(37, completeness); // 32 (base) + 5 (fellowships)
     }
 
     @Test
@@ -152,27 +158,27 @@ class ProfileCompletenessServiceTest {
         member.setFellowships(new ArrayList<>());
 
         int completeness = service.calculateCompleteness(member);
-        assertEquals(30, completeness); // 30 (base) only
+        assertEquals(32, completeness); // 32 (base) only
     }
 
     @Test
-    @DisplayName("Should calculate 35% for member with emergency contact name")
+    @DisplayName("Should calculate 37% for member with emergency contact name")
     void testCalculateCompletenessWithEmergencyContactName() {
         Member member = createMinimalMember();
         member.setEmergencyContactName("Jane Doe");
 
         int completeness = service.calculateCompleteness(member);
-        assertEquals(35, completeness); // 30 (base) + 5 (emergency contact name)
+        assertEquals(37, completeness); // 32 (base) + 5 (emergency contact name)
     }
 
     @Test
-    @DisplayName("Should calculate 35% for member with emergency contact number")
+    @DisplayName("Should calculate 37% for member with emergency contact number")
     void testCalculateCompletenessWithEmergencyContactNumber() {
         Member member = createMinimalMember();
         member.setEmergencyContactNumber("+254700000000");
 
         int completeness = service.calculateCompleteness(member);
-        assertEquals(35, completeness); // 30 (base) + 5 (emergency contact number)
+        assertEquals(37, completeness); // 32 (base) + 5 (emergency contact number)
     }
 
     @Test
@@ -194,35 +200,37 @@ class ProfileCompletenessServiceTest {
     }
 
     @Test
-    @DisplayName("Should get empty missing fields for complete member")
+    @DisplayName("Should have no missing fields for complete single member")
     void testGetMissingFieldsComplete() {
         Member member = createCompleteMember();
+        member.setMaritalStatus("single"); // Single member doesn't need spouse link
 
         List<String> missingFields = service.getMissingFields(member);
 
-        assertTrue(missingFields.isEmpty());
+        // Complete single member has all fields filled
+        assertEquals(0, missingFields.size());
     }
 
     @Test
-    @DisplayName("Should include spouse name in missing fields for married member")
+    @DisplayName("Should include spouse link in missing fields for married member")
     void testGetMissingFieldsMarriedWithoutSpouse() {
         Member member = createMinimalMember();
         member.setMaritalStatus("married");
 
         List<String> missingFields = service.getMissingFields(member);
 
-        assertTrue(missingFields.contains("Spouse Name"));
+        assertTrue(missingFields.contains("Spouse Link"));
     }
 
     @Test
-    @DisplayName("Should not include spouse name in missing fields for single member")
+    @DisplayName("Should not include spouse link in missing fields for single member")
     void testGetMissingFieldsSingleMember() {
         Member member = createMinimalMember();
         member.setMaritalStatus("single");
 
         List<String> missingFields = service.getMissingFields(member);
 
-        assertFalse(missingFields.contains("Spouse Name"));
+        assertFalse(missingFields.contains("Spouse Link"));
     }
 
     @Test
@@ -244,24 +252,26 @@ class ProfileCompletenessServiceTest {
     }
 
     @Test
-    @DisplayName("Should get empty suggestions for complete member")
+    @DisplayName("Should have no suggestions for complete single member")
     void testGetSuggestionsComplete() {
         Member member = createCompleteMember();
+        member.setMaritalStatus("single"); // Single member doesn't need spouse link
 
         List<String> suggestions = service.getSuggestions(member);
 
-        assertTrue(suggestions.isEmpty());
+        // Complete single member has no suggestions
+        assertEquals(0, suggestions.size());
     }
 
     @Test
-    @DisplayName("Should suggest spouse name for married member without it")
+    @DisplayName("Should suggest spouse link for married member without it")
     void testGetSuggestionsMarriedWithoutSpouse() {
         Member member = createMinimalMember();
         member.setMaritalStatus("married");
 
         List<String> suggestions = service.getSuggestions(member);
 
-        assertTrue(suggestions.contains("Add Spouse Name"));
+        assertTrue(suggestions.contains("Add Spouse Link"));
     }
 
     @Test
@@ -284,7 +294,7 @@ class ProfileCompletenessServiceTest {
         List<String> missingFields = service.getMissingFields(member);
         List<String> suggestions = service.getSuggestions(member);
 
-        assertEquals(30, completeness); // base
+        assertEquals(32, completeness); // base (25 core + 7 not married spouse bonus)
         assertFalse(missingFields.isEmpty());
         assertFalse(suggestions.isEmpty());
     }
@@ -293,12 +303,13 @@ class ProfileCompletenessServiceTest {
     @DisplayName("Should cap completeness at 100%")
     void testCompletenessNeverExceeds100() {
         Member member = createCompleteMember();
+        member.setMaritalStatus("single"); // Single member can reach 100%
         // Add extra data that shouldn't increase beyond 100%
         member.setTitle("Pastor");
 
         int completeness = service.calculateCompleteness(member);
 
-        assertEquals(90, completeness); // Current maximum with all fields
+        assertEquals(100, completeness); // Maximum is 100% for complete single member
     }
 
     @Test
@@ -312,7 +323,7 @@ class ProfileCompletenessServiceTest {
 
         int completeness = service.calculateCompleteness(member);
 
-        assertEquals(30, completeness); // base (25 core + 5 spouse not required)
+        assertEquals(32, completeness); // base (25 core + 7 spouse not required for non-married)
     }
 
     @Test
@@ -324,7 +335,7 @@ class ProfileCompletenessServiceTest {
 
         int completeness = service.calculateCompleteness(member);
 
-        assertEquals(30, completeness); // base (25 core + 5 spouse not required)
+        assertEquals(32, completeness); // base (25 core + 7 spouse not required for non-married)
     }
 
     // Helper methods

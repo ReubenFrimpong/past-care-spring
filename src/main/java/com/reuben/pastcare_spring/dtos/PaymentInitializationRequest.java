@@ -39,4 +39,8 @@ public class PaymentInitializationRequest {
 
     // For recurring donations
     private Boolean setupRecurring = false;
+
+    // Optional: specify reference (e.g., for subscriptions with "SUB-" prefix)
+    // If not provided, PaystackService will generate one
+    private String reference;
 }

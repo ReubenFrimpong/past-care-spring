@@ -22,8 +22,6 @@ public record UserUpdateRequest(
 
   List<Long> fellowshipIds,
 
-  String primaryService,
-
   Role role
   ) {
 

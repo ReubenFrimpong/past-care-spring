@@ -42,6 +42,7 @@ public class EventController {
     private final EventReminderService reminderService;
     private final EventAnalyticsService analyticsService;
     private final RecurringEventService recurringEventService;
+    private final EventAttendanceService eventAttendanceService;
     private final com.reuben.pastcare_spring.repositories.UserRepository userRepository;
 
     /**
@@ -739,6 +740,42 @@ public class EventController {
     ) {
         eventImageService.reorderImages(id, imageIds);
         return ResponseEntity.ok().build();
+    }
+
+    // ==================== Event-Attendance Integration ====================
+
+    /**
+     * Create attendance session from an event
+     */
+    @PostMapping("/{id}/create-attendance-session")
+    @RequirePermission(Permission.EVENT_CREATE)
+    public ResponseEntity<AttendanceSessionResponse> createAttendanceSessionFromEvent(@PathVariable Long id) {
+        AttendanceSessionResponse response = eventAttendanceService.createAttendanceSessionFromEvent(id);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Get attendance sessions for an event
+     */
+    @GetMapping("/{id}/attendance-sessions")
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
+    public ResponseEntity<List<AttendanceSessionResponse>> getAttendanceSessionsForEvent(@PathVariable Long id) {
+        List<AttendanceSessionResponse> response = eventAttendanceService.getAttendanceSessionsForEvent(id);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Get all events with attendance tracking enabled
+     */
+    @GetMapping("/with-attendance-tracking")
+    @RequirePermission(Permission.EVENT_VIEW_ALL)
+    public ResponseEntity<List<Event>> getEventsWithAttendanceTracking(Authentication authentication) {
+        Long userId = getUserIdFromAuth(authentication);
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new IllegalStateException("User not found"));
+
+        List<Event> events = eventAttendanceService.getEventsWithAttendanceTracking(user.getChurch().getId());
+        return ResponseEntity.ok(events);
     }
 
     // ==================== Helper Methods ====================

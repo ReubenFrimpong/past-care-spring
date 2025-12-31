@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Tests database queries for saved searches.
  */
 @DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.ANY)
 @TestPropertySource(properties = {
     "spring.jpa.hibernate.ddl-auto=create-drop",
     "spring.flyway.enabled=false"

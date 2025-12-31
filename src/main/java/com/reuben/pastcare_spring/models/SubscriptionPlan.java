@@ -1,5 +1,10 @@
 package com.reuben.pastcare_spring.models;
 
+import com.fasterxml.jackson.annotation.JsonGetter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -8,6 +13,8 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Subscription plan entity defining pricing tiers.
@@ -96,8 +103,11 @@ public class SubscriptionPlan {
 
     /**
      * Features included in this plan (JSON array or comma-separated)
+     * Stored as JSON string in database, exposed as List<String> to API
      */
     @Column(name = "features", columnDefinition = "TEXT")
+    @lombok.Getter(lombok.AccessLevel.NONE)
+    @lombok.Setter(lombok.AccessLevel.NONE)
     private String features;
 
     /**
@@ -141,5 +151,62 @@ public class SubscriptionPlan {
      */
     public double getStorageLimitGb() {
         return storageLimitMb / 1024.0;
+    }
+
+    /**
+     * Get features as a List<String> for JSON serialization.
+     * Converts the JSON string stored in database to an array.
+     */
+    @JsonGetter("features")
+    public List<String> getFeaturesList() {
+        if (features == null || features.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        try {
+            // Try to parse as JSON array
+            ObjectMapper mapper = new ObjectMapper();
+            return mapper.readValue(features, new TypeReference<List<String>>() {});
+        } catch (Exception e) {
+            // If not JSON, split by comma (legacy support)
+            return List.of(features.split(","));
+        }
+    }
+
+    /**
+     * Set features from a List<String>.
+     * Converts the list to a JSON string for database storage.
+     */
+    @JsonSetter("features")
+    public void setFeaturesList(List<String> featuresList) {
+        if (featuresList == null || featuresList.isEmpty()) {
+            this.features = "[]";
+            return;
+        }
+
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            this.features = mapper.writeValueAsString(featuresList);
+        } catch (Exception e) {
+            // Fallback to comma-separated
+            this.features = String.join(",", featuresList);
+        }
+    }
+
+    /**
+     * Internal getter for features string (for JPA).
+     * Not exposed to JSON serialization due to @JsonIgnore annotation.
+     */
+    @JsonIgnore
+    public String getFeatures() {
+        return features;
+    }
+
+    /**
+     * Internal setter for features string (for JPA).
+     * Not exposed to JSON serialization due to @JsonIgnore on field.
+     */
+    public void setFeatures(String features) {
+        this.features = features;
     }
 }

@@ -24,6 +24,9 @@ public class SecurityConfig {
     private JwtAuthenticationFilter jwtAuthFilter;
 
     @Autowired
+    private SubscriptionFilter subscriptionFilter;
+
+    @Autowired
     private UserDetailsService userDetailsService;
 
     @Bean
@@ -32,14 +35,33 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .cors(cors -> {}) // Enable CORS with default settings (uses CorsConfig)
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/api/location/**").permitAll()
-                .anyRequest().authenticated()
+                // Public API endpoints
+                .requestMatchers("/api/auth/**", "/api/location/**", "/api/billing/plans").permitAll()
+                // Public payment verification (no auth required for returning from Paystack)
+                .requestMatchers("/api/billing/public/**").permitAll()
+                // Paystack webhooks (no auth required - Paystack servers call this)
+                .requestMatchers("/api/webhooks/paystack/**").permitAll()
+                // Portal endpoints - public for member self-registration and profile management
+                .requestMatchers("/api/portal/register", "/api/portal/register-with-photo", "/api/portal/login", "/api/portal/verify", "/api/portal/resend-verification", "/api/portal/forgot-password", "/api/portal/reset-password", "/api/portal/profile/picture", "/api/portal/profile").permitAll()
+                // Invitation code validation - public for registration
+                .requestMatchers("/api/invitation-codes/validate/**").permitAll()
+                // Church logo - public for landing page and favicon
+                .requestMatchers("/api/churches/public/logo").permitAll()
+                // Billing endpoints - accessible to authenticated users even without active subscription
+                .requestMatchers("/api/billing/**", "/api/churches/*/subscription").authenticated()
+                // Storage add-ons - accessible to authenticated users (for billing page)
+                .requestMatchers("/api/storage-addons").authenticated()
+                // All API requests require authentication
+                .requestMatchers("/api/**").authenticated()
+                // Allow all other requests (Angular routes, static resources)
+                .anyRequest().permitAll()
             )
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
             .authenticationProvider(authenticationProvider())
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterAfter(subscriptionFilter, JwtAuthenticationFilter.class); // Check subscription after authentication
 
         return http.build();
     }

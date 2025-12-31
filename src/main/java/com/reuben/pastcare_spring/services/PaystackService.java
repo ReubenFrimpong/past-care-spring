@@ -38,8 +38,11 @@ public class PaystackService {
             // Convert amount to kobo (smallest currency unit - multiply by 100)
             BigDecimal amountInKobo = request.getAmount().multiply(BigDecimal.valueOf(100));
 
-            // Generate unique reference
-            String reference = "PCS-" + UUID.randomUUID().toString();
+            // Use provided reference or generate unique reference
+            // Subscriptions provide "SUB-" prefix, donations/SMS credits use "PCS-"
+            String reference = request.getReference() != null && !request.getReference().isEmpty()
+                ? request.getReference()
+                : "PCS-" + UUID.randomUUID().toString();
 
             // Build request body
             Map<String, Object> body = new HashMap<>();
@@ -49,10 +52,17 @@ public class PaystackService {
             body.put("currency", request.getCurrency());
             body.put("callback_url", request.getCallbackUrl() != null ? request.getCallbackUrl() : paystackConfig.getCallbackUrl());
 
+            // Enable both card and mobile money channels for Ghana
+            // Paystack supports: card, bank, ussd, qr, mobile_money, bank_transfer
+            body.put("channels", new String[]{"card", "mobile_money"});
+
             // Add metadata
             Map<String, Object> metadata = new HashMap<>();
             metadata.put("memberId", request.getMemberId());
-            metadata.put("donationType", request.getDonationType().toString());
+            // Only add donationType if it's not null (subscription payments don't have donation type)
+            if (request.getDonationType() != null) {
+                metadata.put("donationType", request.getDonationType().toString());
+            }
             if (request.getCampaign() != null) {
                 metadata.put("campaign", request.getCampaign());
             }

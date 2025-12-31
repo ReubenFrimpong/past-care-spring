@@ -47,6 +47,7 @@ public class CheckInService {
   private final VisitorRepository visitorRepository;
   private final QRCodeService qrCodeService;
   private final GeofenceService geofenceService;
+  private final ChurchSettingsService churchSettingsService;
 
   public CheckInService(
       AttendanceSessionRepository attendanceSessionRepository,
@@ -54,13 +55,15 @@ public class CheckInService {
       MemberRepository memberRepository,
       VisitorRepository visitorRepository,
       QRCodeService qrCodeService,
-      GeofenceService geofenceService) {
+      GeofenceService geofenceService,
+      ChurchSettingsService churchSettingsService) {
     this.attendanceSessionRepository = attendanceSessionRepository;
     this.attendanceRepository = attendanceRepository;
     this.memberRepository = memberRepository;
     this.visitorRepository = visitorRepository;
     this.qrCodeService = qrCodeService;
     this.geofenceService = geofenceService;
+    this.churchSettingsService = churchSettingsService;
   }
 
   /**
@@ -182,17 +185,46 @@ public class CheckInService {
   }
 
   /**
-   * Validate check-in window based on session configuration.
+   * Validate check-in window based on session configuration and grace period setting.
    */
   private void validateCheckInWindow(AttendanceSession session) {
     LocalDateTime now = LocalDateTime.now();
 
-    if (session.getCheckInOpensAt() != null && now.isBefore(session.getCheckInOpensAt())) {
-      throw new IllegalArgumentException("Check-in has not opened yet for this session");
+    // Get grace period from settings (default 15 minutes)
+    Long churchId = session.getChurch() != null ? session.getChurch().getId() : null;
+    int gracePeriodMinutes = 15; // default
+    if (churchId != null) {
+      gracePeriodMinutes = churchSettingsService.getIntegerSetting(churchId, "attendanceGracePeriod", 15);
     }
 
-    if (session.getCheckInClosesAt() != null && now.isAfter(session.getCheckInClosesAt())) {
-      throw new IllegalArgumentException("Check-in window has closed for this session");
+    // If checkInOpensAt is set, use it; otherwise calculate based on session time + grace period
+    LocalDateTime effectiveOpenTime = session.getCheckInOpensAt();
+    if (effectiveOpenTime == null && session.getSessionTime() != null) {
+      LocalDateTime sessionDateTime = LocalDateTime.of(session.getSessionDate(), session.getSessionTime());
+      effectiveOpenTime = sessionDateTime.minusMinutes(gracePeriodMinutes);
+    }
+
+    // If checkInClosesAt is set, use it; otherwise calculate based on session time + grace period
+    LocalDateTime effectiveCloseTime = session.getCheckInClosesAt();
+    if (effectiveCloseTime == null && session.getSessionTime() != null) {
+      LocalDateTime sessionDateTime = LocalDateTime.of(session.getSessionDate(), session.getSessionTime());
+      effectiveCloseTime = sessionDateTime.plusMinutes(gracePeriodMinutes);
+    }
+
+    if (effectiveOpenTime != null && now.isBefore(effectiveOpenTime)) {
+      long minutesUntilOpen = ChronoUnit.MINUTES.between(now, effectiveOpenTime);
+      throw new IllegalArgumentException(
+        String.format("Check-in opens in %d minutes (grace period: %d minutes before session start)",
+          minutesUntilOpen, gracePeriodMinutes)
+      );
+    }
+
+    if (effectiveCloseTime != null && now.isAfter(effectiveCloseTime)) {
+      long minutesSinceClose = ChronoUnit.MINUTES.between(effectiveCloseTime, now);
+      throw new IllegalArgumentException(
+        String.format("Check-in window closed %d minutes ago (grace period: %d minutes after session start)",
+          minutesSinceClose, gracePeriodMinutes)
+      );
     }
   }
 
@@ -207,8 +239,17 @@ public class CheckInService {
       case GEOFENCE:
         validateGeofenceCheckIn(request.latitude(), request.longitude(), session);
         break;
-      case MANUAL:
       case SELF_CHECKIN:
+        // Check if self check-in is allowed for this church
+        Long churchId = session.getChurch() != null ? session.getChurch().getId() : null;
+        if (churchId != null) {
+          boolean allowSelfCheckIn = churchSettingsService.getBooleanSetting(churchId, "allowSelfCheckIn", true);
+          if (!allowSelfCheckIn) {
+            throw new IllegalArgumentException("Self check-in is disabled for this church. Please ask an admin to check you in.");
+          }
+        }
+        break;
+      case MANUAL:
       case MOBILE_APP:
         // No additional validation needed
         break;

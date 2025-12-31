@@ -9,6 +9,7 @@ import com.reuben.pastcare_spring.repositories.ChurchRepository;
 import com.reuben.pastcare_spring.repositories.HouseholdRepository;
 import com.reuben.pastcare_spring.repositories.LocationRepository;
 import com.reuben.pastcare_spring.repositories.MemberRepository;
+import com.reuben.pastcare_spring.services.TenantValidationService;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -46,6 +47,9 @@ class HouseholdServiceTest {
 
     @Mock
     private LocationRepository locationRepository;
+
+    @Mock
+    private TenantValidationService tenantValidationService;
 
     @InjectMocks
     private HouseholdService householdService;

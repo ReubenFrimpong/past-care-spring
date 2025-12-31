@@ -60,4 +60,12 @@ public class UserPrincipal implements UserDetails {
   public Long getId() {
     return user.getId();
   }
+
+  public Long getChurchId() {
+    return user.getChurch() != null ? user.getChurch().getId() : null;
+  }
+
+  public User getUser() {
+    return user;
+  }
 }
