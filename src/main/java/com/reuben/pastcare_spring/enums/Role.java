@@ -107,7 +107,8 @@ public enum Role {
         Permission.CHURCH_SETTINGS_VIEW,
         Permission.CHURCH_SETTINGS_EDIT,
         Permission.SUBSCRIPTION_VIEW,
-        Permission.SUBSCRIPTION_MANAGE
+        Permission.SUBSCRIPTION_MANAGE,
+        Permission.BILLING_VIEW
     )),
 
     /**

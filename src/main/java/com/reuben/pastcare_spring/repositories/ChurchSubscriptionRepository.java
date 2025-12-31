@@ -55,4 +55,30 @@ public interface ChurchSubscriptionRepository extends JpaRepository<ChurchSubscr
      */
     @Query("SELECT COUNT(cs) FROM ChurchSubscription cs WHERE cs.status = 'ACTIVE'")
     long countActiveSubscriptions();
+
+    /**
+     * Find subscriptions eligible for data deletion.
+     * Eligible if: status = SUSPENDED AND data_retention_end_date <= today AND deletion_warning_sent_at is at least 7 days ago
+     */
+    @Query("SELECT cs FROM ChurchSubscription cs WHERE cs.status = 'SUSPENDED' " +
+           "AND cs.dataRetentionEndDate IS NOT NULL " +
+           "AND cs.dataRetentionEndDate <= :today " +
+           "AND cs.deletionWarningSentAt IS NOT NULL " +
+           "AND cs.deletionWarningSentAt <= :sevenDaysAgo")
+    List<ChurchSubscription> findEligibleForDeletion(LocalDate today, java.time.LocalDateTime sevenDaysAgo);
+
+    /**
+     * Find subscriptions needing deletion warning emails.
+     * Need warning if: status = SUSPENDED AND deletion warning not sent yet AND retention end date within 7 days
+     */
+    @Query("SELECT cs FROM ChurchSubscription cs WHERE cs.status = 'SUSPENDED' " +
+           "AND cs.dataRetentionEndDate IS NOT NULL " +
+           "AND cs.deletionWarningSentAt IS NULL " +
+           "AND cs.dataRetentionEndDate <= :warningThreshold")
+    List<ChurchSubscription> findNeedingDeletionWarning(LocalDate warningThreshold);
+
+    /**
+     * Delete subscription by church ID.
+     */
+    void deleteByChurchId(Long churchId);
 }

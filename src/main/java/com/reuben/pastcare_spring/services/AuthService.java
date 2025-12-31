@@ -25,9 +25,13 @@ import com.reuben.pastcare_spring.exceptions.DuplicateChurchException;
 import com.reuben.pastcare_spring.exceptions.DuplicateUserException;
 import com.reuben.pastcare_spring.exceptions.TooManyRequestsException;
 import com.reuben.pastcare_spring.models.Church;
+import com.reuben.pastcare_spring.models.ChurchSubscription;
 import com.reuben.pastcare_spring.models.RefreshToken;
+import com.reuben.pastcare_spring.models.SubscriptionPlan;
 import com.reuben.pastcare_spring.models.User;
 import com.reuben.pastcare_spring.repositories.ChurchRepository;
+import com.reuben.pastcare_spring.repositories.ChurchSubscriptionRepository;
+import com.reuben.pastcare_spring.repositories.SubscriptionPlanRepository;
 import com.reuben.pastcare_spring.repositories.UserRepository;
 import com.reuben.pastcare_spring.security.JwtUtil;
 
@@ -40,6 +44,12 @@ public class AuthService {
 
   @Autowired
   ChurchRepository churchRepository;
+
+  @Autowired
+  private ChurchSubscriptionRepository subscriptionRepository;
+
+  @Autowired
+  private SubscriptionPlanRepository planRepository;
 
   @Autowired
   private AuthenticationManager authenticationManager;
@@ -58,6 +68,9 @@ public class AuthService {
 
   @Autowired
   private BCryptPasswordEncoder passwordEncoder;
+
+  @Autowired
+  private UserService userService;
 
 
   public AuthTokenData login(AuthLoginRequest request, HttpServletRequest httpRequest) {
@@ -114,6 +127,9 @@ public class AuthService {
       // Record successful login
       bruteForceProtectionService.recordLoginAttempt(email, ipAddress, userAgent, true);
 
+      // Update last login timestamp
+      userService.updateLastLogin(user.getId());
+
       return new AuthTokenData(
           accessToken,
           refreshToken.getToken(),
@@ -125,8 +141,10 @@ public class AuthService {
               user.getTitle(),
               user.getChurch(),
               user.getFellowships(),
-              user.getPrimaryService(),
-              user.getRole()
+              user.getRole(),
+              user.isActive(),
+              user.getLastLoginAt(),
+              user.isMustChangePassword()
           )
       );
 
@@ -185,6 +203,23 @@ public class AuthService {
     church.setWebsite(request.church().website());
     church = churchRepository.save(church);
 
+    // Create a subscription for the church
+    // Churches must have an active subscription or use a partnership code
+    SubscriptionPlan defaultPlan = planRepository.findAll().stream()
+        .findFirst()
+        .orElseThrow(() -> new RuntimeException("No subscription plans available"));
+
+    ChurchSubscription subscription = new ChurchSubscription();
+    subscription.setChurchId(church.getId());
+    subscription.setPlan(defaultPlan);
+    subscription.setStatus("SUSPENDED");  // Start suspended until payment or partnership code
+    subscription.setCurrentPeriodStart(java.time.LocalDate.now());
+    subscription.setCurrentPeriodEnd(null);
+    subscription.setAutoRenew(false);
+    subscription.setGracePeriodDays(7);
+    subscription.setFailedPaymentAttempts(0);
+    subscriptionRepository.save(subscription);
+
     // Create the first admin user for this church
     User user = new User();
     user.setName(request.user().name());
@@ -226,8 +261,10 @@ public class AuthService {
             user.getTitle(),
             user.getChurch(),
             user.getFellowships(),
-            user.getPrimaryService(),
-            user.getRole()
+            user.getRole(),
+            user.isActive(),
+            user.getLastLoginAt(),
+            user.isMustChangePassword()
         )
     );
   }
@@ -268,8 +305,10 @@ public class AuthService {
             user.getTitle(),
             user.getChurch(),
             user.getFellowships(),
-            user.getPrimaryService(),
-            user.getRole()
+            user.getRole(),
+            user.isActive(),
+            user.getLastLoginAt(),
+            user.isMustChangePassword()
         )
     );
   }

@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -31,19 +32,39 @@ public class PortalUserService {
     private final ChurchRepository churchRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final ChurchSettingsService churchSettingsService;
+    private final InvitationCodeService invitationCodeService;
+    private final ImageService imageService;
 
     private static final int VERIFICATION_TOKEN_EXPIRY_HOURS = 24;
     private static final int PASSWORD_RESET_TOKEN_EXPIRY_HOURS = 2;
 
     /**
      * Register a new portal user (member self-registration)
+     * @param churchId The church ID
+     * @param request The registration request
+     * @param photo Optional photo file to upload during registration
      */
-    public PortalUserResponse registerPortalUser(Long churchId, PortalRegistrationRequest request) {
+    public PortalUserResponse registerPortalUser(Long churchId, PortalRegistrationRequest request, MultipartFile photo) {
+        // CRITICAL: Validate invitation code first
+        InvitationCode invitationCode = invitationCodeService.validateInvitationCode(request.getInvitationCode())
+            .orElseThrow(() -> new IllegalArgumentException("Invalid or expired invitation code"));
+
+        // Ensure invitation code belongs to the specified church
+        if (!invitationCode.getChurch().getId().equals(churchId)) {
+            throw new IllegalArgumentException("Invitation code does not belong to this church");
+        }
+
         // Check if email already exists for this church
         portalUserRepository.findByEmailAndChurchId(request.getEmail(), churchId)
             .ifPresent(u -> {
                 throw new IllegalArgumentException("Email already registered for this church");
             });
+
+        // Validate photo if provided
+        if (photo != null && !photo.isEmpty()) {
+            validatePhotoUpload(photo);
+        }
 
         // Check if church exists
         Church church = churchRepository.findById(churchId)
@@ -54,9 +75,22 @@ public class PortalUserService {
         member.setFirstName(request.getFirstName());
         member.setLastName(request.getLastName());
         member.setPhoneNumber(request.getPhoneNumber());
+        member.setSex("Unspecified"); // Default value - can be updated later in profile
 
         if (request.getDateOfBirth() != null && !request.getDateOfBirth().isEmpty()) {
             member.setDob(LocalDate.parse(request.getDateOfBirth()));
+        }
+
+        // Upload photo if provided
+        if (photo != null && !photo.isEmpty()) {
+            try {
+                String photoUrl = imageService.uploadProfileImage(photo, null);
+                member.setProfileImageUrl(photoUrl);
+                log.info("Uploaded profile photo for new member during registration");
+            } catch (Exception e) {
+                log.error("Failed to upload profile photo during registration: {}", e.getMessage(), e);
+                throw new IllegalArgumentException("Failed to upload profile photo: " + e.getMessage());
+            }
         }
 
         // TODO: Create location entity for address if provided
@@ -67,22 +101,48 @@ public class PortalUserService {
         Member savedMember = memberRepository.save(member);
         log.info("Created member record for portal registration: {} (ID: {})", request.getEmail(), savedMember.getId());
 
+        // Check if auto-approval is enabled
+        boolean autoApprove = churchSettingsService.getBooleanSetting(churchId, "autoApprovePortalRegistrations", false);
+
         // Create portal user
         PortalUser portalUser = new PortalUser();
         portalUser.setEmail(request.getEmail());
         portalUser.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         portalUser.setMember(savedMember);
-        portalUser.setStatus(PortalUserStatus.PENDING_VERIFICATION);
-        portalUser.setVerificationToken(generateToken());
-        portalUser.setVerificationTokenExpiry(LocalDateTime.now().plusHours(VERIFICATION_TOKEN_EXPIRY_HOURS));
-        portalUser.setIsActive(false);
+
+        if (autoApprove) {
+            // Auto-approve: skip verification and mark as active
+            portalUser.setStatus(PortalUserStatus.APPROVED);
+            portalUser.setIsActive(true);
+            portalUser.setVerificationToken(null);
+            portalUser.setVerificationTokenExpiry(null);
+            portalUser.setEmailVerifiedAt(LocalDateTime.now());
+            savedMember.setIsVerified(true);
+            memberRepository.save(savedMember);
+            log.info("Auto-approved portal user: {}", request.getEmail());
+        } else {
+            // Require verification
+            portalUser.setStatus(PortalUserStatus.PENDING_VERIFICATION);
+            portalUser.setVerificationToken(generateToken());
+            portalUser.setVerificationTokenExpiry(LocalDateTime.now().plusHours(VERIFICATION_TOKEN_EXPIRY_HOURS));
+            portalUser.setIsActive(false);
+        }
+
         portalUser.setChurch(church);
 
         PortalUser savedPortalUser = portalUserRepository.save(portalUser);
         log.info("Created portal user: {} (ID: {})", savedPortalUser.getEmail(), savedPortalUser.getId());
 
-        // Send verification email
-        sendVerificationEmail(savedPortalUser, church.getName());
+        // Increment invitation code usage
+        invitationCodeService.useInvitationCode(request.getInvitationCode());
+        log.info("Incremented invitation code usage: {}", request.getInvitationCode());
+
+        // Send appropriate email
+        if (autoApprove) {
+            sendWelcomeEmail(savedPortalUser, church.getName());
+        } else {
+            sendVerificationEmail(savedPortalUser, church.getName());
+        }
 
         return mapToResponse(savedPortalUser);
     }
@@ -305,6 +365,47 @@ public class PortalUserService {
     }
 
     /**
+     * Get portal user by email
+     */
+    @Transactional(readOnly = true)
+    public PortalUserResponse getPortalUserByEmail(String email, Long churchId) {
+        PortalUser portalUser = portalUserRepository.findByEmailAndChurchId(email, churchId)
+            .orElseThrow(() -> new IllegalArgumentException("Portal user not found"));
+
+        return mapToResponse(portalUser);
+    }
+
+    /**
+     * Upload profile picture for portal user
+     */
+    public String uploadProfilePicture(String email, Long churchId, MultipartFile file) {
+        PortalUser portalUser = portalUserRepository.findByEmailAndChurchId(email, churchId)
+            .orElseThrow(() -> new IllegalArgumentException("Portal user not found"));
+
+        Member member = portalUser.getMember();
+        if (member == null) {
+            throw new IllegalArgumentException("Member record not found for portal user");
+        }
+
+        try {
+            // Upload image using ImageService
+            String oldImageUrl = member.getProfileImageUrl();
+            String newImageUrl = imageService.uploadProfileImage(file, oldImageUrl);
+
+            // Update member profile image URL
+            member.setProfileImageUrl(newImageUrl);
+            memberRepository.save(member);
+
+            log.info("Updated profile picture for portal user: {} (Member ID: {})", email, member.getId());
+
+            return newImageUrl;
+        } catch (Exception e) {
+            log.error("Failed to upload profile picture for portal user: {}", email, e);
+            throw new RuntimeException("Failed to upload profile picture: " + e.getMessage());
+        }
+    }
+
+    /**
      * Request password reset
      */
     public void requestPasswordReset(String email, Long churchId) {
@@ -345,6 +446,40 @@ public class PortalUserService {
 
     // Helper methods
 
+    /**
+     * Validate photo upload file
+     */
+    private void validatePhotoUpload(MultipartFile photo) {
+        if (photo.isEmpty()) {
+            throw new IllegalArgumentException("Photo file is empty");
+        }
+
+        // Validate file type
+        String contentType = photo.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new IllegalArgumentException("File must be an image (JPEG, PNG, GIF, etc.)");
+        }
+
+        // Validate file size (max 10MB)
+        long maxSizeBytes = 10 * 1024 * 1024; // 10MB
+        if (photo.getSize() > maxSizeBytes) {
+            throw new IllegalArgumentException("Photo file size must not exceed 10MB");
+        }
+
+        // Validate allowed image types
+        String[] allowedTypes = {"image/jpeg", "image/png", "image/gif", "image/webp"};
+        boolean isAllowedType = false;
+        for (String allowedType : allowedTypes) {
+            if (allowedType.equals(contentType)) {
+                isAllowedType = true;
+                break;
+            }
+        }
+        if (!isAllowedType) {
+            throw new IllegalArgumentException("Only JPEG, PNG, GIF, and WebP images are allowed");
+        }
+    }
+
     private String generateToken() {
         return UUID.randomUUID().toString();
     }
@@ -368,6 +503,25 @@ public class PortalUserService {
         );
 
         emailService.sendEmail(portalUser.getEmail(), subject, body);
+    }
+
+    private void sendWelcomeEmail(PortalUser portalUser, String churchName) {
+        String subject = "Welcome to " + churchName + " Portal";
+        String body = String.format(
+            "Hello %s %s,\n\n" +
+            "Welcome to %s portal!\n\n" +
+            "Your account has been automatically approved and you can now login to access the portal.\n\n" +
+            "You can login at: https://portal.example.com/login\n\n" +
+            "If you have any questions, please contact the church administration.\n\n" +
+            "Best regards,\n%s",
+            portalUser.getMember().getFirstName(),
+            portalUser.getMember().getLastName(),
+            churchName,
+            churchName
+        );
+
+        emailService.sendEmail(portalUser.getEmail(), subject, body);
+        log.info("Sent welcome email to auto-approved user: {}", portalUser.getEmail());
     }
 
     private void sendApprovalEmail(PortalUser portalUser) {
@@ -408,6 +562,7 @@ public class PortalUserService {
             response.setMemberId(portalUser.getMember().getId());
             response.setMemberFirstName(portalUser.getMember().getFirstName());
             response.setMemberLastName(portalUser.getMember().getLastName());
+            response.setProfileImageUrl(portalUser.getMember().getProfileImageUrl());
         }
 
         if (portalUser.getApprovedBy() != null) {

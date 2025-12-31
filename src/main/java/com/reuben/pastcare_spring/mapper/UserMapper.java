@@ -13,8 +13,10 @@ public class UserMapper {
             user.getTitle(),
             user.getChurch(),
             user.getFellowships(),
-            user.getPrimaryService(),
-            user.getRole()
+            user.getRole(),
+            user.isActive(),
+            user.getLastLoginAt(),
+            user.isMustChangePassword()
         );
     }
 }

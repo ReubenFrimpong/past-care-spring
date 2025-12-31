@@ -44,7 +44,7 @@ public class Report extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String sorting; // JSON string of sort configuration
 
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "grouping_config", columnDefinition = "TEXT")
     private String grouping; // JSON string of grouping configuration
 
     @ManyToOne(fetch = FetchType.LAZY)

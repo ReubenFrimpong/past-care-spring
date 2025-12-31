@@ -1,0 +1,639 @@
+package com.reuben.pastcare_spring.integration.fellowship;
+
+import com.reuben.pastcare_spring.integration.BaseIntegrationTest;
+import com.reuben.pastcare_spring.models.FellowshipType;
+import org.junit.jupiter.api.*;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.*;
+
+/**
+ * Integration tests for Fellowship module.
+ *
+ * Tests cover:
+ * - Fellowship CRUD operations
+ * - Member management (add, remove, list)
+ * - Join requests (submit, approve, reject, pending)
+ * - Analytics (health metrics, growth rate, retention)
+ * - Multiplication tracking
+ * - Multi-tenancy isolation
+ * - Permission-based access control
+ */
+@SpringBootTest
+@Tag("integration")
+@Tag("module:fellowship")
+@DisplayName("Fellowship Integration Tests")
+@Transactional
+class FellowshipIntegrationTest extends BaseIntegrationTest {
+
+    private Long churchId;
+    private String adminToken;
+    private String pastorToken;
+
+    @BeforeEach
+    void setUp() {
+        churchId = createTestChurch();
+        adminToken = getAdminToken(churchId);
+        pastorToken = getPastorToken(churchId);
+    }
+
+    @Nested
+    @DisplayName("Fellowship CRUD Tests")
+    class CrudTests {
+
+        @Test
+        @DisplayName("Should create fellowship successfully")
+        void shouldCreateFellowship() {
+            // Given: Fellowship request
+            Map<String, Object> request = new HashMap<>();
+            request.put("name", "Youth Fellowship");
+            request.put("description", "Fellowship for young adults");
+            request.put("fellowshipType", FellowshipType.AGE_BASED.name());
+            request.put("meetingDay", "SATURDAY");
+            request.put("meetingTime", "15:00");
+            request.put("maxCapacity", 50);
+            request.put("isAcceptingMembers", true);
+
+            // When: Create fellowship
+            Map<String, Object> response = given()
+                .spec(authenticatedSpec(adminToken))
+                .body(request)
+            .when()
+                .post("/api/fellowships")
+            .then()
+                .statusCode(200)
+                .body("id", notNullValue())
+                .body("name", equalTo("Youth Fellowship"))
+                .body("fellowshipType", equalTo(FellowshipType.AGE_BASED.name()))
+            .extract()
+                .as(Map.class);
+
+            // Then: Verify belongs to church
+            assertBelongsToChurch(Long.valueOf(response.get("churchId").toString()), churchId);
+        }
+
+        @Test
+        @DisplayName("Should get fellowship by ID")
+        void shouldGetFellowshipById() {
+            // Given: Existing fellowship
+            Long fellowshipId = createTestFellowship("Test Fellowship");
+
+            // When: Get by ID
+            given()
+                .spec(authenticatedSpec(adminToken))
+            .when()
+                .get("/api/fellowships/" + fellowshipId)
+            .then()
+                .statusCode(200)
+                .body("id", equalTo(fellowshipId.intValue()))
+                .body("name", equalTo("Test Fellowship"));
+        }
+
+        @Test
+        @DisplayName("Should list all fellowships")
+        void shouldListAllFellowships() {
+            // Given: Multiple fellowships
+            createTestFellowship("Fellowship 1");
+            createTestFellowship("Fellowship 2");
+            createTestFellowship("Fellowship 3");
+
+            // When: List fellowships
+            List<?> fellowships = given()
+                .spec(authenticatedSpec(adminToken))
+            .when()
+                .get("/api/fellowships")
+            .then()
+                .statusCode(200)
+                .body("size()", greaterThanOrEqualTo(3))
+            .extract()
+                .jsonPath().getList("$");
+
+            // Then: Verify count
+            assertThat(fellowships).hasSizeGreaterThanOrEqualTo(3);
+        }
+
+        @Test
+        @DisplayName("Should update fellowship")
+        void shouldUpdateFellowship() {
+            // Given: Existing fellowship
+            Long fellowshipId = createTestFellowship("Original Name");
+
+            Map<String, Object> updateRequest = new HashMap<>();
+            updateRequest.put("name", "Updated Name");
+            updateRequest.put("description", "Updated description");
+            updateRequest.put("fellowshipType", FellowshipType.CELL_GROUP.name());
+
+            // When: Update fellowship
+            given()
+                .spec(authenticatedSpec(adminToken))
+                .body(updateRequest)
+            .when()
+                .put("/api/fellowships/" + fellowshipId)
+            .then()
+                .statusCode(200)
+                .body("name", equalTo("Updated Name"))
+                .body("fellowshipType", equalTo(FellowshipType.GEOGRAPHIC.name()));
+        }
+
+        @Test
+        @DisplayName("Should delete fellowship")
+        void shouldDeleteFellowship() {
+            // Given: Existing fellowship
+            Long fellowshipId = createTestFellowship("To Delete");
+
+            // When: Delete fellowship
+            given()
+                .spec(authenticatedSpec(adminToken))
+            .when()
+                .delete("/api/fellowships/" + fellowshipId)
+            .then()
+                .statusCode(204);
+
+            // Then: Fellowship should not be found
+            given()
+                .spec(authenticatedSpec(adminToken))
+            .when()
+                .get("/api/fellowships/" + fellowshipId)
+            .then()
+                .statusCode(404);
+        }
+    }
+
+    @Nested
+    @DisplayName("Member Management Tests")
+    class MemberManagementTests {
+
+        @Test
+        @DisplayName("Should add member to fellowship")
+        void shouldAddMemberToFellowship() {
+            // Given: Fellowship and member
+            Long fellowshipId = createTestFellowship("Test Fellowship");
+            Long memberId = createTestMember();
+
+            // When: Add member
+            given()
+                .spec(authenticatedSpec(adminToken))
+                .body(List.of(memberId))
+            .when()
+                .post("/api/fellowships/" + fellowshipId + "/members/bulk")
+            .then()
+                .statusCode(200);
+
+            // Then: Verify member added
+            List<Long> memberIds = given()
+                .spec(authenticatedSpec(adminToken))
+            .when()
+                .get("/api/fellowships/" + fellowshipId + "/members/ids")
+            .then()
+                .statusCode(200)
+            .extract()
+                .jsonPath().getList("$", Long.class);
+
+            assertThat(memberIds).contains(memberId);
+        }
+
+        @Test
+        @DisplayName("Should remove member from fellowship")
+        void shouldRemoveMemberFromFellowship() {
+            // Given: Fellowship with member
+            Long fellowshipId = createTestFellowship("Test Fellowship");
+            Long memberId = createTestMember();
+            addMemberToFellowship(fellowshipId, memberId);
+
+            // When: Remove member
+            given()
+                .spec(authenticatedSpec(adminToken))
+                .body(List.of(memberId))
+            .when()
+                .delete("/api/fellowships/" + fellowshipId + "/members/bulk")
+            .then()
+                .statusCode(200);
+
+            // Then: Verify member removed
+            List<Long> memberIds = given()
+                .spec(authenticatedSpec(adminToken))
+            .when()
+                .get("/api/fellowships/" + fellowshipId + "/members/ids")
+            .then()
+                .statusCode(200)
+            .extract()
+                .jsonPath().getList("$", Long.class);
+
+            assertThat(memberIds).doesNotContain(memberId);
+        }
+
+        @Test
+        @DisplayName("Should list fellowship members")
+        void shouldListFellowshipMembers() {
+            // Given: Fellowship with members
+            Long fellowshipId = createTestFellowship("Test Fellowship");
+            Long member1 = createTestMember();
+            Long member2 = createTestMember();
+            addMemberToFellowship(fellowshipId, member1);
+            addMemberToFellowship(fellowshipId, member2);
+
+            // When: Get member IDs
+            List<Long> memberIds = given()
+                .spec(authenticatedSpec(adminToken))
+            .when()
+                .get("/api/fellowships/" + fellowshipId + "/members/ids")
+            .then()
+                .statusCode(200)
+            .extract()
+                .jsonPath().getList("$", Long.class);
+
+            // Then: Verify both members present
+            assertThat(memberIds).hasSize(2)
+                .contains(member1, member2);
+        }
+    }
+
+    @Nested
+    @DisplayName("Join Request Tests")
+    class JoinRequestTests {
+
+        @Test
+        @DisplayName("Should submit join request")
+        void shouldSubmitJoinRequest() {
+            // Given: Fellowship and member
+            Long fellowshipId = createTestFellowship("Test Fellowship");
+            Long memberId = createTestMember();
+
+            Map<String, Object> request = new HashMap<>();
+            request.put("fellowshipId", fellowshipId);
+            request.put("memberId", memberId);
+            request.put("requestNote", "I would like to join");
+
+            // When: Submit join request
+            given()
+                .spec(authenticatedSpec(adminToken))
+                .body(request)
+            .when()
+                .post("/api/fellowships/join-requests")
+            .then()
+                .statusCode(200)
+                .body("fellowshipId", equalTo(fellowshipId.intValue()))
+                .body("memberId", equalTo(memberId.intValue()))
+                .body("status", equalTo("PENDING"));
+        }
+
+        @Test
+        @DisplayName("Should approve join request")
+        void shouldApproveJoinRequest() {
+            // Given: Pending join request
+            Long fellowshipId = createTestFellowship("Test Fellowship");
+            Long memberId = createTestMember();
+            Long requestId = createJoinRequest(fellowshipId, memberId);
+            Long reviewerId = createAdminUser(churchId).getId();
+
+            // When: Approve request
+            given()
+                .spec(authenticatedSpec(adminToken))
+                .queryParam("reviewerId", reviewerId)
+                .queryParam("reviewNotes", "Approved")
+            .when()
+                .post("/api/fellowships/join-requests/" + requestId + "/approve")
+            .then()
+                .statusCode(200)
+                .body("status", equalTo("APPROVED"));
+        }
+
+        @Test
+        @DisplayName("Should reject join request")
+        void shouldRejectJoinRequest() {
+            // Given: Pending join request
+            Long fellowshipId = createTestFellowship("Test Fellowship");
+            Long memberId = createTestMember();
+            Long requestId = createJoinRequest(fellowshipId, memberId);
+            Long reviewerId = createAdminUser(churchId).getId();
+
+            // When: Reject request
+            given()
+                .spec(authenticatedSpec(adminToken))
+                .queryParam("reviewerId", reviewerId)
+                .queryParam("reviewNotes", "Not suitable")
+            .when()
+                .post("/api/fellowships/join-requests/" + requestId + "/reject")
+            .then()
+                .statusCode(200)
+                .body("status", equalTo("REJECTED"));
+        }
+
+        @Test
+        @DisplayName("Should get pending join requests")
+        void shouldGetPendingJoinRequests() {
+            // Given: Multiple join requests
+            Long fellowshipId = createTestFellowship("Test Fellowship");
+            createJoinRequest(fellowshipId, createTestMember());
+            createJoinRequest(fellowshipId, createTestMember());
+
+            // When: Get pending requests
+            List<?> requests = given()
+                .spec(authenticatedSpec(adminToken))
+            .when()
+                .get("/api/fellowships/" + fellowshipId + "/join-requests/pending")
+            .then()
+                .statusCode(200)
+            .extract()
+                .jsonPath().getList("$");
+
+            // Then: Verify count
+            assertThat(requests).hasSizeGreaterThanOrEqualTo(2);
+        }
+    }
+
+    @Nested
+    @DisplayName("Analytics Tests")
+    class AnalyticsTests {
+
+        @Test
+        @DisplayName("Should get fellowship health metrics")
+        void shouldGetFellowshipHealthMetrics() {
+            // Given: Fellowship with members
+            Long fellowshipId = createTestFellowship("Test Fellowship");
+
+            // When: Get analytics
+            given()
+                .spec(authenticatedSpec(adminToken))
+            .when()
+                .get("/api/fellowships/" + fellowshipId + "/analytics")
+            .then()
+                .statusCode(200)
+                .body("fellowshipId", equalTo(fellowshipId.intValue()))
+                .body("healthScore", notNullValue())
+                .body("memberCount", notNullValue());
+        }
+
+        @Test
+        @DisplayName("Should get fellowship growth rate")
+        void shouldGetFellowshipGrowthRate() {
+            // Given: Fellowship
+            Long fellowshipId = createTestFellowship("Test Fellowship");
+
+            // When: Get analytics
+            Map<String, Object> analytics = given()
+                .spec(authenticatedSpec(adminToken))
+            .when()
+                .get("/api/fellowships/" + fellowshipId + "/analytics")
+            .then()
+                .statusCode(200)
+            .extract()
+                .as(Map.class);
+
+            // Then: Verify growth metrics present
+            assertThat(analytics).containsKey("growthRate");
+        }
+
+        @Test
+        @DisplayName("Should get fellowship retention metrics")
+        void shouldGetFellowshipRetentionMetrics() {
+            // Given: Fellowship
+            Long fellowshipId = createTestFellowship("Test Fellowship");
+
+            // When: Get retention
+            given()
+                .spec(authenticatedSpec(adminToken))
+                .queryParam("startDate", "2024-01-01")
+                .queryParam("endDate", "2024-12-31")
+            .when()
+                .get("/api/fellowships/" + fellowshipId + "/retention")
+            .then()
+                .statusCode(200)
+                .body("fellowshipId", equalTo(fellowshipId.intValue()))
+                .body("retentionRate", notNullValue());
+        }
+    }
+
+    @Nested
+    @DisplayName("Multiplication Tests")
+    class MultiplicationTests {
+
+        @Test
+        @DisplayName("Should record fellowship multiplication")
+        void shouldRecordMultiplication() {
+            // Given: Parent fellowship
+            Long parentId = createTestFellowship("Parent Fellowship");
+            Long childId = createTestFellowship("Child Fellowship");
+
+            Map<String, Object> request = new HashMap<>();
+            request.put("childFellowshipId", childId);
+            request.put("multiplicationDate", "2024-01-01");
+            request.put("notes", "Fellowship grew and multiplied");
+
+            // When: Record multiplication
+            given()
+                .spec(authenticatedSpec(adminToken))
+                .body(request)
+            .when()
+                .post("/api/fellowships/" + parentId + "/multiply")
+            .then()
+                .statusCode(200)
+                .body("parentFellowshipId", equalTo(parentId.intValue()))
+                .body("childFellowshipId", equalTo(childId.intValue()));
+        }
+
+        @Test
+        @DisplayName("Should get fellowship multiplication history")
+        void shouldGetMultiplicationHistory() {
+            // Given: Fellowship with multiplication
+            Long parentId = createTestFellowship("Parent Fellowship");
+
+            // When: Get multiplications
+            given()
+                .spec(authenticatedSpec(adminToken))
+            .when()
+                .get("/api/fellowships/" + parentId + "/multiplications")
+            .then()
+                .statusCode(200);
+        }
+    }
+
+    @Nested
+    @DisplayName("Multi-Tenancy Tests")
+    class MultiTenancyTests {
+
+        @Test
+        @DisplayName("Should isolate fellowships by church")
+        void shouldIsolateFellowshipsByChurch() {
+            // Given: Two churches with fellowships
+            Long church1 = createTestChurch("Church 1");
+            Long church2 = createTestChurch("Church 2");
+            String token1 = getAdminToken(church1);
+            String token2 = getAdminToken(church2);
+
+            // Create fellowship in each church
+            createFellowshipForChurch(church1, token1, "Church 1 Fellowship");
+            createFellowshipForChurch(church2, token2, "Church 2 Fellowship");
+
+            // When: Church 1 lists fellowships
+            List<Map<String, Object>> church1Fellowships = given()
+                .spec(authenticatedSpec(token1))
+            .when()
+                .get("/api/fellowships")
+            .then()
+                .statusCode(200)
+            .extract()
+                .jsonPath().getList("$", Map.class);
+
+            // Then: Should only see church1 fellowships
+            assertThat(church1Fellowships).isNotEmpty();
+            church1Fellowships.forEach(f ->
+                assertBelongsToChurch(Long.valueOf(f.get("churchId").toString()), church1)
+            );
+        }
+
+        @Test
+        @DisplayName("Should prevent cross-church fellowship access")
+        void shouldPreventCrossChurchAccess() {
+            // Given: Fellowship in church1
+            Long church1 = createTestChurch("Church 1");
+            Long church2 = createTestChurch("Church 2");
+            String token1 = getAdminToken(church1);
+            String token2 = getAdminToken(church2);
+
+            Long fellowshipId = createFellowshipForChurch(church1, token1, "Protected Fellowship");
+
+            // When: Church 2 tries to access church1 fellowship
+            // Then: Should return 404 or 403
+            given()
+                .spec(authenticatedSpec(token2))
+            .when()
+                .get("/api/fellowships/" + fellowshipId)
+            .then()
+                .statusCode(anyOf(equalTo(404), equalTo(403)));
+        }
+    }
+
+    @Nested
+    @DisplayName("Permission Tests")
+    class PermissionTests {
+
+        @Test
+        @DisplayName("ADMIN should create fellowships")
+        void adminShouldCreateFellowships() {
+            // Given: Admin token
+            Map<String, Object> request = new HashMap<>();
+            request.put("name", "Admin Created Fellowship");
+            request.put("fellowshipType", FellowshipType.AGE_BASED.name());
+
+            // When: Admin creates fellowship
+            given()
+                .spec(authenticatedSpec(adminToken))
+                .body(request)
+            .when()
+                .post("/api/fellowships")
+            .then()
+                .statusCode(200);
+        }
+
+        @Test
+        @DisplayName("PASTOR should create fellowships")
+        void pastorShouldCreateFellowships() {
+            // Given: Pastor token
+            Map<String, Object> request = new HashMap<>();
+            request.put("name", "Pastor Created Fellowship");
+            request.put("fellowshipType", FellowshipType.INTEREST_BASED.name());
+
+            // When: Pastor creates fellowship
+            given()
+                .spec(authenticatedSpec(pastorToken))
+                .body(request)
+            .when()
+                .post("/api/fellowships")
+            .then()
+                .statusCode(200);
+        }
+
+        @Test
+        @DisplayName("FELLOWSHIP_LEADER should manage own fellowship")
+        void fellowshipLeaderShouldManageOwnFellowship() {
+            // Given: Fellowship leader token
+            String leaderToken = getFellowshipLeaderToken(churchId);
+
+            // When: Leader views fellowships
+            // Then: Should succeed
+            given()
+                .spec(authenticatedSpec(leaderToken))
+            .when()
+                .get("/api/fellowships")
+            .then()
+                .statusCode(200);
+        }
+    }
+
+    // Helper methods
+    private Long createTestFellowship(String name) {
+        Map<String, Object> request = new HashMap<>();
+        request.put("name", name);
+        request.put("description", "Test fellowship");
+        request.put("fellowshipType", FellowshipType.GEOGRAPHIC.name());
+        request.put("isAcceptingMembers", true);
+
+        return Long.valueOf(given()
+            .spec(authenticatedSpec(adminToken))
+            .body(request)
+            .post("/api/fellowships")
+            .jsonPath()
+            .getInt("id"));
+    }
+
+    private Long createTestMember() {
+        String memberPayload = """
+            {
+                "firstName": "Test",
+                "lastName": "Member",
+                "sex": "male",
+                "phoneNumber": "+23324400%05d",
+                "maritalStatus": "single"
+            }
+            """.formatted((int)(Math.random() * 100000));
+
+        return Long.valueOf(given()
+            .spec(authenticatedSpec(adminToken))
+            .body(memberPayload)
+            .post("/api/members")
+            .jsonPath()
+            .getInt("id"));
+    }
+
+    private void addMemberToFellowship(Long fellowshipId, Long memberId) {
+        given()
+            .spec(authenticatedSpec(adminToken))
+            .body(List.of(memberId))
+            .post("/api/fellowships/" + fellowshipId + "/members/bulk");
+    }
+
+    private Long createJoinRequest(Long fellowshipId, Long memberId) {
+        Map<String, Object> request = new HashMap<>();
+        request.put("fellowshipId", fellowshipId);
+        request.put("memberId", memberId);
+        request.put("requestNote", "Want to join");
+
+        return Long.valueOf(given()
+            .spec(authenticatedSpec(adminToken))
+            .body(request)
+            .post("/api/fellowships/join-requests")
+            .jsonPath()
+            .getInt("id"));
+    }
+
+    private Long createFellowshipForChurch(Long churchId, String token, String name) {
+        Map<String, Object> request = new HashMap<>();
+        request.put("name", name);
+        request.put("fellowshipType", FellowshipType.GEOGRAPHIC.name());
+
+        return Long.valueOf(given()
+            .spec(authenticatedSpec(token))
+            .body(request)
+            .post("/api/fellowships")
+            .jsonPath()
+            .getInt("id"));
+    }
+}

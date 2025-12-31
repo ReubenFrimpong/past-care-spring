@@ -6,6 +6,8 @@ import java.util.List;
 
 import com.reuben.pastcare_spring.enums.Role;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -14,6 +16,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -22,6 +25,7 @@ import lombok.NoArgsConstructor;
 @EqualsAndHashCode(callSuper = true)
 @Data
 @Entity
+@Table(name = "users")
 @AllArgsConstructor
 @NoArgsConstructor
 public class User extends BaseEntity{
@@ -48,10 +52,9 @@ public class User extends BaseEntity{
   )
   List<Fellowship> fellowships;
 
+  @JsonIgnore
   @Column(nullable = false)
   private String password;
-
-  private String primaryService;
 
   @Enumerated(EnumType.STRING)
   @Column(length = 20)
@@ -64,6 +67,14 @@ public class User extends BaseEntity{
 
   @Column(nullable = false)
   private boolean accountLocked = false;
+
+  @Column(nullable = false)
+  private boolean isActive = true;
+
+  private LocalDateTime lastLoginAt;
+
+  @Column(nullable = false)
+  private boolean mustChangePassword = false;
 
   /**
    * Validates that non-SUPERADMIN users must be associated with a church.

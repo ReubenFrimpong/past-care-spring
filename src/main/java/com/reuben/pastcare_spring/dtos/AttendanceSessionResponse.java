@@ -12,6 +12,8 @@ public record AttendanceSessionResponse(
   LocalTime sessionTime,
   Long fellowshipId,
   String fellowshipName,
+  Long eventId,
+  String eventName,
   Long churchId,
   String churchName,
   String notes,

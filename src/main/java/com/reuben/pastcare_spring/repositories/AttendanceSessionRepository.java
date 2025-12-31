@@ -114,4 +114,9 @@ public interface AttendanceSessionRepository extends JpaRepository<AttendanceSes
 
   // Count sessions by church ID
   Long countByChurch_Id(Long churchId);
+
+  // Event-Attendance Integration methods
+  boolean existsByEvent_Id(Long eventId);
+  List<AttendanceSession> findByEvent_Id(Long eventId);
+  List<AttendanceSession> findByChurch_IdAndEventIsNotNull(Long churchId);
 }

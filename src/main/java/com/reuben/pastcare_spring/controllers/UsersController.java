@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.reuben.pastcare_spring.dtos.UserCreateRequest;
+import com.reuben.pastcare_spring.dtos.UserCreateResponse;
 import com.reuben.pastcare_spring.dtos.UserResponse;
 import com.reuben.pastcare_spring.dtos.UserUpdateRequest;
 import com.reuben.pastcare_spring.services.UserService;
@@ -48,23 +49,53 @@ public class UsersController {
   }
   
 
-    @RequirePermission(Permission.USER_MANAGE)
+    @RequirePermission({Permission.USER_MANAGE, Permission.USER_CREATE})
   @PostMapping
-  public ResponseEntity<UserResponse> createUser(@Valid @RequestBody UserCreateRequest userRequest) {
+  public ResponseEntity<UserCreateResponse> createUser(@Valid @RequestBody UserCreateRequest userRequest) {
       return ResponseEntity.ok(userService.createUser(userRequest));
   }
 
-    @RequirePermission(Permission.USER_MANAGE)
+    @RequirePermission({Permission.USER_MANAGE, Permission.USER_EDIT})
   @PutMapping("/{id}")
-  public ResponseEntity<UserResponse> updateUser(@PathVariable Long id, @Valid @RequestBody UserUpdateRequest userRequest) {      
+  public ResponseEntity<UserResponse> updateUser(@PathVariable Long id, @Valid @RequestBody UserUpdateRequest userRequest) {
       return ResponseEntity.ok(userService.updateUser(id, userRequest));
   }
 
-    @RequirePermission(Permission.USER_MANAGE)
+    @RequirePermission({Permission.USER_MANAGE, Permission.USER_DELETE})
   @DeleteMapping("/{id}")
   public ResponseEntity<String> deleteUser(@PathVariable Long id) {
     userService.deleteUser(id);
     return ResponseEntity.noContent().build();
   }
-  
+
+  @RequirePermission(Permission.USER_MANAGE)
+  @PostMapping("/{id}/deactivate")
+  public ResponseEntity<String> deactivateUser(@PathVariable Long id) {
+    userService.deactivateUser(id);
+    return ResponseEntity.ok("User deactivated successfully");
+  }
+
+  @RequirePermission(Permission.USER_MANAGE)
+  @PostMapping("/{id}/reactivate")
+  public ResponseEntity<String> reactivateUser(@PathVariable Long id) {
+    userService.reactivateUser(id);
+    return ResponseEntity.ok("User reactivated successfully");
+  }
+
+  @RequirePermission(Permission.USER_VIEW)
+  @GetMapping("/active")
+  public List<UserResponse> getActiveUsers() {
+    return userService.getActiveUsers();
+  }
+
+  @RequirePermission(Permission.SUPERADMIN_ACCESS)
+  @PostMapping("/{id}/reset-password")
+  public ResponseEntity<?> forceResetPassword(@PathVariable Long id) {
+    String temporaryPassword = userService.forceResetPassword(id);
+    return ResponseEntity.ok(new java.util.HashMap<String, String>() {{
+      put("message", "Password reset successfully. User must change password on next login.");
+      put("temporaryPassword", temporaryPassword);
+    }});
+  }
+
 }

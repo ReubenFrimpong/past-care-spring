@@ -1,10 +1,25 @@
 # Pricing Section Implementation Guide
 **Date**: 2025-12-29
-**Status**: Complete - Ready for Integration
+**Status**: OUTDATED - Pricing Model Changed
+**Updated**: 2025-12-30
 
 ---
 
-## ✅ Implementation Complete
+## ⚠️ IMPORTANT NOTICE
+
+**The pricing model in this document is outdated.**
+
+Please refer to **[PRICING_MODEL_REVISED.md](./PRICING_MODEL_REVISED.md)** for the current pricing:
+- **Base Price**: $9.99/month (USD)
+- **No Trial Period** - Subscription required from day 1
+- **Admin-Controlled Grace Periods** - Platform admin can grant on case-by-case basis
+- **Currency**: US Dollar (USD), not USD
+
+The pricing section component needs to be updated to reflect the new model.
+
+---
+
+## ✅ Implementation Complete (Needs Update)
 
 The pricing section component has been created as a standalone Angular component that can be easily integrated into any landing page.
 

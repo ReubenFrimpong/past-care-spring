@@ -32,7 +32,7 @@ public class RefreshToken extends BaseEntity {
   private User user;
 
   @ManyToOne
-  @JoinColumn(name = "church_id", nullable = false)
+  @JoinColumn(name = "church_id", nullable = true)
   private Church church;
 
   @Column(nullable = false)

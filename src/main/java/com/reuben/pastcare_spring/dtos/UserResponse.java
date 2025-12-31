@@ -1,5 +1,6 @@
 package com.reuben.pastcare_spring.dtos;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import com.reuben.pastcare_spring.enums.Role;
@@ -14,8 +15,10 @@ public record UserResponse(
   String title,
   Church church,
   List<Fellowship> fellowships,
-  String primaryService,
-  Role role
+  Role role,
+  boolean isActive,
+  LocalDateTime lastLoginAt,
+  boolean mustChangePassword
 ) {
 
 }

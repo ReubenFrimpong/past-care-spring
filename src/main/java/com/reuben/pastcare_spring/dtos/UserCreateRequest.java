@@ -25,7 +25,6 @@ public record UserCreateRequest(
 
   String password,
 
-  String primaryService,
   Role role) {
 
 }

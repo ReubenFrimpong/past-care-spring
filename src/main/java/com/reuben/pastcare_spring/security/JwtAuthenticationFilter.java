@@ -34,10 +34,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String username = null;
         String jwt = null;
 
-        // Get JWT from HttpOnly cookie
-        jwt = cookieUtil.getAccessToken(request).orElse(null);
+        // First try to get JWT from Authorization header (for API clients and tests)
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            jwt = authHeader.substring(7);
+        }
+
+        // Fallback to HttpOnly cookie
+        if (jwt == null) {
+            jwt = cookieUtil.getAccessToken(request).orElse(null);
+        }
+
         if (jwt != null) {
-            username = jwtUtil.extractUsername(jwt);
+            try {
+                username = jwtUtil.extractUsername(jwt);
+            } catch (Exception e) {
+                // Invalid token, continue without authentication
+                jwt = null;
+            }
         }
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {

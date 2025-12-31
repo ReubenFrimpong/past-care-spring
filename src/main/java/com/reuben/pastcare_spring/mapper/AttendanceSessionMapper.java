@@ -34,6 +34,8 @@ public class AttendanceSessionMapper {
       session.getSessionTime(),
       session.getFellowship() != null ? session.getFellowship().getId() : null,
       session.getFellowship() != null ? session.getFellowship().getName() : null,
+      session.getEvent() != null ? session.getEvent().getId() : null,
+      session.getEvent() != null ? session.getEvent().getName() : null,
       session.getChurch().getId(),
       session.getChurch().getName(),
       session.getNotes(),

@@ -5,6 +5,15 @@ target/
 !**/src/test/**/target/
 uploads/
 
+### Production Secrets ###
+.env
+.env.local
+.env.production
+.env.*.local
+application-prod.properties
+*.p12
+*.jks
+
 ### STS ###
 .apt_generated
 .classpath
@@ -32,3 +41,16 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Frontend (Angular) - DO NOT add to backend project ###
+# The frontend is maintained separately at /home/reuben/Documents/workspace/past-care-spring-frontend/
+# NEVER add Angular/frontend files to the backend project directory
+past-care-spring-frontend/
+node_modules/
+*.log
+package-lock.json
+package.json
+angular.json
+tsconfig.json
+tsconfig.app.json
+tsconfig.spec.json

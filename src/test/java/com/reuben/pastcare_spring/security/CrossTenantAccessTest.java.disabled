@@ -1,0 +1,252 @@
+package com.reuben.pastcare_spring.security;
+
+import com.reuben.pastcare_spring.models.*;
+import com.reuben.pastcare_spring.repositories.*;
+import jakarta.persistence.EntityManager;
+import org.hibernate.Filter;
+import org.hibernate.Session;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/**
+ * Tests to verify cross-tenant access prevention.
+ * Ensures churches cannot access each other's data.
+ */
+@SpringBootTest
+@ActiveProfiles("test")
+@Transactional
+public class CrossTenantAccessTest {
+
+    @Autowired
+    private ChurchRepository churchRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private MemberRepository memberRepository;
+
+    @Autowired
+    private ComplaintRepository complaintRepository;
+
+    @Autowired
+    private EntityManager entityManager;
+
+    private Church church1;
+    private Church church2;
+    private User user1;
+    private User user2;
+
+    @BeforeEach
+    void setup() {
+        // Create two separate churches
+        church1 = new Church();
+        church1.setName("Test Church 1");
+        church1.setEmail("church1@test.com");
+        church1.setAddress("Address 1");
+        church1.setPhoneNumber("1234567890");
+        church1 = churchRepository.save(church1);
+
+        church2 = new Church();
+        church2.setName("Test Church 2");
+        church2.setEmail("church2@test.com");
+        church2.setAddress("Address 2");
+        church2.setPhoneNumber("0987654321");
+        church2 = churchRepository.save(church2);
+
+        // Create users for each church
+        user1 = new User();
+        user1.setName("User 1");
+        user1.setEmail("user1@test.com");
+        user1.setPassword("password");
+        user1.setChurch(church1);
+        user1.setRole(Role.ADMIN);
+        user1 = userRepository.save(user1);
+
+        user2 = new User();
+        user2.setName("User 2");
+        user2.setEmail("user2@test.com");
+        user2.setPassword("password");
+        user2.setChurch(church2);
+        user2.setRole(Role.ADMIN);
+        user2 = userRepository.save(user2);
+    }
+
+    /**
+     * Test that Hibernate filter prevents cross-tenant member access.
+     */
+    @Test
+    void testMemberIsolation() {
+        // Create members for each church
+        Member member1 = new Member();
+        member1.setChurch(church1);
+        member1.setFirstName("John");
+        member1.setLastName("Doe");
+        member1.setEmail("john@test.com");
+        member1.setPhoneNumber("1111111111");
+        memberRepository.save(member1);
+
+        Member member2 = new Member();
+        member2.setChurch(church2);
+        member2.setFirstName("Jane");
+        member2.setLastName("Smith");
+        member2.setEmail("jane@test.com");
+        member2.setPhoneNumber("2222222222");
+        memberRepository.save(member2);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        // Enable filter for church1
+        Session session = entityManager.unwrap(Session.class);
+        Filter filter = session.enableFilter("churchFilter");
+        filter.setParameter("churchId", church1.getId());
+
+        // Query members - should only return church1's members
+        List<Member> members = memberRepository.findAll();
+
+        assertEquals(1, members.size(), "Should only return members from church1");
+        assertEquals("John", members.get(0).getFirstName());
+        assertEquals(church1.getId(), members.get(0).getChurch().getId());
+    }
+
+    /**
+     * Test that complaint isolation works correctly.
+     */
+    @Test
+    void testComplaintIsolation() {
+        // Create complaints for each church
+        Complaint complaint1 = new Complaint();
+        complaint1.setChurch(church1);
+        complaint1.setSubmittedBy(user1);
+        complaint1.setCategory(Complaint.ComplaintCategory.GENERAL);
+        complaint1.setSubject("Test Complaint 1");
+        complaint1.setDescription("Description 1");
+        complaintRepository.save(complaint1);
+
+        Complaint complaint2 = new Complaint();
+        complaint2.setChurch(church2);
+        complaint2.setSubmittedBy(user2);
+        complaint2.setCategory(Complaint.ComplaintCategory.SERVICE);
+        complaint2.setSubject("Test Complaint 2");
+        complaint2.setDescription("Description 2");
+        complaintRepository.save(complaint2);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        // Enable filter for church1
+        Session session = entityManager.unwrap(Session.class);
+        Filter filter = session.enableFilter("churchFilter");
+        filter.setParameter("churchId", church1.getId());
+
+        // Query complaints - should only return church1's complaints
+        List<Complaint> complaints = complaintRepository.findAll();
+
+        assertEquals(1, complaints.size(), "Should only return complaints from church1");
+        assertEquals("Test Complaint 1", complaints.get(0).getSubject());
+        assertEquals(church1.getId(), complaints.get(0).getChurch().getId());
+    }
+
+    /**
+     * Test that repository queries respect church boundaries.
+     */
+    @Test
+    void testRepositoryChurchBoundaries() {
+        // Create members for both churches
+        Member member1 = new Member();
+        member1.setChurch(church1);
+        member1.setFirstName("Alice");
+        member1.setLastName("Johnson");
+        member1.setEmail("alice@test.com");
+        member1.setPhoneNumber("3333333333");
+        memberRepository.save(member1);
+
+        Member member2 = new Member();
+        member2.setChurch(church2);
+        member2.setFirstName("Bob");
+        member2.setLastName("Williams");
+        member2.setEmail("bob@test.com");
+        member2.setPhoneNumber("4444444444");
+        memberRepository.save(member2);
+
+        entityManager.flush();
+
+        // Use church-specific repository methods
+        List<Member> church1Members = memberRepository.findByChurchId(church1.getId());
+        List<Member> church2Members = memberRepository.findByChurchId(church2.getId());
+
+        assertEquals(1, church1Members.size());
+        assertEquals(1, church2Members.size());
+        assertEquals("Alice", church1Members.get(0).getFirstName());
+        assertEquals("Bob", church2Members.get(0).getFirstName());
+    }
+
+    /**
+     * Test that direct ID access is prevented across churches.
+     */
+    @Test
+    void testDirectIdAccessPrevention() {
+        // Create member for church1
+        Member member1 = new Member();
+        member1.setChurch(church1);
+        member1.setFirstName("Charlie");
+        member1.setLastName("Brown");
+        member1.setEmail("charlie@test.com");
+        member1.setPhoneNumber("5555555555");
+        member1 = memberRepository.save(member1);
+
+        entityManager.flush();
+        Long member1Id = member1.getId();
+
+        // Try to access member1 with church2's filter
+        entityManager.clear();
+        Session session = entityManager.unwrap(Session.class);
+        Filter filter = session.enableFilter("churchFilter");
+        filter.setParameter("churchId", church2.getId());
+
+        // This should return empty because member1 belongs to church1
+        var result = memberRepository.findById(member1Id);
+
+        assertTrue(result.isEmpty(), "Should not be able to access member from another church");
+    }
+
+    /**
+     * Test complaint access control.
+     */
+    @Test
+    void testComplaintAccessControl() {
+        // Create complaint for church1
+        Complaint complaint1 = new Complaint();
+        complaint1.setChurch(church1);
+        complaint1.setSubmittedBy(user1);
+        complaint1.setCategory(Complaint.ComplaintCategory.STAFF);
+        complaint1.setSubject("Staff Issue");
+        complaint1.setDescription("Detailed description");
+        complaint1 = complaintRepository.save(complaint1);
+
+        entityManager.flush();
+        Long complaintId = complaint1.getId();
+
+        // Try to access with wrong church filter
+        entityManager.clear();
+        Session session = entityManager.unwrap(Session.class);
+        Filter filter = session.enableFilter("churchFilter");
+        filter.setParameter("churchId", church2.getId());
+
+        // Should not be able to access
+        var byId = complaintRepository.findById(complaintId);
+        var byChurch = complaintRepository.findByIdAndChurchId(complaintId, church2.getId());
+
+        assertTrue(byId.isEmpty(), "Should not access complaint with filter");
+        assertTrue(byChurch.isEmpty(), "Should not access complaint via church-specific method");
+    }
+}

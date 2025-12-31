@@ -1,0 +1,30 @@
+❯ Building...
+✔ Building...
+Initial chunk files | Names         | Raw size | Estimated transfer size
+main-B2HDLL7W.js    | main          |  3.79 MB |               618.23 kB
+styles-JVZTFC5J.css | styles        | 72.37 kB |                12.96 kB
+
+                    | Initial total |  3.86 MB |               631.19 kB
+
+Application bundle generation complete. [41.387 seconds] - 2025-12-31T19:29:14.619Z
+
+▲ [WARNING] bundle initial exceeded maximum budget. Budget 2.00 MB was not met by 1.86 MB with a total of 3.86 MB.
+
+
+▲ [WARNING] src/app/pricing-section/pricing-section.css exceeded maximum budget. Budget 20.00 kB was not met by 5.29 kB with a total of 25.29 kB.
+
+
+▲ [WARNING] src/app/members-page/members-page.css exceeded maximum budget. Budget 20.00 kB was not met by 23.58 kB with a total of 43.58 kB.
+
+
+▲ [WARNING] src/app/events-page/events-page.css exceeded maximum budget. Budget 20.00 kB was not met by 3.31 kB with a total of 23.30 kB.
+
+
+▲ [WARNING] Module 'papaparse' used by 'src/app/members-page/members-page.ts' is not ESM
+
+  CommonJS or AMD dependencies can cause optimization bailouts.
+  For more information see: https://angular.dev/tools/cli/build#configuring-commonjs-dependencies
+
+
+Output location: /home/reuben/Documents/workspace/past-care-spring-frontend/dist/past-care-spring-frontend
+

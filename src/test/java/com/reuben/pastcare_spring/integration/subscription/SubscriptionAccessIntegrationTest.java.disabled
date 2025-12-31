@@ -1,0 +1,278 @@
+package com.reuben.pastcare_spring.integration.subscription;
+
+import com.reuben.pastcare_spring.PastcareSpringApplication;
+import com.reuben.pastcare_spring.enums.Role;
+import com.reuben.pastcare_spring.models.Church;
+import com.reuben.pastcare_spring.models.ChurchSubscription;
+import com.reuben.pastcare_spring.models.SubscriptionPlan;
+import com.reuben.pastcare_spring.models.User;
+import com.reuben.pastcare_spring.repositories.ChurchRepository;
+import com.reuben.pastcare_spring.repositories.ChurchSubscriptionRepository;
+import com.reuben.pastcare_spring.repositories.SubscriptionPlanRepository;
+import com.reuben.pastcare_spring.repositories.UserRepository;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+/**
+ * Integration tests for subscription-based access control.
+ * Tests that users with expired/suspended subscriptions cannot access protected endpoints.
+ */
+@SpringBootTest(classes = PastcareSpringApplication.class)
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+public class SubscriptionAccessIntegrationTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ChurchRepository churchRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private SubscriptionPlanRepository subscriptionPlanRepository;
+
+    @Autowired
+    private ChurchSubscriptionRepository subscriptionRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    private Church church;
+    private User adminUser;
+    private SubscriptionPlan plan;
+    private String authToken;
+
+    @BeforeEach
+    void setUp() throws Exception {
+        // Create a test church
+        church = new Church();
+        church.setName("Test Church for Subscription");
+        church.setEmail("subscription@testchurch.com");
+        church.setPhoneNumber("+254712345678");
+        church = churchRepository.save(church);
+
+        // Create an admin user
+        adminUser = new User();
+        adminUser.setName("Admin User");
+        adminUser.setEmail("admin@subscriptiontest.com");
+        adminUser.setPassword(passwordEncoder.encode("password123"));
+        adminUser.setChurch(church);
+        adminUser.setRole(Role.ADMIN);
+        adminUser = userRepository.save(adminUser);
+
+        // Create a subscription plan
+        plan = new SubscriptionPlan();
+        plan.setPlanName("STARTER");
+        plan.setDisplayName("Starter Plan");
+        plan.setMonthlyPrice(1500.0);
+        plan.setMaxMembers(100);
+        plan.setMaxStorageMB(500L);
+        plan = subscriptionPlanRepository.save(plan);
+
+        // Get auth token
+        authToken = getAuthToken("admin@subscriptiontest.com", "password123");
+    }
+
+    @AfterEach
+    void tearDown() {
+        // Clean up test data
+        if (church != null && church.getId() != null) {
+            subscriptionRepository.deleteAll(subscriptionRepository.findAll());
+            userRepository.deleteAll(userRepository.findAll());
+            churchRepository.deleteById(church.getId());
+        }
+        subscriptionPlanRepository.deleteAll();
+    }
+
+    @Test
+    void shouldAllowAccessWithActiveSubscription() throws Exception {
+        // Given: Active subscription
+        ChurchSubscription subscription = createSubscription("ACTIVE");
+
+        // When: Access protected endpoint
+        mockMvc.perform(get("/api/dashboard/stats")
+                .header("Authorization", "Bearer " + authToken))
+                // Then: Should allow access
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void shouldAllowAccessDuringGracePeriod() throws Exception {
+        // Given: Past due subscription within grace period
+        ChurchSubscription subscription = ChurchSubscription.builder()
+                .churchId(church.getId())
+                .plan(plan)
+                .status("PAST_DUE")
+                .nextBillingDate(LocalDate.now().minusDays(2)) // 2 days overdue
+                .gracePeriodDays(7) // 7 day grace period
+                .autoRenew(true)
+                .build();
+        subscriptionRepository.save(subscription);
+
+        // When: Access protected endpoint
+        mockMvc.perform(get("/api/dashboard/stats")
+                .header("Authorization", "Bearer " + authToken))
+                // Then: Should allow access (within grace period)
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void shouldBlockAccessWithSuspendedSubscription() throws Exception {
+        // Given: Suspended subscription
+        createSubscription("SUSPENDED");
+
+        // When: Access protected endpoint
+        mockMvc.perform(get("/api/dashboard/stats")
+                .header("Authorization", "Bearer " + authToken))
+                // Then: Should return 402 Payment Required
+                .andExpect(status().isPaymentRequired())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error").value("SUBSCRIPTION_REQUIRED"))
+                .andExpect(jsonPath("$.status").value("SUSPENDED"))
+                .andExpect(jsonPath("$.requiredAction").value("RENEW_SUBSCRIPTION"));
+    }
+
+    @Test
+    void shouldBlockAccessWithCanceledSubscription() throws Exception {
+        // Given: Canceled subscription
+        createSubscription("CANCELED");
+
+        // When: Access protected endpoint
+        mockMvc.perform(get("/api/members")
+                .header("Authorization", "Bearer " + authToken))
+                // Then: Should return 402 Payment Required
+                .andExpect(status().isPaymentRequired())
+                .andExpect(jsonPath("$.error").value("SUBSCRIPTION_REQUIRED"))
+                .andExpect(jsonPath("$.status").value("CANCELED"));
+    }
+
+    @Test
+    void shouldBlockAccessWithNoSubscription() throws Exception {
+        // Given: No subscription for church
+        // (Don't create any subscription)
+
+        // When: Access protected endpoint
+        mockMvc.perform(get("/api/events")
+                .header("Authorization", "Bearer " + authToken))
+                // Then: Should return 402 Payment Required
+                .andExpect(status().isPaymentRequired())
+                .andExpect(jsonPath("$.error").value("SUBSCRIPTION_REQUIRED"))
+                .andExpect(jsonPath("$.status").value("NO_SUBSCRIPTION"));
+    }
+
+    @Test
+    void shouldAllowAccessToBillingEndpointsWithoutSubscription() throws Exception {
+        // Given: No subscription
+        // (Don't create any subscription)
+
+        // When: Access billing endpoint
+        mockMvc.perform(get("/api/billing/plans")
+                .header("Authorization", "Bearer " + authToken))
+                // Then: Should allow access
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void shouldAllowAccessToBillingEndpointsWithSuspendedSubscription() throws Exception {
+        // Given: Suspended subscription
+        createSubscription("SUSPENDED");
+
+        // When: Access billing endpoint to renew
+        mockMvc.perform(get("/api/billing/subscription")
+                .header("Authorization", "Bearer " + authToken))
+                // Then: Should allow access
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void shouldBlockMultipleProtectedEndpointsWithInactiveSubscription() throws Exception {
+        // Given: Suspended subscription
+        createSubscription("SUSPENDED");
+
+        String[] protectedEndpoints = {
+            "/api/dashboard/stats",
+            "/api/members",
+            "/api/attendance/sessions",
+            "/api/events",
+            "/api/donations/summary",
+            "/api/fellowships",
+            "/api/users"
+        };
+
+        // When/Then: All protected endpoints should be blocked
+        for (String endpoint : protectedEndpoints) {
+            mockMvc.perform(get(endpoint)
+                    .header("Authorization", "Bearer " + authToken))
+                    .andExpect(status().isPaymentRequired())
+                    .andExpect(jsonPath("$.error").value("SUBSCRIPTION_REQUIRED"));
+        }
+    }
+
+    @Test
+    void shouldBlockAccessPastGracePeriod() throws Exception {
+        // Given: Past due subscription beyond grace period
+        ChurchSubscription subscription = ChurchSubscription.builder()
+                .churchId(church.getId())
+                .plan(plan)
+                .status("PAST_DUE")
+                .nextBillingDate(LocalDate.now().minusDays(10)) // 10 days overdue
+                .gracePeriodDays(7) // 7 day grace period (expired)
+                .autoRenew(true)
+                .build();
+        subscriptionRepository.save(subscription);
+
+        // When: Access protected endpoint
+        mockMvc.perform(get("/api/dashboard/stats")
+                .header("Authorization", "Bearer " + authToken))
+                // Then: Should block access (past grace period)
+                .andExpect(status().isPaymentRequired())
+                .andExpect(jsonPath("$.error").value("SUBSCRIPTION_REQUIRED"))
+                .andExpect(jsonPath("$.status").value("PAST_DUE"));
+    }
+
+    @Test
+    void shouldAllowAccessToAuthEndpointsWithoutSubscription() throws Exception {
+        // Given: No subscription
+        // (Don't create any subscription)
+
+        // When: Access auth endpoint
+        mockMvc.perform(get("/api/auth/me")
+                .header("Authorization", "Bearer " + authToken))
+                // Then: Should allow access
+                .andExpect(status().isOk());
+    }
+
+    /**
+     * Helper method to create a subscription with given status
+     */
+    private ChurchSubscription createSubscription(String status) {
+        ChurchSubscription subscription = ChurchSubscription.builder()
+                .churchId(church.getId())
+                .plan(plan)
+                .status(status)
+                .nextBillingDate(LocalDate.now().plusMonths(1))
+                .currentPeriodStart(LocalDate.now())
+                .currentPeriodEnd(LocalDate.now().plusMonths(1))
+                .autoRenew(true)
+                .gracePeriodDays(7)
+                .build();
+        return subscriptionRepository.save(subscription);
+    }
+}

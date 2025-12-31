@@ -47,4 +47,8 @@ public class PortalRegistrationRequest {
 
     @Size(max = 500, message = "Additional info must not exceed 500 characters")
     private String additionalInfo; // Why joining, how heard about church, etc.
+
+    @NotBlank(message = "Invitation code is required")
+    @Size(min = 8, max = 50, message = "Invitation code must be between 8 and 50 characters")
+    private String invitationCode;
 }
