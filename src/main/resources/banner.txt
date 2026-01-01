@@ -5,5 +5,5 @@
  |  __/ (_| \__ \ |_| |__| (_| | | |  __/
  |_|   \__,_|___/\__|\____\__,_|_|  \___|
 
- :: Church Management System ::   (v${application.version:1.0.0})
+ :: Helping pastors care for what matters most: God's people ::   (v${application.version:1.0.0})
  :: Spring Boot ::                (v${spring-boot.version})

@@ -37,7 +37,7 @@ Server: Hetzner CPX21
 
 ---
 
-## 2. Tech Stack on Single VPS
+## 2. Tech Stack on Single VPS 
 
 ### Components (All on One Server)
 
