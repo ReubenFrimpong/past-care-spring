@@ -76,6 +76,7 @@ public class BillingController {
 
     /**
      * Initialize payment for subscription upgrade.
+     * Supports both legacy planId and new congregation pricing tierId.
      */
     @PostMapping("/subscribe")
     @Operation(summary = "Initialize subscription upgrade payment")
@@ -84,16 +85,40 @@ public class BillingController {
             @RequestBody SubscriptionUpgradeRequest request) {
         Long churchId = TenantContext.getCurrentChurchId();
 
-        PaymentInitializationResponse response = billingService.initializeSubscriptionPayment(
-            churchId,
-            request.getPlanId(),
-            request.getEmail(),
-            request.getCallbackUrl(),
-            request.getBillingPeriod(),
-            request.getBillingPeriodMonths()
-        );
+        // Determine billing interval - prefer billingInterval, fallback to billingPeriod
+        String interval = request.getBillingInterval() != null ?
+            request.getBillingInterval() : request.getBillingPeriod();
 
-        log.info("Subscription payment initialized for church {}: plan {}", churchId, request.getPlanId());
+        PaymentInitializationResponse response;
+
+        // Check if using new congregation pricing (tierId) or legacy (planId)
+        if (request.getTierId() != null) {
+            // New congregation pricing flow
+            response = billingService.initializeCongregationTierPayment(
+                churchId,
+                request.getTierId(),
+                request.getTierName(),
+                request.getEmail(),
+                request.getCallbackUrl(),
+                interval,
+                request.getAmountGhs(),
+                request.getAmountUsd()
+            );
+            log.info("Congregation tier payment initialized for church {}: tier {} ({})",
+                churchId, request.getTierId(), request.getTierName());
+        } else {
+            // Legacy subscription plan flow
+            response = billingService.initializeSubscriptionPayment(
+                churchId,
+                request.getPlanId(),
+                request.getEmail(),
+                request.getCallbackUrl(),
+                request.getBillingPeriod(),
+                request.getBillingPeriodMonths()
+            );
+            log.info("Subscription payment initialized for church {}: plan {}", churchId, request.getPlanId());
+        }
+
         return ResponseEntity.ok(response);
     }
 
@@ -391,14 +416,20 @@ public class BillingController {
 
     /**
      * Request DTO for subscription upgrade.
+     * Supports both legacy planId and new congregation pricing tierId.
      */
     @lombok.Data
     public static class SubscriptionUpgradeRequest {
-        private Long planId;
+        private Long planId;        // Legacy: subscription_plans.id
+        private Long tierId;        // New: congregation_pricing_tiers.id
+        private String tierName;    // New: congregation_pricing_tiers.tier_name
         private String email;
         private String callbackUrl;
         private String billingPeriod; // MONTHLY, QUARTERLY, BIANNUAL, YEARLY
         private Integer billingPeriodMonths; // 1, 3, 6, or 12
+        private java.math.BigDecimal amountGhs;  // Price in GHS (calculated by frontend)
+        private java.math.BigDecimal amountUsd;  // Price in USD (from tier)
+        private String billingInterval; // New: same as billingPeriod
     }
 
     /**

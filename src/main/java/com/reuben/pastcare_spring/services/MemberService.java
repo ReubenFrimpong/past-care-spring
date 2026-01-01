@@ -65,6 +65,9 @@ public class MemberService {
   @Autowired
   private ProfileCompletenessService profileCompletenessService;
 
+  @Autowired
+  private TierEnforcementService tierEnforcementService;
+
 
   public List<MemberResponse> getAllMembers(){
     var members = memberRepository.findAll().stream().map(MemberMapper::toMemberResponse).toList();
@@ -396,13 +399,44 @@ public class MemberService {
    * Bulk import members from CSV/Excel data.
    * Supports column mapping, validation, duplicate detection, and partial imports.
    *
+   * <p><strong>SECURITY:</strong> Enforces tier member limits before processing any members.
+   * Throws TierLimitExceededException if import would exceed tier limit.
+   *
    * @param request Bulk import request with member data and options
    * @param churchId The church ID to associate imported members with
    * @return Import results with success/failure counts and error details
+   * @throws com.reuben.pastcare_spring.exceptions.TierLimitExceededException if would exceed tier limit
    */
   public MemberBulkImportResponse bulkImportMembers(MemberBulkImportRequest request, Long churchId) {
     Church church = churchRepository.findById(churchId)
         .orElseThrow(() -> new IllegalArgumentException("Invalid church ID"));
+
+    // ============================================================================
+    // CRITICAL SECURITY: Enforce tier member limit BEFORE processing any members
+    // ============================================================================
+    // Calculate how many NEW members will be created (exclude updates/duplicates estimate)
+    int totalRowsToProcess = request.members().size();
+
+    // Count duplicates if updateExisting is false (they won't be new members)
+    int estimatedDuplicates = 0;
+    if (!request.updateExisting()) {
+      for (Map<String, String> rowData : request.members()) {
+        String phoneNumber = rowData.get("phoneNumber");
+        if (phoneNumber != null && !phoneNumber.isEmpty()) {
+          if (memberRepository.findByPhoneNumber(phoneNumber).isPresent()) {
+            estimatedDuplicates++;
+          }
+        }
+      }
+    }
+
+    // Worst case: all rows are new members (if updateExisting=true or no duplicates)
+    int maxNewMembers = totalRowsToProcess - estimatedDuplicates;
+
+    // Enforce tier limit for maximum possible new members
+    // This prevents tier bypass through bulk upload
+    tierEnforcementService.enforceTierLimit(churchId, maxNewMembers);
+    // If we reach here, tier limit check passed
 
     List<MemberResponse> importedMembers = new ArrayList<>();
     List<MemberBulkImportResponse.ImportError> errors = new ArrayList<>();

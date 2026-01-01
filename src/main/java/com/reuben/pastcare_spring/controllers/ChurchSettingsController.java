@@ -30,6 +30,10 @@ public class ChurchSettingsController {
     @RequirePermission(Permission.CHURCH_SETTINGS_VIEW)
     public ResponseEntity<Map<String, String>> getSettings() {
         Long churchId = TenantContext.getCurrentChurchId();
+        if (churchId == null) {
+            // Return empty settings if no church context is set
+            return ResponseEntity.ok(new java.util.HashMap<>());
+        }
         Map<String, String> settings = churchSettingsService.getSettings(churchId);
         return ResponseEntity.ok(settings);
     }

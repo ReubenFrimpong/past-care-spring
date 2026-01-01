@@ -33,6 +33,7 @@ import com.reuben.pastcare_spring.exceptions.ResourceNotFoundException;
 import com.reuben.pastcare_spring.exceptions.StorageLimitExceededException;
 import com.reuben.pastcare_spring.exceptions.SubscriptionRequiredForAddonException;
 import com.reuben.pastcare_spring.exceptions.TenantViolationException;
+import com.reuben.pastcare_spring.exceptions.TierLimitExceededException;
 import com.reuben.pastcare_spring.exceptions.TooManyRequestsException;
 import com.reuben.pastcare_spring.exceptions.UnauthorizedException;
 import com.reuben.pastcare_spring.services.SecurityMonitoringService;
@@ -363,6 +364,53 @@ public class GlobalExceptionHandler {
     errorResponse.put("details", details);
 
     return new ResponseEntity<>(errorResponse, HttpStatus.PAYLOAD_TOO_LARGE);
+  }
+
+  /**
+   * Handle tier limit exceeded exception (HTTP 403 Forbidden).
+   *
+   * <p>Triggered when church attempts to add members beyond their pricing tier's limit.
+   * Critical security handler to prevent tier bypass through bulk uploads.
+   *
+   * <p>Frontend should:
+   * <ul>
+   *   <li>Display clear message about tier limit</li>
+   *   <li>Show current vs max member count</li>
+   *   <li>Suggest tier upgrade</li>
+   *   <li>Prevent bulk upload form submission if would exceed</li>
+   * </ul>
+   */
+  @ExceptionHandler(TierLimitExceededException.class)
+  public ResponseEntity<Map<String, Object>> handleTierLimitExceededException(
+      TierLimitExceededException exp,
+      WebRequest request) {
+    logger.warn("Tier limit exceeded for request {}: Current: {}, Tier max: {}, Attempting to add: {}, Would total: {} ({:.1f}% of limit)",
+        request.getDescription(false),
+        exp.getCurrentMemberCount(),
+        exp.getTierMaxMembers(),
+        exp.getMembersToAdd(),
+        exp.getNewTotalMembers(),
+        exp.getPercentageUsed());
+
+    Map<String, Object> errorResponse = new HashMap<>();
+    errorResponse.put("status", HttpStatus.FORBIDDEN.value());
+    errorResponse.put("error", "TIER_LIMIT_EXCEEDED");
+    errorResponse.put("title", "Tier Member Limit Exceeded");
+    errorResponse.put("message", exp.getDetailedMessage());
+    errorResponse.put("path", request.getDescription(false).replace("uri=", ""));
+
+    // Include detailed metrics for client-side display
+    Map<String, Object> details = new HashMap<>();
+    details.put("currentMemberCount", exp.getCurrentMemberCount());
+    details.put("tierMaxMembers", exp.getTierMaxMembers());
+    details.put("membersToAdd", exp.getMembersToAdd());
+    details.put("newTotalMembers", exp.getNewTotalMembers());
+    details.put("percentageUsed", exp.getPercentageUsed());
+    details.put("upgradeRecommendation", exp.getUpgradeRecommendation());
+    details.put("suggestedAction", "Upgrade your pricing tier to add more members");
+    errorResponse.put("details", details);
+
+    return new ResponseEntity<>(errorResponse, HttpStatus.FORBIDDEN);
   }
 
   /**

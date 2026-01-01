@@ -57,6 +57,13 @@ public interface MemberRepository extends JpaRepository<Member, Long>, JpaSpecif
   // Statistics
   long countByChurch(Church church);
 
+  /**
+   * Count members by church ID (for tier enforcement).
+   * More efficient than fetching Church entity first.
+   */
+  @Query("SELECT COUNT(m) FROM Member m WHERE m.church.id = :churchId")
+  long countByChurchId(@Param("churchId") Long churchId);
+
   long countByChurchAndIsVerified(Church church, Boolean isVerified);
 
   long countByChurchAndMemberSinceAfter(Church church, YearMonth startDate);

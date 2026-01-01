@@ -15,6 +15,12 @@ import java.util.Optional;
 public interface PortalUserRepository extends JpaRepository<PortalUser, Long> {
 
     /**
+     * Find all portal users by email (across all churches)
+     */
+    @Query("SELECT p FROM PortalUser p WHERE p.email = :email")
+    List<PortalUser> findByEmail(@Param("email") String email);
+
+    /**
      * Find portal user by email and church
      */
     @Query("SELECT p FROM PortalUser p WHERE p.email = :email AND p.church.id = :churchId")

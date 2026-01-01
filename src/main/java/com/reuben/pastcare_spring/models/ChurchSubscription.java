@@ -39,11 +39,57 @@ public class ChurchSubscription {
     private Long churchId;
 
     /**
-     * Current subscription plan
+     * Current subscription plan (DEPRECATED - use pricingTier instead)
      */
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "plan_id", nullable = false)
+    @JoinColumn(name = "plan_id")
     private SubscriptionPlan plan;
+
+    /**
+     * Current pricing tier (congregation-based pricing)
+     */
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "pricing_tier_id")
+    private CongregationPricingTier pricingTier;
+
+    /**
+     * Billing interval (MONTHLY, QUARTERLY, BIANNUAL, ANNUAL)
+     */
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "billing_interval_id")
+    private SubscriptionBillingInterval billingInterval;
+
+    /**
+     * Current member count (cached for tier validation)
+     */
+    @Column(name = "current_member_count")
+    @Builder.Default
+    private Integer currentMemberCount = 0;
+
+    /**
+     * When member count was last checked
+     */
+    @Column(name = "member_count_last_checked")
+    private LocalDateTime memberCountLastChecked;
+
+    /**
+     * Whether tier upgrade is required (member count exceeds tier max)
+     */
+    @Column(name = "tier_upgrade_required")
+    @Builder.Default
+    private Boolean tierUpgradeRequired = false;
+
+    /**
+     * When tier upgrade notification was sent
+     */
+    @Column(name = "tier_upgrade_notification_sent")
+    private LocalDateTime tierUpgradeNotificationSent;
+
+    /**
+     * Subscription amount (total for billing period)
+     */
+    @Column(name = "subscription_amount")
+    private java.math.BigDecimal subscriptionAmount;
 
     /**
      * Subscription status: ACTIVE, PAST_DUE, CANCELED, SUSPENDED

@@ -47,6 +47,9 @@ public class SecurityConfig {
                 .requestMatchers("/api/invitation-codes/validate/**").permitAll()
                 // Church logo - public for landing page and favicon
                 .requestMatchers("/api/churches/public/logo").permitAll()
+                // Public pricing and currency endpoints (for landing page pricing display)
+                .requestMatchers("/api/pricing/tiers", "/api/pricing/tiers/*", "/api/pricing/billing-intervals", "/api/pricing/calculate").permitAll()
+                .requestMatchers("/api/platform/currency/settings", "/api/platform/currency/convert", "/api/platform/currency/format").permitAll()
                 // Billing endpoints - accessible to authenticated users even without active subscription
                 .requestMatchers("/api/billing/**", "/api/churches/*/subscription").authenticated()
                 // Storage add-ons - accessible to authenticated users (for billing page)

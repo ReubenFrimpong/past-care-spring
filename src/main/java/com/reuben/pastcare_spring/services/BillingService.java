@@ -5,10 +5,12 @@ import com.reuben.pastcare_spring.dtos.PaymentInitializationRequest;
 import com.reuben.pastcare_spring.dtos.PaymentInitializationResponse;
 import com.reuben.pastcare_spring.models.ChurchStorageAddon;
 import com.reuben.pastcare_spring.models.ChurchSubscription;
+import com.reuben.pastcare_spring.models.CongregationPricingTier;
 import com.reuben.pastcare_spring.models.Payment;
 import com.reuben.pastcare_spring.models.SubscriptionPlan;
 import com.reuben.pastcare_spring.repositories.ChurchStorageAddonRepository;
 import com.reuben.pastcare_spring.repositories.ChurchSubscriptionRepository;
+import com.reuben.pastcare_spring.repositories.CongregationPricingTierRepository;
 import com.reuben.pastcare_spring.repositories.PaymentRepository;
 import com.reuben.pastcare_spring.repositories.SubscriptionPlanRepository;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +43,7 @@ public class BillingService {
 
     private final ChurchSubscriptionRepository subscriptionRepository;
     private final SubscriptionPlanRepository planRepository;
+    private final CongregationPricingTierRepository congregationPricingTierRepository;
     private final PaymentRepository paymentRepository;
     private final PaystackService paystackService;
     private final com.reuben.pastcare_spring.repositories.ChurchRepository churchRepository;
@@ -202,6 +205,101 @@ public class BillingService {
         request.setDonationType(null); // Not applicable
         request.setSetupRecurring(true);
         request.setReference(payment.getPaystackReference()); // Use the SUB- reference we created
+
+        return paystackService.initializePayment(request);
+    }
+
+    /**
+     * Initialize payment for congregation-based pricing tier.
+     * This is the new pricing model based on member count ranges.
+     *
+     * @param churchId Church ID
+     * @param tierId Congregation pricing tier ID
+     * @param tierName Tier name for reference
+     * @param email User email for Paystack
+     * @param callbackUrl Callback URL after payment
+     * @param billingInterval MONTHLY, QUARTERLY, BIANNUAL, or ANNUAL
+     * @param amountGhs Amount in GHS (calculated by frontend)
+     * @param amountUsd Amount in USD (for reference)
+     * @return Payment initialization response with Paystack URL
+     */
+    @Transactional
+    public PaymentInitializationResponse initializeCongregationTierPayment(
+            Long churchId, Long tierId, String tierName, String email, String callbackUrl,
+            String billingInterval, BigDecimal amountGhs, BigDecimal amountUsd) {
+
+        // Validate tier exists
+        CongregationPricingTier tier = congregationPricingTierRepository.findById(tierId)
+            .orElseThrow(() -> new RuntimeException("Congregation pricing tier not found: " + tierId));
+
+        // Get or create subscription
+        ChurchSubscription subscription = subscriptionRepository.findByChurchId(churchId)
+            .orElseGet(() -> createInitialSubscription(churchId));
+
+        // Calculate billing period months
+        int periodMonths = switch (billingInterval != null ? billingInterval.toUpperCase() : "MONTHLY") {
+            case "QUARTERLY" -> 3;
+            case "BIANNUAL" -> 6;
+            case "ANNUAL" -> 12;
+            default -> 1;
+        };
+
+        // Store billing period in subscription for later use
+        subscription.setBillingPeriod(billingInterval != null ? billingInterval : "MONTHLY");
+        subscription.setBillingPeriodMonths(periodMonths);
+        // Store the pricing tier for reference when activating subscription
+        subscription.setPricingTier(tier);
+        subscriptionRepository.save(subscription);
+
+        // Use the amount in GHS from frontend (already converted from USD)
+        BigDecimal amount = amountGhs != null ? amountGhs : tier.getPriceForInterval(billingInterval);
+
+        // Create pending payment record
+        // Note: We don't have a SubscriptionPlan for congregation pricing,
+        // so we'll use the STANDARD plan as a reference or create a virtual one
+        SubscriptionPlan standardPlan = planRepository.findByName("STANDARD")
+            .orElseGet(() -> SubscriptionPlan.builder()
+                .id(0L)
+                .name("STANDARD")
+                .displayName(tier.getDisplayName())
+                .description("Congregation pricing tier: " + tier.getDisplayName())
+                .price(amount)
+                .billingInterval(billingInterval)
+                .storageLimitMb(2048L)
+                .userLimit(-1)
+                .isFree(false)
+                .isActive(true)
+                .build());
+
+        Payment payment = Payment.builder()
+            .churchId(churchId)
+            .plan(standardPlan)
+            .amount(amount)
+            .currency("GHS")
+            .status("PENDING")
+            .paystackReference("TIER-" + UUID.randomUUID().toString())
+            .paymentType("SUBSCRIPTION")
+            .description("Subscription to " + tier.getDisplayName() +
+                        " (" + (billingInterval != null ? billingInterval : "MONTHLY") + ")")
+            .metadata("{\"tierId\":" + tierId + ",\"tierName\":\"" + tierName +
+                      "\",\"amountUsd\":" + (amountUsd != null ? amountUsd : 0) + "}")
+            .build();
+
+        paymentRepository.save(payment);
+
+        // Initialize payment with Paystack
+        PaymentInitializationRequest request = new PaymentInitializationRequest();
+        request.setEmail(email);
+        request.setAmount(amount);
+        request.setCurrency("GHS");
+        request.setCallbackUrl(callbackUrl);
+        request.setMemberId(null);
+        request.setDonationType(null);
+        request.setSetupRecurring(true);
+        request.setReference(payment.getPaystackReference());
+
+        log.info("Initializing congregation tier payment for church {}: tier {} ({}), amount GHS {}",
+            churchId, tierId, tier.getDisplayName(), amount);
 
         return paystackService.initializePayment(request);
     }

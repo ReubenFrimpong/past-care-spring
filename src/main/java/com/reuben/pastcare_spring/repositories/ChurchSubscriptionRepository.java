@@ -81,4 +81,11 @@ public interface ChurchSubscriptionRepository extends JpaRepository<ChurchSubscr
      * Delete subscription by church ID.
      */
     void deleteByChurchId(Long churchId);
+
+    /**
+     * Find active subscription by church ID.
+     * Active means status = 'ACTIVE' (excludes PAST_DUE, CANCELED, SUSPENDED).
+     */
+    @Query("SELECT cs FROM ChurchSubscription cs WHERE cs.churchId = :churchId AND cs.status = 'ACTIVE'")
+    Optional<ChurchSubscription> findActiveByChurchId(Long churchId);
 }

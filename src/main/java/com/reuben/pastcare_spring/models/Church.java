@@ -54,4 +54,25 @@ public class Church extends BaseEntity {
    */
   @Column(name = "storage_limit_updated_at")
   private LocalDateTime storageLimitUpdatedAt;
+
+  // ==================== CONGREGATION PRICING FIELDS ====================
+
+  /**
+   * Cached member count for tier calculations.
+   * Updated daily by MemberCountCacheService.
+   */
+  @Column(name = "cached_member_count")
+  private Integer cachedMemberCount = 0;
+
+  /**
+   * When member count cache was last updated.
+   */
+  @Column(name = "member_count_last_updated")
+  private LocalDateTime memberCountLastUpdated;
+
+  /**
+   * Recommended pricing tier ID based on current member count.
+   */
+  @Column(name = "eligible_pricing_tier_id")
+  private Long eligiblePricingTierId;
 }
