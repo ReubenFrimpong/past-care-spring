@@ -22,24 +22,26 @@ public interface InvitationCodeRepository extends JpaRepository<InvitationCode, 
     Optional<InvitationCode> findByCode(String code);
 
     /**
-     * Find all codes for a church.
+     * Find all codes for a church with eager fetch of related entities.
      */
-    List<InvitationCode> findByChurchId(Long churchId);
+    @Query("SELECT i FROM InvitationCode i LEFT JOIN FETCH i.church LEFT JOIN FETCH i.createdBy WHERE i.church.id = :churchId ORDER BY i.createdAt DESC")
+    List<InvitationCode> findByChurchId(@Param("churchId") Long churchId);
 
     /**
-     * Find active codes for a church.
+     * Find active codes for a church with eager fetch of related entities.
      */
-    List<InvitationCode> findByChurchIdAndIsActiveTrue(Long churchId);
+    @Query("SELECT i FROM InvitationCode i LEFT JOIN FETCH i.church LEFT JOIN FETCH i.createdBy WHERE i.church.id = :churchId AND i.isActive = true ORDER BY i.createdAt DESC")
+    List<InvitationCode> findByChurchIdAndIsActiveTrue(@Param("churchId") Long churchId);
 
     /**
      * Find code by code string and church ID.
      */
-    Optional<InvitationCode> findByCodeAndChurchId(String code, Long churchId);
+    Optional<InvitationCode> findByCodeAndChurch_Id(String code, Long churchId);
 
     /**
      * Count active codes for a church.
      */
-    Long countByChurchIdAndIsActiveTrue(Long churchId);
+    Long countByChurch_IdAndIsActiveTrue(Long churchId);
 
     /**
      * Find expired codes that haven't been deactivated yet.
@@ -56,5 +58,5 @@ public interface InvitationCodeRepository extends JpaRepository<InvitationCode, 
     /**
      * Delete all codes for a church.
      */
-    void deleteByChurchId(Long churchId);
+    void deleteByChurch_Id(Long churchId);
 }

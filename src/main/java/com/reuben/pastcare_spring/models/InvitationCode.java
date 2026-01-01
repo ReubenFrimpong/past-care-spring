@@ -1,5 +1,7 @@
 package com.reuben.pastcare_spring.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.reuben.pastcare_spring.enums.Role;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -26,6 +28,7 @@ public class InvitationCode {
     /**
      * The church that created this invitation code.
      */
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "church_id", nullable = false)
     private Church church;
@@ -45,6 +48,7 @@ public class InvitationCode {
     /**
      * User who created this invitation code.
      */
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by_user_id", nullable = false)
     private User createdBy;
@@ -137,5 +141,31 @@ public class InvitationCode {
         if (this.defaultRole == null) {
             this.defaultRole = Role.MEMBER;
         }
+    }
+
+    // ============ JSON Properties for Frontend ============
+
+    /**
+     * Get church ID for JSON serialization.
+     */
+    @JsonProperty("churchId")
+    public Long getChurchId() {
+        return church != null ? church.getId() : null;
+    }
+
+    /**
+     * Get creator user ID for JSON serialization.
+     */
+    @JsonProperty("createdById")
+    public Long getCreatedById() {
+        return createdBy != null ? createdBy.getId() : null;
+    }
+
+    /**
+     * Get creator name for JSON serialization.
+     */
+    @JsonProperty("createdByName")
+    public String getCreatedByName() {
+        return createdBy != null ? createdBy.getName() : null;
     }
 }

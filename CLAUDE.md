@@ -12,11 +12,12 @@
 
 **DO NOT mark any task as complete until all checks pass.**
 
-### 2. Port Cleanup (CRITICAL)
-**Port 8080 MUST be released after every task is complete.**
-- Before finishing any task, kill any processes using port 8080
-- Run: `lsof -ti:8080 | xargs kill -9 2>/dev/null || true`
-- This prevents "port already in use" errors in subsequent tasks
+### 2. Port Cleanup (CONDITIONAL)
+**Port 8080 should ONLY be cleaned up if you actually started a server on it during the task.**
+- Only run cleanup if you started the backend server (`./mvnw spring-boot:run`) or similar
+- Do NOT clean up port 8080 if you only ran compile/build commands without starting a server
+- When cleanup is needed, run: `lsof -ti:8080 | xargs kill -9 2>/dev/null || true`
+- This prevents accidentally killing unrelated processes
 
 ### 3. Test Requirements
 - Every E2E and unit test MUST test ALL user roles

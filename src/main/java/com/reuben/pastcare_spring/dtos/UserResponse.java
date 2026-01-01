@@ -20,5 +20,18 @@ public record UserResponse(
   LocalDateTime lastLoginAt,
   boolean mustChangePassword
 ) {
+  /**
+   * Convenience method to get the church ID directly.
+   * This makes it easier for the frontend which often needs just the ID.
+   */
+  public Long churchId() {
+    return church != null ? church.getId() : null;
+  }
 
+  /**
+   * Convenience method to get the church name directly.
+   */
+  public String churchName() {
+    return church != null ? church.getName() : null;
+  }
 }
