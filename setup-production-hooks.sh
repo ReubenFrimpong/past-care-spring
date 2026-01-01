@@ -272,6 +272,12 @@ UPLOAD_DIR=/var/pastcare/uploads
 
 # Application Domain
 APP_DOMAIN=yourdomain.com
+
+# CORS Configuration (Production)
+# CRITICAL: Add all domains that should be allowed to access your API
+# Format: comma-separated list (no spaces)
+# Example: https://pastcare.app,https://www.pastcare.app,https://app.pastcare.app
+CORS_ALLOWED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
 ENV_TEMPLATE
 
 echo -e "${GREEN}✓ Environment template created at /opt/pastcare/backend/.env.template${NC}"
