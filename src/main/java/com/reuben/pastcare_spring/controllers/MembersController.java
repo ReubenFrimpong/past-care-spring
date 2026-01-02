@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import com.reuben.pastcare_spring.annotations.RequirePermission;
 import com.reuben.pastcare_spring.dtos.AdvancedSearchRequest;
 import com.reuben.pastcare_spring.dtos.AdvancedSearchResponse;
+import com.reuben.pastcare_spring.dtos.HouseholdSuggestion;
 import com.reuben.pastcare_spring.dtos.MemberResponse;
 import com.reuben.pastcare_spring.dtos.MemberRequest;
 import com.reuben.pastcare_spring.dtos.MemberStatsResponse;
@@ -16,6 +17,7 @@ import com.reuben.pastcare_spring.dtos.TagStatsResponse;
 import com.reuben.pastcare_spring.dtos.ProfileCompletenessResponse;
 import com.reuben.pastcare_spring.dtos.CompletenessStatsResponse;
 import com.reuben.pastcare_spring.enums.Permission;
+import com.reuben.pastcare_spring.services.HouseholdSuggestionService;
 import com.reuben.pastcare_spring.services.ImageService;
 import com.reuben.pastcare_spring.services.MemberService;
 import com.reuben.pastcare_spring.util.RequestContextUtil;
@@ -50,10 +52,12 @@ public class MembersController {
 
   private final MemberService memberService;
   private final RequestContextUtil requestContextUtil;
+  private final HouseholdSuggestionService householdSuggestionService;
 
-  public MembersController(MemberService memberService, RequestContextUtil requestContextUtil, ImageService imageService){
+  public MembersController(MemberService memberService, RequestContextUtil requestContextUtil, ImageService imageService, HouseholdSuggestionService householdSuggestionService){
     this.memberService = memberService;
     this.requestContextUtil = requestContextUtil;
+    this.householdSuggestionService = householdSuggestionService;
   }
 
   @GetMapping
@@ -434,5 +438,23 @@ public class MembersController {
   public ResponseEntity<CompletenessStatsResponse> getCompletenessStats(HttpServletRequest httpRequest) {
     Long churchId = requestContextUtil.extractChurchId(httpRequest);
     return ResponseEntity.ok(memberService.getCompletenessStats(churchId));
+  }
+
+  /**
+   * Get intelligent household suggestion based on member request data.
+   * Analyzes spouse and children linkages to suggest appropriate household actions.
+   *
+   * @param memberRequest The member request containing family relation data
+   * @param httpRequest HTTP request to extract church ID
+   * @return HouseholdSuggestion with recommended action (JOIN, CREATE, or NONE)
+   */
+  @PostMapping("/household-suggestion")
+  @RequirePermission(Permission.MEMBER_CREATE)
+  public ResponseEntity<HouseholdSuggestion> getHouseholdSuggestion(
+      @RequestBody MemberRequest memberRequest,
+      HttpServletRequest httpRequest) {
+    Long churchId = requestContextUtil.extractChurchId(httpRequest);
+    HouseholdSuggestion suggestion = householdSuggestionService.suggestHouseholdForMember(memberRequest, churchId);
+    return ResponseEntity.ok(suggestion);
   }
 }

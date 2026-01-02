@@ -42,6 +42,9 @@ public class PartnershipCode {
     @Column(nullable = true)
     private Integer maxUses;
 
+    @Column(nullable = true)
+    private Integer maxUsesPerChurch;
+
     @Column(nullable = false)
     private Integer currentUses = 0;
 

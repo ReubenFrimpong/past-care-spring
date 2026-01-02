@@ -31,11 +31,13 @@ import com.reuben.pastcare_spring.dtos.CompletenessStatsResponse;
 import com.reuben.pastcare_spring.mapper.MemberMapper;
 import com.reuben.pastcare_spring.models.Church;
 import com.reuben.pastcare_spring.models.Fellowship;
+import com.reuben.pastcare_spring.models.Household;
 import com.reuben.pastcare_spring.models.Location;
 import com.reuben.pastcare_spring.models.Member;
 import com.reuben.pastcare_spring.models.MemberStatus;
 import com.reuben.pastcare_spring.repositories.ChurchRepository;
 import com.reuben.pastcare_spring.repositories.FellowshipRepository;
+import com.reuben.pastcare_spring.repositories.HouseholdRepository;
 import com.reuben.pastcare_spring.repositories.MemberRepository;
 import com.reuben.pastcare_spring.specifications.MemberSpecification;
 import com.reuben.pastcare_spring.exceptions.FileUploadException;
@@ -73,6 +75,9 @@ public class MemberService {
 
   @Autowired
   private GoalService goalService;
+
+  @Autowired
+  private HouseholdRepository householdRepository;
 
 
   @Transactional(readOnly = true)
@@ -207,7 +212,14 @@ public class MemberService {
     int completeness = profileCompletenessService.calculateCompleteness(member);
     member.setProfileCompleteness(completeness);
 
+    // Handle household assignment/creation BEFORE saving member
+    handleHouseholdAssignment(member, memberRequest, church);
+
+    // Save member first (needed for family relation linkages)
     Member createdMember = memberRepository.save(member);
+
+    // Handle family relations AFTER saving member (requires member ID)
+    handleFamilyRelations(createdMember, memberRequest, church);
 
     // Recalculate MEMBERS type goals after adding a new member
     recalculateMemberGoals();
@@ -285,7 +297,21 @@ public class MemberService {
     int completeness = profileCompletenessService.calculateCompleteness(member);
     member.setProfileCompleteness(completeness);
 
+    // Handle household assignment/creation (only if explicitly requested)
+    if (memberRequest.householdId() != null || Boolean.TRUE.equals(memberRequest.createNewHousehold())) {
+      handleHouseholdAssignment(member, memberRequest, church);
+    }
+
+    // Save member
     memberRepository.save(member);
+
+    // Handle family relations (only if explicitly provided in request)
+    if (memberRequest.linkSpouseId() != null ||
+        (memberRequest.linkParentIds() != null && !memberRequest.linkParentIds().isEmpty()) ||
+        (memberRequest.linkChildIds() != null && !memberRequest.linkChildIds().isEmpty())) {
+      handleFamilyRelations(member, memberRequest, church);
+    }
+
     return MemberMapper.toMemberResponse(member);
   }
 
@@ -1507,6 +1533,183 @@ public class MemberService {
         incomplete,
         distribution
     );
+  }
+
+  // ==================== Household and Family Relations Helpers ====================
+
+  /**
+   * Handles household assignment or creation for a member.
+   * Priority order:
+   * 1. Join existing household (if householdId provided)
+   * 2. Create new household (if createNewHousehold is true)
+   * 3. Inherit spouse's household (if linking spouse with household)
+   */
+  private void handleHouseholdAssignment(Member member, MemberRequest request, Church church) {
+    // Priority 1: Join existing household
+    if (request.householdId() != null) {
+      Household household = householdRepository.findById(request.householdId())
+          .orElseThrow(() -> new IllegalArgumentException("Household not found with id: " + request.householdId()));
+
+      // Validate household belongs to same church
+      if (!household.getChurch().getId().equals(church.getId())) {
+        throw new IllegalArgumentException("Household does not belong to the same church");
+      }
+
+      member.setHousehold(household);
+      log.info("Member assigned to existing household: {}", household.getHouseholdName());
+      return;
+    }
+
+    // Priority 2: Create new household
+    if (Boolean.TRUE.equals(request.createNewHousehold())) {
+      Household newHousehold = createHouseholdForMember(member, request, church);
+      member.setHousehold(newHousehold);
+      log.info("Created new household for member: {}", newHousehold.getHouseholdName());
+      return;
+    }
+
+    // Priority 3: Inherit spouse's household (if linking spouse)
+    if (request.linkSpouseId() != null) {
+      Member spouse = memberRepository.findById(request.linkSpouseId()).orElse(null);
+      if (spouse != null && spouse.getHousehold() != null) {
+        // Validate spouse's household belongs to same church
+        if (spouse.getHousehold().getChurch().getId().equals(church.getId())) {
+          member.setHousehold(spouse.getHousehold());
+          log.info("Member inherited spouse's household: {}", spouse.getHousehold().getHouseholdName());
+          return;
+        }
+      }
+    }
+
+    // No household assignment
+    log.info("Member created without household assignment");
+  }
+
+  /**
+   * Creates a new household for a member.
+   */
+  private Household createHouseholdForMember(Member member, MemberRequest request, Church church) {
+    Household household = new Household();
+    household.setChurch(church);
+
+    // Generate household name if not provided
+    String householdName = request.newHouseholdName();
+    if (householdName == null || householdName.isBlank()) {
+      householdName = member.getLastName() + " Household";
+    }
+    household.setHouseholdName(householdName);
+
+    // Set household head if requested
+    if (Boolean.TRUE.equals(request.makeHouseholdHead())) {
+      household.setHouseholdHead(member);
+    }
+
+    // Inherit location from member
+    if (member.getLocation() != null) {
+      household.setSharedLocation(member.getLocation());
+    }
+
+    // Set default established date to today
+    household.setEstablishedDate(LocalDate.now());
+
+    return householdRepository.save(household);
+  }
+
+  /**
+   * Handles family relation linkages (spouse, parents, children) atomically.
+   * Must be called AFTER member is saved (requires member ID).
+   */
+  private void handleFamilyRelations(Member member, MemberRequest request, Church church) {
+    // Link spouse (bidirectional)
+    if (request.linkSpouseId() != null) {
+      linkSpouseBidirectional(member, request.linkSpouseId(), church);
+    }
+
+    // Link parents (many-to-many)
+    if (request.linkParentIds() != null && !request.linkParentIds().isEmpty()) {
+      linkParents(member, request.linkParentIds(), church);
+    }
+
+    // Link children (many-to-many)
+    if (request.linkChildIds() != null && !request.linkChildIds().isEmpty()) {
+      linkChildren(member, request.linkChildIds(), church);
+    }
+  }
+
+  /**
+   * Links spouse bidirectionally (sets both member.spouse and spouse.spouse).
+   */
+  private void linkSpouseBidirectional(Member member, Long spouseId, Church church) {
+    Member spouse = memberRepository.findById(spouseId)
+        .orElseThrow(() -> new IllegalArgumentException("Spouse not found with id: " + spouseId));
+
+    // Validate spouse belongs to same church
+    if (!spouse.getChurch().getId().equals(church.getId())) {
+      throw new IllegalArgumentException("Spouse does not belong to the same church");
+    }
+
+    // Prevent self-linking
+    if (member.getId().equals(spouseId)) {
+      throw new IllegalArgumentException("Cannot link member as their own spouse");
+    }
+
+    // Set bidirectional relationship
+    member.setSpouse(spouse);
+    spouse.setSpouse(member);
+
+    memberRepository.save(spouse);
+    log.info("Linked spouse bidirectionally: {} <-> {}", member.getId(), spouse.getId());
+  }
+
+  /**
+   * Links parents to member (many-to-many).
+   */
+  private void linkParents(Member member, List<Long> parentIds, Church church) {
+    for (Long parentId : parentIds) {
+      Member parent = memberRepository.findById(parentId)
+          .orElseThrow(() -> new IllegalArgumentException("Parent not found with id: " + parentId));
+
+      // Validate parent belongs to same church
+      if (!parent.getChurch().getId().equals(church.getId())) {
+        throw new IllegalArgumentException("Parent does not belong to the same church");
+      }
+
+      // Prevent self-linking
+      if (member.getId().equals(parentId)) {
+        throw new IllegalArgumentException("Cannot link member as their own parent");
+      }
+
+      // Add parent relationship
+      member.getParents().add(parent);
+      log.info("Linked parent: {} -> {}", member.getId(), parent.getId());
+    }
+
+    memberRepository.save(member);
+  }
+
+  /**
+   * Links children to member (many-to-many).
+   */
+  private void linkChildren(Member member, List<Long> childIds, Church church) {
+    for (Long childId : childIds) {
+      Member child = memberRepository.findById(childId)
+          .orElseThrow(() -> new IllegalArgumentException("Child not found with id: " + childId));
+
+      // Validate child belongs to same church
+      if (!child.getChurch().getId().equals(church.getId())) {
+        throw new IllegalArgumentException("Child does not belong to the same church");
+      }
+
+      // Prevent self-linking
+      if (member.getId().equals(childId)) {
+        throw new IllegalArgumentException("Cannot link member as their own child");
+      }
+
+      // Add child relationship (adds member as parent to child)
+      child.getParents().add(member);
+      memberRepository.save(child);
+      log.info("Linked child: {} -> {}", member.getId(), child.getId());
+    }
   }
 
   // ==================== Goal Recalculation Helper ====================

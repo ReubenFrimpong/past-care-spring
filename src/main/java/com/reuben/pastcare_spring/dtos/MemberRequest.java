@@ -82,7 +82,18 @@ public record MemberRequest(
   String notes,
 
   // Phase 2 fields
-  Set<String> tags
+  Set<String> tags,
+
+  // Household management fields (unified submission)
+  Long householdId,  // Join existing household
+  Boolean createNewHousehold,  // Flag to create new household
+  String newHouseholdName,  // Name if creating new (auto-generated from lastName if null)
+  Boolean makeHouseholdHead,  // Whether this member should be household head
+
+  // Family relation fields (for atomic submission)
+  Long linkSpouseId,  // Link spouse during member creation/update
+  List<Long> linkParentIds,  // Link parents during member creation/update
+  List<Long> linkChildIds  // Link children during member creation/update
 
 ) {
 

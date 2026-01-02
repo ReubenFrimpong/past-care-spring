@@ -2,13 +2,16 @@ package com.reuben.pastcare_spring.services;
 
 import com.reuben.pastcare_spring.models.ChurchSubscription;
 import com.reuben.pastcare_spring.models.PartnershipCode;
+import com.reuben.pastcare_spring.models.PartnershipCodeUsage;
 import com.reuben.pastcare_spring.repositories.ChurchSubscriptionRepository;
 import com.reuben.pastcare_spring.repositories.PartnershipCodeRepository;
+import com.reuben.pastcare_spring.repositories.PartnershipCodeUsageRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -20,6 +23,9 @@ public class PartnershipCodeService {
 
     @Autowired
     private ChurchSubscriptionRepository subscriptionRepository;
+
+    @Autowired
+    private PartnershipCodeUsageRepository partnershipCodeUsageRepository;
 
     /**
      * Apply a partnership code to a church subscription to grant grace period
@@ -49,6 +55,16 @@ public class PartnershipCodeService {
             throw new IllegalArgumentException("Invalid partnership code");
         }
 
+        // Check if this church has already used this code (per-church limit)
+        if (partnershipCode.getMaxUsesPerChurch() != null) {
+            long churchUsageCount = partnershipCodeUsageRepository.countByPartnershipCodeIdAndChurchId(
+                    partnershipCode.getId(), churchId);
+
+            if (churchUsageCount >= partnershipCode.getMaxUsesPerChurch()) {
+                throw new IllegalArgumentException("Your church has already used this partnership code the maximum number of times allowed");
+            }
+        }
+
         // Find the subscription
         ChurchSubscription subscription = subscriptionRepository.findByChurchId(churchId)
                 .orElseThrow(() -> new IllegalArgumentException("Subscription not found"));
@@ -76,6 +92,13 @@ public class PartnershipCodeService {
         subscription.setNextBillingDate(gracePeriodEnd.toLocalDate().plusDays(1));
 
         subscription = subscriptionRepository.save(subscription);
+
+        // Track the usage for this church
+        PartnershipCodeUsage usage = new PartnershipCodeUsage();
+        usage.setPartnershipCodeId(partnershipCode.getId());
+        usage.setChurchId(churchId);
+        usage.setGracePeriodDaysGranted(partnershipCode.getGracePeriodDays());
+        partnershipCodeUsageRepository.save(usage);
 
         // Increment code usage
         partnershipCode.incrementUsage();
@@ -163,6 +186,7 @@ public class PartnershipCodeService {
         existingCode.setDescription(updatedCode.getDescription());
         existingCode.setGracePeriodDays(updatedCode.getGracePeriodDays());
         existingCode.setMaxUses(updatedCode.getMaxUses());
+        existingCode.setMaxUsesPerChurch(updatedCode.getMaxUsesPerChurch());
         existingCode.setExpiresAt(updatedCode.getExpiresAt());
         existingCode.setIsActive(updatedCode.getIsActive());
 
@@ -184,17 +208,21 @@ public class PartnershipCodeService {
      */
     public Map<String, Object> getCodeStats(Long id) {
         PartnershipCode code = getCodeById(id);
+        long uniqueChurches = partnershipCodeUsageRepository.countUniqueChurchesByPartnershipCodeId(id);
 
-        return Map.of(
-                "code", code.getCode(),
-                "description", code.getDescription(),
-                "totalUses", code.getCurrentUses() != null ? code.getCurrentUses() : 0,
-                "maxUses", code.getMaxUses() != null ? code.getMaxUses() : "Unlimited",
-                "gracePeriodDays", code.getGracePeriodDays(),
-                "isActive", code.getIsActive(),
-                "isExpired", code.getExpiresAt() != null && LocalDateTime.now().isAfter(code.getExpiresAt()),
-                "createdAt", code.getCreatedAt(),
-                "expiresAt", code.getExpiresAt() != null ? code.getExpiresAt() : "Never"
-        );
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("code", code.getCode());
+        stats.put("description", code.getDescription());
+        stats.put("totalUses", code.getCurrentUses() != null ? code.getCurrentUses() : 0);
+        stats.put("uniqueChurches", uniqueChurches);
+        stats.put("maxUses", code.getMaxUses() != null ? code.getMaxUses() : "Unlimited");
+        stats.put("maxUsesPerChurch", code.getMaxUsesPerChurch() != null ? code.getMaxUsesPerChurch() : "Unlimited");
+        stats.put("gracePeriodDays", code.getGracePeriodDays());
+        stats.put("isActive", code.getIsActive());
+        stats.put("isExpired", code.getExpiresAt() != null && LocalDateTime.now().isAfter(code.getExpiresAt()));
+        stats.put("createdAt", code.getCreatedAt());
+        stats.put("expiresAt", code.getExpiresAt() != null ? code.getExpiresAt() : "Never");
+
+        return stats;
     }
 }
