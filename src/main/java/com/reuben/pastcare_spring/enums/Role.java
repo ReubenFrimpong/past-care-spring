@@ -49,30 +49,47 @@ public enum Role {
         Permission.HOUSEHOLD_CREATE,
         Permission.HOUSEHOLD_EDIT,
         Permission.HOUSEHOLD_DELETE,
+        Permission.HOUSEHOLD_MANAGE,
 
         // Fellowship permissions
         Permission.FELLOWSHIP_VIEW_ALL,
         Permission.FELLOWSHIP_CREATE,
         Permission.FELLOWSHIP_EDIT_ALL,
         Permission.FELLOWSHIP_DELETE,
+        Permission.FELLOWSHIP_MANAGE,
         Permission.FELLOWSHIP_MANAGE_MEMBERS,
 
-        // Financial permissions (view only)
+        // Financial permissions (full access)
         Permission.DONATION_VIEW_ALL,
+        Permission.DONATION_CREATE,
+        Permission.DONATION_EDIT,
+        Permission.DONATION_DELETE,
+        Permission.DONATION_EXPORT,
         Permission.CAMPAIGN_VIEW,
+        Permission.CAMPAIGN_MANAGE,
         Permission.PLEDGE_VIEW_ALL,
+        Permission.PLEDGE_MANAGE,
+        Permission.RECEIPT_ISSUE,
 
         // Event permissions
         Permission.EVENT_VIEW_ALL,
         Permission.EVENT_CREATE,
         Permission.EVENT_EDIT_ALL,
+        Permission.EVENT_EDIT,
         Permission.EVENT_DELETE,
+        Permission.EVENT_REGISTER,
         Permission.EVENT_MANAGE_REGISTRATIONS,
 
         // Attendance permissions
         Permission.ATTENDANCE_VIEW_ALL,
+        Permission.ATTENDANCE_VIEW,
         Permission.ATTENDANCE_RECORD,
+        Permission.ATTENDANCE_MARK,
         Permission.ATTENDANCE_EDIT,
+
+        // Visitor permissions
+        Permission.VISITOR_VIEW,
+        Permission.VISITOR_MANAGE,
 
         // Pastoral care permissions
         Permission.CARE_NEED_VIEW_ALL,
@@ -92,6 +109,8 @@ public enum Role {
         Permission.BULK_MESSAGE_SEND,
 
         // Report permissions
+        Permission.REPORT_VIEW,
+        Permission.REPORT_GENERATE,
         Permission.REPORT_MEMBER,
         Permission.REPORT_FINANCIAL,
         Permission.REPORT_ATTENDANCE,
@@ -103,6 +122,7 @@ public enum Role {
         Permission.USER_CREATE,
         Permission.USER_EDIT,
         Permission.USER_DELETE,
+        Permission.USER_MANAGE,
         Permission.USER_MANAGE_ROLES,
         Permission.CHURCH_SETTINGS_VIEW,
         Permission.CHURCH_SETTINGS_EDIT,
