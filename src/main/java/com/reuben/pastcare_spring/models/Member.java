@@ -19,8 +19,10 @@ import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(callSuper = true, exclude = {"spouse", "parents", "children", "household", "fellowships"})
+@ToString(exclude = {"spouse", "parents", "children", "household", "fellowships"})
 @Entity
 @Data
 public class Member extends TenantBaseEntity {

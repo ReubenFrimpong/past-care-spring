@@ -67,6 +67,78 @@ The application has 7 user roles that must be tested:
 
 **Enforcement**: The backend `.gitignore` has rules to prevent accidental frontend commits. See `FRONTEND_LOCATION.md` for details.
 
+### 7. Form Field-Level Validation Errors
+**All forms MUST display field-level validation errors from the backend** unless it impacts security (e.g., login/register forms where revealing field-specific errors could aid attackers).
+
+**Backend Error Format:**
+```json
+{
+  "fieldName": ["error message 1", "error message 2"],
+  "anotherField": ["validation error"]
+}
+```
+
+**Required Implementation Pattern:**
+```typescript
+// Signal for storing errors
+backendFieldErrors = signal<Record<string, string[]>>({});
+
+// Parse backend validation errors
+private parseAndSetBackendFieldErrors(error: any): void {
+  const fieldErrors: Record<string, string[]> = {};
+  if (error.error && typeof error.error === 'object') {
+    for (const key of Object.keys(error.error)) {
+      if (['message', 'status', 'timestamp', 'path', 'error'].includes(key)) {
+        continue;
+      }
+      const value = error.error[key];
+      if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'string') {
+        fieldErrors[key] = value;
+      }
+    }
+  }
+  this.backendFieldErrors.set(fieldErrors);
+}
+
+getBackendFieldErrors(fieldName: string): string[] {
+  return this.backendFieldErrors()[fieldName] || [];
+}
+
+clearBackendFieldErrors(): void {
+  this.backendFieldErrors.set({});
+}
+```
+
+**HTML Template Pattern:**
+```html
+@for (error of getBackendFieldErrors('fieldName'); track error) {
+  <div class="error-message backend-error">{{ error }}</div>
+}
+```
+
+**CSS Styling (use consistently):**
+```css
+.error-message.backend-error {
+  color: #dc2626;
+  background: #fef2f2;
+  padding: 0.375rem 0.625rem;
+  border-radius: 0.375rem;
+  border: 1px solid #fee2e2;
+  margin-top: 0.375rem;
+}
+
+.error-message.backend-error::before {
+  content: '\e936';
+  font-family: 'primeicons';
+  font-size: 0.75rem;
+}
+```
+
+**Important:**
+- Call `clearBackendFieldErrors()` before new submissions and when closing dialogs
+- Call `parseAndSetBackendFieldErrors(err)` in error handlers
+- Place error display immediately after the corresponding form field
+
 ## Project Locations
 
 ### Absolute Paths

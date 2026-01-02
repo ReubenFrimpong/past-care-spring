@@ -331,4 +331,23 @@ public class GoalService {
             goal.setStatus(GoalStatus.COMPLETED);
         }
     }
+
+    /**
+     * Recalculate progress for all active goals of a specific type.
+     * Called automatically when relevant data changes (e.g., member added, donation recorded).
+     *
+     * @param goalType the type of goals to recalculate
+     */
+    @Transactional
+    public void recalculateGoalsByType(GoalType goalType) {
+        List<Goal> activeGoals = goalRepository.findByGoalTypeAndStatus(goalType, GoalStatus.ACTIVE);
+
+        for (Goal goal : activeGoals) {
+            calculateProgress(goal);
+            updateGoalStatus(goal);
+        }
+
+        goalRepository.saveAll(activeGoals);
+        log.info("Recalculated progress for {} active {} goals", activeGoals.size(), goalType);
+    }
 }

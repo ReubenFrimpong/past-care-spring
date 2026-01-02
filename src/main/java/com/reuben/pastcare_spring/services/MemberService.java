@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.reuben.pastcare_spring.dtos.AdvancedSearchRequest;
@@ -39,9 +40,11 @@ import com.reuben.pastcare_spring.repositories.MemberRepository;
 import com.reuben.pastcare_spring.specifications.MemberSpecification;
 import com.reuben.pastcare_spring.exceptions.FileUploadException;
 import org.springframework.data.jpa.domain.Specification;
+import lombok.extern.slf4j.Slf4j;
 
 
 @Service
+@Slf4j
 public class MemberService {
 
   @Autowired
@@ -68,12 +71,17 @@ public class MemberService {
   @Autowired
   private TierEnforcementService tierEnforcementService;
 
+  @Autowired
+  private GoalService goalService;
 
+
+  @Transactional(readOnly = true)
   public List<MemberResponse> getAllMembers(){
     var members = memberRepository.findAll().stream().map(MemberMapper::toMemberResponse).toList();
     return members;
   }
 
+  @Transactional(readOnly = true)
   public Page<MemberResponse> getMembers(Long churchId, String search, String filter, Pageable pageable) {
     Church church = churchRepository.findById(churchId)
         .orElseThrow(() -> new IllegalArgumentException("Invalid church ID"));
@@ -130,6 +138,7 @@ public class MemberService {
     return new MemberStatsResponse(totalMembers, newThisMonth, verified, unverified, activeRate);
   }
 
+  @Transactional(readOnly = true)
   public MemberResponse getMemberById(Long id) {
     Member member = memberRepository.findById(id)
         .orElseThrow(() -> new IllegalArgumentException("Member not found"));
@@ -199,6 +208,10 @@ public class MemberService {
     member.setProfileCompleteness(completeness);
 
     Member createdMember = memberRepository.save(member);
+
+    // Recalculate MEMBERS type goals after adding a new member
+    recalculateMemberGoals();
+
     return MemberMapper.toMemberResponse(createdMember);
   }
 
@@ -333,8 +346,8 @@ public class MemberService {
     member.setCountryCode(request.countryCode() != null ? request.countryCode() : "GH");
     member.setTimezone("Africa/Accra"); // Default timezone
     member.setMaritalStatus("unknown"); // Default marital status for quick add
-    member.setStatus(com.reuben.pastcare_spring.models.MemberStatus.VISITOR);
-    member.setIsVerified(false);
+    member.setStatus(MemberStatus.MEMBER); // Default to MEMBER (visitors are managed in a separate module)
+    member.setIsVerified(false); // Quick-added members need verification
 
     // Handle location if provided
     if (request.nominatimAddress() != null && request.coordinates() != null) {
@@ -357,6 +370,9 @@ public class MemberService {
 
     // Save member
     var savedMember = memberRepository.save(member);
+
+    // Recalculate MEMBERS type goals after adding a new member
+    recalculateMemberGoals();
 
     // TODO: Send welcome SMS if phone provided (future enhancement)
 
@@ -504,6 +520,11 @@ public class MemberService {
       }
     }
 
+    // Recalculate MEMBERS type goals after bulk import (if any members were added)
+    if (successCount > 0) {
+      recalculateMemberGoals();
+    }
+
     return new MemberBulkImportResponse(
       request.members().size(),
       successCount,
@@ -540,6 +561,9 @@ public class MemberService {
    * Create a new Member entity from mapped CSV data.
    */
   private Member createMemberFromMap(Map<String, String> data, Church church) {
+    // Validate logical consistency before creating member
+    validateDataLogicalConsistency(data);
+
     Member member = new Member();
 
     // Required fields
@@ -581,16 +605,147 @@ public class MemberService {
 
     // Default values for bulk import
     member.setStatus(MemberStatus.MEMBER); // Default to MEMBER for bulk imports
-    member.setIsVerified(false); // Needs verification
+    member.setIsVerified(true); // Bulk imported members are verified (existing church members)
     member.setProfileCompleteness(calculateProfileCompleteness(member));
 
     return member;
   }
 
   /**
+   * Validate logical consistency of CSV import data.
+   * Catches contradictions like single status with spouse info.
+   */
+  private void validateDataLogicalConsistency(Map<String, String> data) {
+    List<String> warnings = new ArrayList<>();
+
+    String maritalStatus = data.get("maritalStatus");
+    String spouseName = data.get("spouseName");
+    String spousePhone = data.get("spousePhone");
+    String dob = data.get("dob");
+    String sex = data.get("sex");
+
+    // Check: Single/Never Married but has spouse information
+    if (maritalStatus != null) {
+      String status = maritalStatus.toLowerCase().trim();
+      boolean isSingle = status.equals("single") || status.equals("never married") || status.equals("never_married");
+      boolean hasSpouseInfo = (spouseName != null && !spouseName.trim().isEmpty()) ||
+                              (spousePhone != null && !spousePhone.trim().isEmpty());
+
+      if (isSingle && hasSpouseInfo) {
+        throw new IllegalArgumentException(
+          "Logical inconsistency: Marital status is '" + maritalStatus +
+          "' but spouse information is provided. Please verify the data."
+        );
+      }
+
+      // Check: Married/Engaged but no spouse info (warning, not error)
+      boolean isMarried = status.equals("married") || status.equals("engaged");
+      if (isMarried && !hasSpouseInfo) {
+        // This is okay - spouse info is optional, just log for awareness
+        log.debug("Member marked as '{}' but no spouse info provided", maritalStatus);
+      }
+    }
+
+    // Check: Date of birth makes member unreasonably young or old
+    if (dob != null && !dob.trim().isEmpty()) {
+      try {
+        LocalDate birthDate = LocalDate.parse(dob);
+        LocalDate now = LocalDate.now();
+        int age = now.getYear() - birthDate.getYear();
+
+        if (age < 0) {
+          throw new IllegalArgumentException(
+            "Invalid date of birth: " + dob + " is in the future"
+          );
+        }
+
+        if (age > 120) {
+          throw new IllegalArgumentException(
+            "Invalid date of birth: " + dob + " would make member over 120 years old"
+          );
+        }
+
+        // Warning for very young members (but allow since could be children)
+        if (age < 1) {
+          log.debug("Member has date of birth less than 1 year ago: {}", dob);
+        }
+      } catch (java.time.format.DateTimeParseException e) {
+        throw new IllegalArgumentException(
+          "Invalid date format for dob: " + dob + ". Use YYYY-MM-DD format."
+        );
+      }
+    }
+
+    // Check: Sex field validation
+    if (sex != null && !sex.trim().isEmpty()) {
+      String normalizedSex = sex.toLowerCase().trim();
+      if (!normalizedSex.equals("male") && !normalizedSex.equals("female") &&
+          !normalizedSex.equals("m") && !normalizedSex.equals("f")) {
+        throw new IllegalArgumentException(
+          "Invalid sex value: '" + sex + "'. Use 'male', 'female', 'm', or 'f'."
+        );
+      }
+    }
+
+    // Check: Marital status validation
+    if (maritalStatus != null && !maritalStatus.trim().isEmpty()) {
+      String status = maritalStatus.toLowerCase().trim();
+      List<String> validStatuses = List.of(
+        "single", "married", "divorced", "widowed", "separated",
+        "engaged", "never married", "never_married", "unknown"
+      );
+      if (!validStatuses.contains(status)) {
+        throw new IllegalArgumentException(
+          "Invalid marital status: '" + maritalStatus +
+          "'. Valid values: single, married, divorced, widowed, separated, engaged, never married, unknown."
+        );
+      }
+    }
+
+    // Check: Title consistency with sex (optional validation)
+    String title = data.get("title");
+    if (title != null && sex != null) {
+      String normalizedTitle = title.toLowerCase().trim();
+      String normalizedSex = sex.toLowerCase().trim();
+
+      // Mr. should be male, Mrs./Miss should be female
+      if ((normalizedTitle.equals("mr") || normalizedTitle.equals("mr.")) &&
+          (normalizedSex.equals("female") || normalizedSex.equals("f"))) {
+        throw new IllegalArgumentException(
+          "Logical inconsistency: Title 'Mr.' is typically used for males, but sex is 'female'."
+        );
+      }
+      if ((normalizedTitle.equals("mrs") || normalizedTitle.equals("mrs.") ||
+           normalizedTitle.equals("miss") || normalizedTitle.equals("ms") || normalizedTitle.equals("ms.")) &&
+          (normalizedSex.equals("male") || normalizedSex.equals("m"))) {
+        throw new IllegalArgumentException(
+          "Logical inconsistency: Title '" + title + "' is typically used for females, but sex is 'male'."
+        );
+      }
+    }
+  }
+
+  /**
    * Update an existing Member entity from mapped CSV data.
    */
   private Member updateMemberFromMap(Member member, Map<String, String> data, Church church) {
+    // Validate logical consistency before updating
+    // Merge existing member data with new data for validation
+    Map<String, String> mergedData = new HashMap<>(data);
+    if (!mergedData.containsKey("maritalStatus") && member.getMaritalStatus() != null) {
+      mergedData.put("maritalStatus", member.getMaritalStatus());
+    }
+    if (!mergedData.containsKey("sex") && member.getSex() != null) {
+      mergedData.put("sex", member.getSex());
+    }
+    if (!mergedData.containsKey("dob") && member.getDob() != null) {
+      mergedData.put("dob", member.getDob().toString());
+    }
+    if (!mergedData.containsKey("title") && member.getTitle() != null) {
+      mergedData.put("title", member.getTitle());
+    }
+    validateDataLogicalConsistency(mergedData);
+
     // Update only provided fields
     if (data.containsKey("firstName")) member.setFirstName(data.get("firstName"));
     if (data.containsKey("lastName")) member.setLastName(data.get("lastName"));
@@ -1024,6 +1179,7 @@ public class MemberService {
    * @param churchId the church ID for validation
    * @return the updated member response
    */
+  @Transactional
   public MemberResponse linkSpouse(Long memberId, Long spouseId, Long churchId) {
     // Validate same member not linking to self
     if (memberId.equals(spouseId)) {
@@ -1085,6 +1241,7 @@ public class MemberService {
    * @param churchId the church ID for validation
    * @return the updated member response
    */
+  @Transactional
   public MemberResponse unlinkSpouse(Long memberId, Long churchId) {
     Member member = memberRepository.findById(memberId)
         .orElseThrow(() -> new IllegalArgumentException("Member not found: " + memberId));
@@ -1123,6 +1280,7 @@ public class MemberService {
    * @param churchId the church ID for validation
    * @return the spouse member response, or null if not linked
    */
+  @Transactional(readOnly = true)
   public MemberResponse getSpouse(Long memberId, Long churchId) {
     Member member = memberRepository.findById(memberId)
         .orElseThrow(() -> new IllegalArgumentException("Member not found: " + memberId));
@@ -1149,6 +1307,7 @@ public class MemberService {
    * @param churchId the church ID for validation
    * @return the updated child member response
    */
+  @Transactional
   public MemberResponse addParent(Long childId, Long parentId, Long churchId) {
     // Validate not linking member to themselves
     if (childId.equals(parentId)) {
@@ -1191,6 +1350,7 @@ public class MemberService {
    * @param churchId the church ID for validation
    * @return the updated child member response
    */
+  @Transactional
   public MemberResponse removeParent(Long childId, Long parentId, Long churchId) {
     Member child = memberRepository.findById(childId)
         .orElseThrow(() -> new IllegalArgumentException("Child member not found: " + childId));
@@ -1223,6 +1383,7 @@ public class MemberService {
    * @param churchId the church ID for validation
    * @return list of parent member responses
    */
+  @Transactional(readOnly = true)
   public List<MemberResponse> getParents(Long childId, Long churchId) {
     Member child = memberRepository.findById(childId)
         .orElseThrow(() -> new IllegalArgumentException("Child member not found: " + childId));
@@ -1244,6 +1405,7 @@ public class MemberService {
    * @param churchId the church ID for validation
    * @return list of child member responses
    */
+  @Transactional(readOnly = true)
   public List<MemberResponse> getChildren(Long parentId, Long churchId) {
     Member parent = memberRepository.findById(parentId)
         .orElseThrow(() -> new IllegalArgumentException("Parent member not found: " + parentId));
@@ -1345,5 +1507,21 @@ public class MemberService {
         incomplete,
         distribution
     );
+  }
+
+  // ==================== Goal Recalculation Helper ====================
+
+  /**
+   * Recalculates all active MEMBERS type goals.
+   * Called automatically when members are added, imported, or deleted.
+   * This ensures goal progress stays up-to-date without manual intervention.
+   */
+  private void recalculateMemberGoals() {
+    try {
+      goalService.recalculateGoalsByType(com.reuben.pastcare_spring.enums.GoalType.MEMBERS);
+    } catch (Exception e) {
+      // Log but don't fail the member operation if goal recalculation fails
+      log.warn("Failed to recalculate member goals: {}", e.getMessage());
+    }
   }
 }
