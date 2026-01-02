@@ -43,6 +43,7 @@ public class PaystackWebhookController {
     private final ObjectMapper objectMapper;
     private final com.reuben.pastcare_spring.services.BillingService billingService;
     private final com.reuben.pastcare_spring.services.StorageAddonBillingService storageAddonBillingService;
+    private final com.reuben.pastcare_spring.services.TierUpgradeService tierUpgradeService;
 
     @Value("${paystack.secret-key:}")
     private String paystackSecretKey;
@@ -53,7 +54,8 @@ public class PaystackWebhookController {
         UserRepository userRepository,
         ObjectMapper objectMapper,
         com.reuben.pastcare_spring.services.BillingService billingService,
-        com.reuben.pastcare_spring.services.StorageAddonBillingService storageAddonBillingService
+        com.reuben.pastcare_spring.services.StorageAddonBillingService storageAddonBillingService,
+        com.reuben.pastcare_spring.services.TierUpgradeService tierUpgradeService
     ) {
         this.churchSmsCreditService = churchSmsCreditService;
         this.churchRepository = churchRepository;
@@ -61,6 +63,7 @@ public class PaystackWebhookController {
         this.objectMapper = objectMapper;
         this.billingService = billingService;
         this.storageAddonBillingService = storageAddonBillingService;
+        this.tierUpgradeService = tierUpgradeService;
     }
 
     /**
@@ -131,6 +134,10 @@ public class PaystackWebhookController {
                 // Just log and acknowledge
                 log.info("Renewal payment webhook received: {}", reference);
                 return ResponseEntity.ok("Renewal acknowledged");
+            }
+
+            if (reference.startsWith("TIER_UPGRADE-")) {
+                return handleTierUpgradePayment(reference, data);
             }
 
             // Otherwise, handle as SMS credits purchase
@@ -205,6 +212,27 @@ public class PaystackWebhookController {
             log.error("Error activating addon via webhook: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body("Error activating addon: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Handle tier upgrade payment webhook.
+     * This is called when a tier upgrade payment succeeds.
+     */
+    private ResponseEntity<String> handleTierUpgradePayment(String reference, JsonNode data) {
+        try {
+            log.info("Processing tier upgrade payment via webhook: {}", reference);
+
+            // Complete the tier upgrade
+            tierUpgradeService.completeUpgrade(reference);
+
+            log.info("Tier upgrade completed successfully via webhook: {}", reference);
+            return ResponseEntity.ok("Tier upgrade completed");
+
+        } catch (Exception e) {
+            log.error("Error completing tier upgrade via webhook: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Error completing tier upgrade: " + e.getMessage());
         }
     }
 

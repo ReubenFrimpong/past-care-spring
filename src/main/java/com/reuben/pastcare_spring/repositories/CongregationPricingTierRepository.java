@@ -33,6 +33,14 @@ public interface CongregationPricingTierRepository extends JpaRepository<Congreg
     List<CongregationPricingTier> findByIsActiveTrueOrderByDisplayOrderAsc();
 
     /**
+     * Find all tiers ordered by minimum member count (ascending).
+     * Used for tier validation to get tiers from smallest to largest.
+     *
+     * @return List of all tiers ordered by minMembers
+     */
+    List<CongregationPricingTier> findAllByOrderByMinMembersAsc();
+
+    /**
      * Find the appropriate pricing tier for a given member count.
      *
      * <p>Returns the tier where:

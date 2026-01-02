@@ -85,6 +85,49 @@ public class ChurchSubscription {
     @Column(name = "tier_upgrade_notification_sent")
     private LocalDateTime tierUpgradeNotificationSent;
 
+    // ==================== TIER CHANGE TRACKING ====================
+
+    /**
+     * When tier was last changed
+     */
+    @Column(name = "last_tier_change_date")
+    private LocalDateTime lastTierChangeDate;
+
+    /**
+     * Previous tier before last change (for audit trail)
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "last_tier_id")
+    private CongregationPricingTier lastTier;
+
+    /**
+     * Flag indicating a tier change is pending payment verification
+     */
+    @Column(name = "pending_tier_change")
+    @Builder.Default
+    private Boolean pendingTierChange = false;
+
+    /**
+     * Tier being upgraded to (cleared after payment verification)
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "pending_tier_id")
+    private CongregationPricingTier pendingTier;
+
+    /**
+     * New billing interval if changing interval (cleared after payment verification)
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "pending_billing_interval_id")
+    private SubscriptionBillingInterval pendingBillingInterval;
+
+    /**
+     * Total number of tier changes/upgrades in subscription lifetime
+     */
+    @Column(name = "tier_change_count")
+    @Builder.Default
+    private Integer tierChangeCount = 0;
+
     /**
      * Subscription amount (total for billing period)
      */
@@ -456,5 +499,64 @@ public class ChurchSubscription {
      */
     public void markDeletionWarningSent() {
         this.deletionWarningSentAt = LocalDateTime.now();
+    }
+
+    // ==================== TIER UPGRADE METHODS ====================
+
+    /**
+     * Mark subscription as pending tier upgrade (during payment processing)
+     */
+    public void markPendingUpgrade(CongregationPricingTier newTier, SubscriptionBillingInterval newInterval) {
+        this.pendingTierChange = true;
+        this.pendingTier = newTier;
+        this.pendingBillingInterval = newInterval;
+    }
+
+    /**
+     * Complete tier upgrade after successful payment
+     */
+    public void completeUpgrade() {
+        if (!Boolean.TRUE.equals(pendingTierChange)) {
+            throw new IllegalStateException("No pending upgrade to complete");
+        }
+
+        // Store previous tier for audit
+        this.lastTier = this.pricingTier;
+        this.lastTierChangeDate = LocalDateTime.now();
+
+        // Apply tier change
+        if (pendingTier != null) {
+            this.pricingTier = pendingTier;
+        }
+
+        // Apply interval change
+        if (pendingBillingInterval != null) {
+            this.billingInterval = pendingBillingInterval;
+            this.billingPeriodMonths = pendingBillingInterval.getMonths();
+        }
+
+        // Clear pending flags
+        this.pendingTierChange = false;
+        this.pendingTier = null;
+        this.pendingBillingInterval = null;
+
+        // Increment counter
+        this.tierChangeCount = (this.tierChangeCount != null ? this.tierChangeCount : 0) + 1;
+    }
+
+    /**
+     * Clear pending upgrade (payment failed or canceled)
+     */
+    public void clearPendingUpgrade() {
+        this.pendingTierChange = false;
+        this.pendingTier = null;
+        this.pendingBillingInterval = null;
+    }
+
+    /**
+     * Check if subscription has a pending tier upgrade
+     */
+    public boolean hasPendingUpgrade() {
+        return Boolean.TRUE.equals(pendingTierChange);
     }
 }

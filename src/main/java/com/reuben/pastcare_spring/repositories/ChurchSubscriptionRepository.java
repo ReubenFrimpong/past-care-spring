@@ -88,4 +88,9 @@ public interface ChurchSubscriptionRepository extends JpaRepository<ChurchSubscr
      */
     @Query("SELECT cs FROM ChurchSubscription cs WHERE cs.churchId = :churchId AND cs.status = 'ACTIVE'")
     Optional<ChurchSubscription> findActiveByChurchId(Long churchId);
+
+    /**
+     * Find subscription by church ID and specific status.
+     */
+    Optional<ChurchSubscription> findByChurchIdAndStatus(Long churchId, String status);
 }

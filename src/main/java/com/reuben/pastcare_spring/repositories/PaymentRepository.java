@@ -85,4 +85,11 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
      */
     @Query("SELECT p FROM Payment p WHERE p.paymentDate >= :fromDate ORDER BY p.paymentDate DESC")
     List<Payment> findRecentPayments(@Param("fromDate") LocalDateTime fromDate);
+
+    /**
+     * Find payment by any payment reference field.
+     * Checks both paystackReference and custom paymentReference if added.
+     */
+    @Query("SELECT p FROM Payment p WHERE p.paystackReference = :reference")
+    Optional<Payment> findByPaymentReference(@Param("reference") String reference);
 }
