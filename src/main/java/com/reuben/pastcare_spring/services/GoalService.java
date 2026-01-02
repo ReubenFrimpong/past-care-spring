@@ -298,10 +298,10 @@ public class GoalService {
     }
 
     /**
-     * Calculate member progress (current active member count)
+     * Calculate member progress (current active member count for the goal's church)
      */
     private BigDecimal calculateMemberProgress(Goal goal) {
-        Long memberCount = memberRepository.countActiveMembers();
+        Long memberCount = memberRepository.countActiveMembersByChurch(goal.getChurchId());
         return BigDecimal.valueOf(memberCount);
     }
 
