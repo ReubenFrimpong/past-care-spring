@@ -223,9 +223,10 @@ public interface MemberRepository extends JpaRepository<Member, Long>, JpaSpecif
   Long countActiveMembers();
 
   /**
-   * Count active members for a specific church (used for church-specific goal tracking)
+   * Count all members for a specific church (used for church-specific goal tracking)
+   * Note: Goals now count ALL members, not just verified ones
    */
-  @Query("SELECT COUNT(m) FROM Member m WHERE m.isVerified = true AND m.church.id = :churchId")
+  @Query("SELECT COUNT(m) FROM Member m WHERE m.church.id = :churchId")
   Long countActiveMembersByChurch(@Param("churchId") Long churchId);
 
 }

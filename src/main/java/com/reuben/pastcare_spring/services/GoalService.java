@@ -298,7 +298,8 @@ public class GoalService {
     }
 
     /**
-     * Calculate member progress (current active member count for the goal's church)
+     * Calculate member progress (total member count for the goal's church)
+     * Note: Counts ALL members in the church, not just verified ones
      */
     private BigDecimal calculateMemberProgress(Goal goal) {
         Long memberCount = memberRepository.countActiveMembersByChurch(goal.getChurchId());
