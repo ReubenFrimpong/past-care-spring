@@ -511,6 +511,17 @@ public class DashboardController {
     return ResponseEntity.ok(goal);
   }
 
+  /**
+   * Recalculate progress for all active goals.
+   * Dashboard Phase 2.3: Goal Tracking
+   */
+  @PostMapping("/goals/recalculate-all")
+  @Operation(summary = "Recalculate all goals", description = "Manually trigger progress update for all active goals")
+  public ResponseEntity<RecalculateAllResponse> recalculateAllGoals() {
+    int updatedCount = goalService.recalculateAllActiveGoalsAndCount();
+    return ResponseEntity.ok(new RecalculateAllResponse("Successfully recalculated all active goals", updatedCount));
+  }
+
   // ==================== Dashboard Phase 2.4: Advanced Analytics ====================
 
   /**

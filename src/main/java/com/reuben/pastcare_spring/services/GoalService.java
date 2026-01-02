@@ -201,6 +201,24 @@ public class GoalService {
     }
 
     /**
+     * Recalculate progress for all active goals and return count
+     * Used by the manual recalculate-all endpoint
+     */
+    @Transactional
+    public int recalculateAllActiveGoalsAndCount() {
+        List<Goal> activeGoals = goalRepository.findByStatus(GoalStatus.ACTIVE);
+
+        for (Goal goal : activeGoals) {
+            calculateProgress(goal);
+            updateGoalStatus(goal);
+        }
+
+        goalRepository.saveAll(activeGoals);
+        log.info("Recalculated progress for {} active goals", activeGoals.size());
+        return activeGoals.size();
+    }
+
+    /**
      * Check and update expired goals
      * Marks expired goals as COMPLETED or FAILED based on achievement
      */
